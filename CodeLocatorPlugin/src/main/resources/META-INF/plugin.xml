@@ -1,0 +1,68 @@
+<idea-plugin>
+    <id>com.bytedance.tools.codelocator</id>
+    <idea-version since-build="191.0"/>
+    <name>CodeLocator</name>
+    <vendor email="liujian.android@bytedance.com" url="https://github.com/bytedance/codelocator"></vendor>
+
+    <description><![CDATA[
+        CodeLocator is a powerful set of Android tools, which supports a variety of functions and needs to be integrated with the codelocator-sdk for use.<br />
+        For reference: https://github.com/bytedance/CodeLocator
+    ]]></description>
+
+    <change-notes><![CDATA[
+        <h3>1.2.0: Initial release of the plugin, supporting functions as follows</h3>
+		<ul>
+            <li>Display the current View information</li>
+            <li>Display the current Activity information</li>
+            <li>Display information about all fragments</li>
+            <li>Display custom App runtime information</li>
+            <li>Display file information about the current application</li>
+            <li>Edit the status of the View in real time, such as visibility, text content, etc</li>
+            <li>Locate the View that currently responds to the touch event</li>
+            <li>Get the data of the current View</li>
+            <li>Get the drawing content corresponding to the current View</li>
+            <li>Jump to View click event code, findViewById, ViewHolder code location</li>
+            <li>Jump to View's XML layout file</li>
+            <li>Jump to the code location of Toast & Dialog</li>
+            <li>Jump to the location of code which starts the current Activity</li>
+            <li>Display all Schema information supported by the application</li>
+            <li>Send specified Schema to the application</li>
+            <li>Locate the latest Apk file in the project</li>
+            <li>Apk files can be installed from the shortcut menu</li>
+            <li>Quickly open display layout boundaries, transition drawing, click operations, etc</li>
+            <li>Fast connect Charles</li>
+		</ul>
+    ]]></change-notes>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+
+        <defaultProjectTypeProvider type="Android"/>
+
+        <toolWindow id="CodeLocator"
+                    icon="/images/codelocator.svg"
+                    anchor="right"
+                    factoryClass="com.bytedance.tools.codelocator.panels.CodeLocatorWindowFactory">
+        </toolWindow>
+    </extensions>
+
+    <actions>
+        <action class="com.bytedance.tools.codelocator.action.InstallApkMenuAction"
+                id="codelocator.installapk"
+                description="Install Apk"
+                icon="/images/codelocator_small.svg"
+                text="Install Apk">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="CutCopyPasteGroup"/>
+        </action>
+
+        <action id="codelocator.JumpToFileGitUrlAction"
+                class="com.bytedance.tools.codelocator.action.SearchInWebAction"
+                text="Search Code"
+                icon="/images/codelocator_small.svg"
+                description="Search Code">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+
+</idea-plugin>

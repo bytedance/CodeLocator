@@ -1,0 +1,30 @@
+include ':app'
+include ':CodeLocatorModel'
+include ':CodeLocatorCore'
+
+include ':CodeLocatorLancetDialog'
+project(':CodeLocatorLancetDialog').projectDir = new File("lancet/CodeLocatorLancetDialog")
+
+include ':CodeLocatorLancetPopup'
+project(':CodeLocatorLancetPopup').projectDir = new File("lancet/CodeLocatorLancetPopup")
+
+include ':CodeLocatorLancetToast'
+project(':CodeLocatorLancetToast').projectDir = new File("lancet/CodeLocatorLancetToast")
+
+include ':CodeLocatorLancetXml'
+project(':CodeLocatorLancetXml').projectDir = new File("lancet/CodeLocatorLancetXml")
+
+include ':CodeLocatorLancetActivity'
+project(':CodeLocatorLancetActivity').projectDir = new File("lancet/CodeLocatorLancetActivity")
+
+include ':CodeLocatorLancetView'
+project(':CodeLocatorLancetView').projectDir = new File("lancet/CodeLocatorLancetView")
+
+rootProject.name = "CodeLocatorApp"
+
+if (new File("codeLocator.gradle").exists()) {
+    apply from: 'codeLocator.gradle'
+}
+if (new File("codelocator.gradle").exists()) {
+    apply from: 'codelocator.gradle'
+}

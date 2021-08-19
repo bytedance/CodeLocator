@@ -1,0 +1,15 @@
+apply plugin: 'java-library'
+
+if (getProperties("customUploadGradlePluginUrl") != null) {
+    apply from: getProperties("customUploadGradlePluginUrl")
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    api 'com.google.code.gson:gson:2.8.5'
+}
+
+sourceCompatibility = "1.7"
+targetCompatibility = "1.7"
+
+//apply from: rootProject.file('publish.gradle')

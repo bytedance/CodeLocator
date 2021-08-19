@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:divider="@drawable/divider"
+        android:orientation="vertical"
+        android:showDividers="middle">
+
+    <TextView
+            android:id="@+id/tvw_start_activity"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="Start TestActivity"
+            android:textSize="20sp" />
+
+    <TextView
+            android:id="@+id/tvw_show_dialog"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="Show Dialog"
+            android:textSize="20sp" />
+
+    <TextView
+            android:id="@+id/tvw_show_pop"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="Show Popup"
+            android:textSize="20sp" />
+
+    <TextView
+            android:id="@+id/tvw_show_toast"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="Show Toast"
+            android:textSize="20sp" />
+
+    <ImageView
+            android:id="@+id/ivw_show_res"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="5dp"
+            android:src="@drawable/codelocator_normal" />
+
+    <TextView
+            android:id="@+id/tvw_test_sp"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="Test SP"
+            android:textSize="20sp" />
+
+</LinearLayout>

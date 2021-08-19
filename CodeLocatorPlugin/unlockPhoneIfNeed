@@ -1,0 +1,23 @@
+#!/bin/bash
+
+commandPath=$1
+devicesInfo=$2
+
+windowPolicy=`"$commandPath" $devicesInfo shell dumpsys window policy >/dev/null 2>&1`
+
+if [[ $? != 0 ]]; then
+	exit 0
+fi
+
+screenState=`"$commandPath" $devicesInfo shell dumpsys window policy | grep screenState= | awk '{print $1}' | awk -F "=" '{print $2}'`
+
+if [ "SCREEN_STATE_OFF" == "$screenState" ]; then
+	`"$commandPath" $devicesInfo  shell input keyevent 26 >/dev/null 2>&1`
+fi
+
+locked=`"$commandPath" $devicesInfo  shell dumpsys window policy | grep mInputRestricted= | awk '{print $1}' | awk -F "=" '{print $2}'`
+
+if [ "true" == "$locked" ]; then
+	echo "请解锁手机后再操作"
+	exit 0
+fi

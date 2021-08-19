@@ -1,0 +1,17 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.bytedance.tools.codelocator">
+
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <application>
+
+        <provider
+            android:name="com.bytedance.tools.codelocator.CodeLocatorProvider"
+            android:authorities="${applicationId}.CodeLocatorProvider"
+            android:exported="true" />
+
+    </application>
+
+</manifest>

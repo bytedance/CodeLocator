@@ -1,0 +1,153 @@
+plugins {
+    id 'java'
+    id 'org.jetbrains.intellij' version '0.6.1'
+    id 'org.jetbrains.kotlin.jvm' version '1.3.72'
+}
+
+group 'com.bytedance.tools'
+
+version '1.2.1'
+
+runIde {
+    jvmArgs '-Xmx10G'
+}
+
+allprojects {
+    repositories {
+        google()
+        jcenter()
+    }
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
+    implementation "com.squareup.okhttp3:okhttp:3.8.1"
+    implementation project(':CodeLocatorModel')
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+}
+
+intellij {
+    updateSinceUntilBuild false
+    version '191.6707.61'
+}
+
+boolean isFirst = true
+
+boolean isWindows() {
+    return System.getProperty("os.name").toLowerCase().indexOf("windows") != -1
+}
+
+boolean isMac() {
+    return System.getProperty("os.name").toLowerCase().indexOf("mac") != -1
+}
+
+gradle.taskGraph.beforeTask {
+    if (isFirst) {
+        isFirst = false
+        def tasks = gradle.taskGraph.allTasks
+        if (!isWindows()) {
+            def logFile = new File("src/main/java/com/bytedance/tools/codelocator/utils/Log.java")
+            if ("runIde".equals(tasks.get(tasks.size() - 1).name)) {
+                def commands = ["/bin/sh", "-c", "sed -i '' 's/DEBUG = false/DEBUG = true/g' " + logFile.getAbsolutePath()] as String[]
+                def exec = Runtime.getRuntime().exec(commands)
+                exec.waitFor()
+            } else {
+                def commands = ["/bin/sh", "-c", "sed -i '' 's/DEBUG = true/DEBUG = true/g' " + logFile.getAbsolutePath()] as String[]
+                def exec = Runtime.getRuntime().exec(commands)
+                exec.waitFor()
+            }
+        }
+
+        def netFile = new File("src/main/java/com/bytedance/tools/codelocator/utils/NetUtils.java")
+        replaceUrl(netFile, "searchCodeUrl", "SEARCH_CODE_URL")
+        replaceUrl(netFile, "feedbackUrl", "FEEDBACK_URL")
+        replaceUrl(netFile, "docUrl", "DOC_URL")
+        replaceUrl(netFile, "commonServerUrl", "SERVER_URL")
+        replaceUrl(netFile, "fileServerUrl", "FILE_SERVER_URL")
+    }
+
+    if (it instanceof Zip && !it.toString().contains("CodeLocatorModel")) {
+        it.from({ file("adb") })
+        it.from({ file("adb.exe") })
+        it.from({ file("AdbWinApi.dll") })
+        it.from({ file("restartAndroidStudio") })
+        it.from({ file("AndroidModuleTemplate.zip") })
+        it.from({ file("JarModuleTemplate.zip") })
+        it.from({ file("unlockPhoneIfNeed") })
+        it.from({ file("src/main/resources/META-INF/version") })
+    }
+}
+
+private void replaceUrl(File file, String property, String variable) {
+    def searchUrl = getProperties(property)
+    if (searchUrl != null && !searchUrl.isEmpty()) {
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(file))
+            StringBuilder sb = new StringBuilder((int) file.length())
+            String line = null
+            while ((line = br.readLine()) != null) {
+                if (sb.length() > 0) {
+                    sb.append("\n")
+                }
+                sb.append(line)
+            }
+            br.close()
+            def indexOfVariable = sb.indexOf(variable)
+            if (indexOfVariable < 0) {
+                return
+            }
+            def indexOfStartSplit = sb.indexOf("\"", indexOfVariable + 1)
+            if (indexOfStartSplit < 0) {
+                return
+            }
+            def indexOfEndSplit = sb.indexOf("\"", indexOfStartSplit + 1)
+            if (indexOfEndSplit < 0) {
+                return
+            }
+            sb.replace(indexOfStartSplit + 1, indexOfEndSplit, searchUrl)
+            BufferedWriter writer = new BufferedWriter(new FileWriter(file))
+            writer.write(sb.toString())
+            writer.flush()
+            writer.close()
+        } catch (Throwable t) {
+            println("Throwable: " + t)
+        }
+    }
+}
+
+gradle.taskGraph.afterTask {
+    if ("prepareSandbox".equals((it as Task).getName())) {
+        copyFile(new File("adb"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/adb"))
+        copyFile(new File("adb.exe"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/adb.exe"))
+        copyFile(new File("AdbWinApi.dll"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/AdbWinApi.dll"))
+        copyFile(new File("restartAndroidStudio"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/restartAndroidStudio"))
+        copyFile(new File("unlockPhoneIfNeed"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/unlockPhoneIfNeed"))
+        copyFile(new File("JarModuleTemplate.zip"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/JarModuleTemplate.zip"))
+        copyFile(new File("AndroidModuleTemplate.zip"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/AndroidModuleTemplate.zip"))
+    }
+}
+
+String getProperties(String key) {
+    def properties = new Properties()
+    if (!project.rootProject.file('local.properties').exists()) {
+        return null
+    }
+    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+    return properties.getProperty(key)
+}
+
+static void copyFile(File sourceFile, File targetFile) {
+    try {
+        InputStream inputStream = new FileInputStream(sourceFile)
+        OutputStream outputStream = new FileOutputStream(targetFile)
+        byte[] buffer = new byte[8192]
+        int len
+        while ((len = inputStream.read(buffer)) > 0) {
+            outputStream.write(buffer, 0, len)
+        }
+        inputStream.close()
+        outputStream.close()
+    } catch (Exception e) {
+        System.out.println("Copy Error " + e)
+    }
+}

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+function asAppPath() {
+  data=`ps -A | grep -m1 "Android Studio"`
+  temp1=${data#*/}
+  temp2="/${temp1%%/Contents*}"
+  ASApplication="/Applications/Android Studio.app/"
+  if [[ $temp2 == /*Android\ Studio.app ]]; then
+      ASApplication="$temp2"
+  fi
+  echo $ASApplication
+}
+
+asApp=`asAppPath`
+
+pkill -KILL -f "Android Studio"
+
+sleep 1
+open "$asApp"
