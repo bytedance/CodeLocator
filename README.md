@@ -31,13 +31,17 @@ CodeLocator is a toolset that includes Android SDK and Android Studio plugins. I
 
 ## These apps are using CodeLocator
 
-| <img src="misc/douyin.png" alt="douyin" width="100"/> | <img src="misc/duoshan.png" alt="duoshan" width="100"/> | <img src="misc/resso.png" alt="resso" width="100"/> | <img src="misc/xigua.png" alt="xigua" width="100"/> | <img src="misc/huoshan.png" alt="huoshan" width="100"/> |  
+| <img src="misc/douyin.png" alt="douyin" width="100"/> | <img src="misc/douyin.png" alt="tiktok" width="100"/> | <img src="misc/duoshan.png" alt="duoshan" width="100"/> | <img src="misc/resso.png" alt="resso" width="100"/> | <img src="misc/xigua.png" alt="xigua" width="100"/> |  
 |:---------:|:-------:|:-------:|:-------:|:-------:|
-| 抖音 & TikTok | 多闪 | Resso | 西瓜视频 | 火山 | 
+| 抖音 | TikTok | 多闪 | Resso | 西瓜视频 |  
 
 | <img src="misc/helo.png" alt="helo" width="100"/> |<img src="misc/feishu.png" alt="feishu" width="100"/> |<img src="misc/qingbei.png" alt="qingbei" width="100"/> | <img src="misc/fanqie.png" alt="fanqie" width="100"/> |<img src="misc/qingyan.png" alt="qingyan" width="100"/> |
-|:-------:|:-------:|:-------:|:-------:|:-------:|
+|:---------:|:-------:|:-------:|:-------:|:-------:|
 | Helo | 飞书 | 清北网校 | 番茄小说 | 轻颜相机 |
+
+| <img src="misc/huoshan.png" alt="huoshan" width="100"/> | <img src="misc/guagualong.png" alt="guagualong" width="100"/> | <img src="misc/jianying.png" alt="jianying" width="100"/> | <img src="misc/fanqiefm.png" alt="fanqiefm" width="100"/> | <img src="misc/xingfuli.png" alt="xingfuli" width="100"/> |
+|:---------:|:-------:|:-------:|:-------:|:-------:|
+| 抖音火山版 | 瓜瓜龙 | 剪映 | 番茄畅听 | 幸福里 |
  
 ## Integration
 The followings describe how to use CodeLocator:
