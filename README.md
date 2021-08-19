@@ -46,7 +46,7 @@ CodeLocator is a toolset that includes Android SDK and Android Studio plugins. I
 ## Integration
 The followings describe how to use CodeLocator:
 
-1. Install CodeLocator in Android Studio (search for CodeLocator in the plug-in store)
+1. Install CodeLocator in Android Studio ([Click here to download plugin](https://github.com/bytedance/CodeLocator/releases/download/1.2.1/CodeLocatorPlugin-1.2.1.zip))
 2. Integrate CodeLocator into the application
 
 ```gradle
