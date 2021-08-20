@@ -47,7 +47,7 @@ CodeLocator是一个包含Android SDK 与 Android Studio插件的Android工具�
 ## 集成说明
 按照如下操作即可使用CodeLocator:
 
-1. 在Android Studio中安装CodeLocator插件([点此下载最新版插件](https://github.com/bytedance/CodeLocator/releases/download/1.2.1/CodeLocatorPlugin-1.2.1.zip))
+1. 在Android Studio中安装CodeLocator插件([点此下载最新版插件](https://github.com/bytedance/CodeLocator/releases))
 2. App中集成CodeLocator
 
 ```gradle

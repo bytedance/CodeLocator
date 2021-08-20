@@ -3,7 +3,7 @@
 # CodeLocator使用说明
 
 ## 1. 安装插件
-[点此下载最新版插件](https://github.com/bytedance/CodeLocator/releases/download/1.2.1/CodeLocatorPlugin-1.2.1.zip) 
+[点此下载最新版插件](https://github.com/bytedance/CodeLocator/releases) 
 
 选择 Android Studio > Preferences > Plugins > Install Plugin from Disk
 

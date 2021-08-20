@@ -3,7 +3,7 @@ English | **[简体中文](how_to_use_codelocator_zh.md)**
 # CodeLocator Instructions
 
 ## 1. Install Plugin
-[Click here to download plugin](https://github.com/bytedance/CodeLocator/releases/download/1.2.1/CodeLocatorPlugin-1.2.1.zip)
+[Click here to download plugin](https://github.com/bytedance/CodeLocator/releases)
 
 Select Android Studio > Preferences > Plugins > Install Plugin from Disk
 
