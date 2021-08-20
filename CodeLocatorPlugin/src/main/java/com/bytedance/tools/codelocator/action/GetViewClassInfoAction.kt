@@ -36,15 +36,6 @@ class GetViewClassInfoAction(
         } else {
             Mob.mob(Mob.Action.CLICK, Mob.Button.VIEW_ALL_METHOD)
         }
-        codeLocatorWindow.currentApplication?.run {
-            if (StringUtils.getVersionInt(sdkVersion) < 1000042) {
-                Messages.showMessageDialog(
-                    codeLocatorWindow.project,
-                    "此功能需要集成SDK >= 1.0.42, 当前SDK版本为: $sdkVersion, 请升级SDK后再抓取", "CodeLocator", Messages.getInformationIcon()
-                )
-                return
-            }
-        }
         DeviceManager.execCommand(
             project,
             AdbCommand(

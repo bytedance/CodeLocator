@@ -4,10 +4,43 @@ import com.bytedance.tools.codelocator.action.OpenClassAction;
 import com.bytedance.tools.codelocator.action.ShowGrabHistoryAction;
 import com.bytedance.tools.codelocator.action.SimpleAction;
 import com.bytedance.tools.codelocator.constants.CodeLocatorConstants;
-import com.bytedance.tools.codelocator.listener.*;
-import com.bytedance.tools.codelocator.model.*;
+import com.bytedance.tools.codelocator.listener.OnActionListener;
+import com.bytedance.tools.codelocator.listener.OnGetActivityInfoListener;
+import com.bytedance.tools.codelocator.listener.OnGetClickViewListener;
+import com.bytedance.tools.codelocator.listener.OnGetViewListListener;
+import com.bytedance.tools.codelocator.listener.OnGrabScreenListener;
+import com.bytedance.tools.codelocator.listener.OnViewRightClickListener;
+import com.bytedance.tools.codelocator.model.AdbCommand;
+import com.bytedance.tools.codelocator.model.BroadcastBuilder;
+import com.bytedance.tools.codelocator.model.CodeLocatorInfo;
+import com.bytedance.tools.codelocator.model.Device;
+import com.bytedance.tools.codelocator.model.ExecResult;
+import com.bytedance.tools.codelocator.model.ExtraAction;
+import com.bytedance.tools.codelocator.model.ExtraInfo;
+import com.bytedance.tools.codelocator.model.WActivity;
+import com.bytedance.tools.codelocator.model.WApplication;
+import com.bytedance.tools.codelocator.model.WFile;
+import com.bytedance.tools.codelocator.model.WView;
 import com.bytedance.tools.codelocator.parser.Parser;
-import com.bytedance.tools.codelocator.utils.*;
+import com.bytedance.tools.codelocator.utils.ClipboardUtils;
+import com.bytedance.tools.codelocator.utils.ColorUtils;
+import com.bytedance.tools.codelocator.utils.CoordinateUtils;
+import com.bytedance.tools.codelocator.utils.DataUtils;
+import com.bytedance.tools.codelocator.utils.DeviceManager;
+import com.bytedance.tools.codelocator.utils.FileUtils;
+import com.bytedance.tools.codelocator.utils.ImageUtils;
+import com.bytedance.tools.codelocator.utils.JComponentUtils;
+import com.bytedance.tools.codelocator.utils.Log;
+import com.bytedance.tools.codelocator.utils.Mob;
+import com.bytedance.tools.codelocator.utils.NetUtils;
+import com.bytedance.tools.codelocator.utils.NotificationUtils;
+import com.bytedance.tools.codelocator.utils.ShellHelper;
+import com.bytedance.tools.codelocator.utils.StringUtils;
+import com.bytedance.tools.codelocator.utils.ThreadUtils;
+import com.bytedance.tools.codelocator.utils.TimeUtils;
+import com.bytedance.tools.codelocator.utils.UIUtils;
+import com.bytedance.tools.codelocator.utils.UpdateUtils;
+import com.bytedance.tools.codelocator.utils.ViewUtils;
 import com.intellij.ide.DataManager;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
@@ -15,13 +48,15 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.ui.popup.ListPopup;
 import com.intellij.ui.awt.RelativePoint;
+
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nullable;
-import javax.imageio.ImageIO;
-import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionListener;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
@@ -29,9 +64,16 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.*;
+import java.util.Map;
+import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.annotation.Nullable;
+import javax.imageio.ImageIO;
+import javax.swing.*;
 
 public class ScreenPanel extends JPanel implements ImageObserver {
 
@@ -585,9 +627,6 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                             if (!providerStr.contains("CodeLocatorVersion")) {
                                 return "当前应用 " + pkgName + " 未集成 CodeLocator SDK\n如需集成请参考CodeLocator集成文档\n如果Debug下可用, 请检查当前是否Release包";
                             } else {
-                                if (mApplication != null && mApplication.getActivity() == null) {
-                                    return "当前应用为Release版本, 需要集成CodeLocator SDK >= 1.0.37才可抓取";
-                                }
                                 return "未获取到View信息, 请点击小飞机反馈问题";
                             }
                         }
@@ -1413,12 +1452,6 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             }
             application.setFile(null);
             mCodeLocatorWindow.getRootPanel().getMainPanel().getTabContainerPanel().updateFileState(null);
-        }
-
-        if (StringUtils.getVersionInt(application.getSdkVersion()) < 1000037) {
-            Messages.showMessageDialog(mCodeLocatorWindow.getProject(),
-                    "文件抓取需要集成SDK >= 1.0.37, 当前SDK版本为: " + application.getSdkVersion() + ", 请升级SDK后再抓取", "CodeLocator", Messages.getInformationIcon());
-            return;
         }
 
         if (!reload) {
