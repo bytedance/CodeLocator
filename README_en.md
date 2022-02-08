@@ -1,36 +1,35 @@
-**[English](README.md)** | 简体中文
+English | **[简体中文](README.md)**
 
 # CodeLocator
 [![GitHub license](https://img.shields.io/github/license/bytedance/scene)](https://github.com/bytedance/scene/blob/master/LICENSE) 
 [![API](https://img.shields.io/badge/api-16%2B-green)](https://developer.android.com/about/dashboards)
 
-一张图带你了解CodeLocator  
+A picture takes you through CodeLocator  
 <img src="misc/CodeLocator.gif" alt="CodeLocator"/>
 
+CodeLocator is a toolset that includes Android SDK and Android Studio plugins. It has the following functions(Support Mac Only):
 
-CodeLocator是一个包含Android SDK 与 Android Studio插件的Android工具集, 包含如下的功能(目前仅支持Mac)：
+1. Display the current View information
+2. Display current Activity information
+3. Display information about all fragments
+4. Display custom App runtime information
+5. Display file information about the current application
+6. Edit the status of the View in real time, such as visibility, text content, etc
+7. Locate the View that currently responds to the touch event 
+8. Get the data of the current View
+9. Get the drawing content corresponding to the current View
+10. Jump to View click event code, findViewById, ViewHolder code location
+11. Jump to View's XML layout file
+12. Jump to the code location of Toast & Dialog
+13. Jump to the location of code which starts the current Activity
+14. Display all Schema information supported by the application
+15. Send specified Schema to the application
+16. Locate the latest Apk file in the project
+17. Apk files can be installed from the shortcut menu
+18. Quickly open display layout boundaries, transition drawing, click operations, etc
+19. Fast connect Charles
 
-1. 展示当前的View视图
-2. 展示当前的Activity信息
-3. 展示当前所有Fragment的信息
-4. 展示自定义的App运行时信息
-5. 展示当前应用的文件信息
-6. 实时编辑View的状态, 如可见性, 文本内容等
-7. 定位当前响应触摸事件的View
-8. 获取当前View绑定的数据
-9. 获取当前View对应的绘制内容
-10. 跳转View的点击事件代码, findViewById, ViewHolder的代码位置
-11. 跳转View的xml布局文件
-12. 跳转Toast, Dialog的显示代码位置
-13. 跳转启动当前Activity的代码位置
-14. 展示应用支持的所有Schema信息
-15. 向应用发送指定Schema
-16. 定位项目内最新的Apk文件
-17. apk文件支持右键安装
-18. 快速打开显示布局边界, 过渡绘制, 点按操作等
-19. 快速连接Charles代理  
-
-## 这些App正在使用 CodeLocator
+## These apps are using CodeLocator
 
 | <img src="misc/douyin.png" alt="douyin" width="100"/> | <img src="misc/douyin.png" alt="tiktok" width="100"/> | <img src="misc/duoshan.png" alt="duoshan" width="100"/> | <img src="misc/resso.png" alt="resso" width="100"/> | <img src="misc/xigua.png" alt="xigua" width="100"/> |  
 |:---------:|:-------:|:-------:|:-------:|:-------:|
@@ -44,11 +43,11 @@ CodeLocator是一个包含Android SDK 与 Android Studio插件的Android工具�
 |:---------:|:-------:|:-------:|:-------:|:-------:|
 | 抖音火山版 | 瓜瓜龙 | 剪映 | 番茄畅听 | 幸福里 |
  
-## 集成说明
-按照如下操作即可使用CodeLocator:
+## Integration
+The followings describe how to use CodeLocator:
 
-1. 在Android Studio中安装CodeLocator插件([点此下载最新版插件](https://github.com/bytedance/CodeLocator/releases))
-2. App中集成CodeLocator
+1. Install CodeLocator in Android Studio ([Click here to download plugin](https://github.com/bytedance/CodeLocator/releases))
+2. Integrate CodeLocator into the application
 
 ```gradle
 allprojects {
@@ -57,12 +56,12 @@ allprojects {
     }
 }
 
-// 集成基础能力, 只需要添加一行依赖即可
+// To integrate the basic capabilities, just add one dependency
 dependencies {
     implementation "com.bytedance.tools.codelocator:codelocator-core:1.0.0"
 }
 ```
-如果需要集成代码跳转能力, 需要先集成 [Lancet](https://github.com/eleme/lancet), 同时添加如下依赖
+If you need to integrate code jump capability, you need to integrate [Lancet](https://github.com/eleme/lancet) first and add the following dependencies
 ```gradle
 dependencies {
     debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml:1.0.0"
@@ -74,30 +73,29 @@ dependencies {
 }
 ```
 
-## 使用说明
-CodeLocator插件是一个侧边栏插件, 安装后展示在Android Studio的右侧, 点击可展开
-初始状态如下
+## Usage
+CodeLocator plug-in is a sidebar plug-in that is displayed on the right side of Android Studio after installation and can be expanded by clicking
+
+The initial state is as follows
 
 <img src="misc/codelocator_init.png" alt="codelocator_init" width="680"/>
 
-绿色按钮表示可点击, 灰色表示当前不可操作
+The green button is clickable, while the gray button is unavailable currently
 
-点击抓取按钮后, 可获得当前应用的状态信息, 左边的图片面板可点击选择对应的View, 按钮状态会根据当前选中的View做出相对应的变化
+Click the Grab button to obtain the status information of the current app. Click the image panel on the left to select the corresponding View, and the state of the button will change according to the currently selected View
 
 <img src="misc/codelocator_grab.png" alt="codelocator_grab" width="680"/>
 
+For more operations, see the [CodeLocator instructions](how_to_use_codelocator.md)
 
-更多操作可查看文档 [CodeLocator使用说明](how_to_use_codelocator_zh.md)
+## Contact us
 
-
-## 联系我们
-
-如果你有任何关于CodeLocator的问题或建议，可以加入到微信群与我们沟通交流。
+If you have any questions or suggestions about CodeLocator, please join our Wechat group to communicate with us.
 
 <img src="misc/my_wechat.png" alt="WeChat" />
 
-除此之外，你也可以发邮件到邮箱：liujian.android@bytedance.com, 在邮件中详细描述你的问题。  
-也欢迎投递简历~
+Alternatively, you can send an email to liujian.android@bytedance.com with a detailed description of your problem.  
+Applications are also welcome~~
 
 ## License
 ~~~

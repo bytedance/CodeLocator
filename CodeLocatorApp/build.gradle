@@ -12,7 +12,7 @@ buildscript {
         classpath "com.android.tools.build:gradle:4.0.2"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
 
-        classpath 'me.ele:lancet-plugin:1.0.6'
+        classpath 'com.bytedance.tools.lancet:lancet-plugin-asm6:1.0.2'
     }
 }
 
