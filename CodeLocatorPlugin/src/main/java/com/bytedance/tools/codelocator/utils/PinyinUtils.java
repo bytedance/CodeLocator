@@ -21,10 +21,9 @@ public class PinyinUtils {
         if (str == null || str.trim().isEmpty()) {
             return Collections.emptySet();
         }
-
         HashSet<String> resultPinyinSet = new HashSet<>();
-        HashSet<String> resultPinyinSetTmp = new HashSet<>();
         HashSet<String> tmpPinyinSet = new HashSet<>();
+        StringBuilder resultPinyinBuilder = new StringBuilder("");
         for (int i = 0; i < str.length(); i++) {
             tmpPinyinSet.clear();
             try {
@@ -36,34 +35,17 @@ public class PinyinUtils {
                 }
                 if (tmpPinyinSet.size() > 0) {
                     for (String charPinyin : tmpPinyinSet) {
-                        if (resultPinyinSet.isEmpty()) {
-                            resultPinyinSetTmp.add(charPinyin);
-                        } else {
-                            for (String currentPinyinStr : resultPinyinSet) {
-                                resultPinyinSetTmp.add(currentPinyinStr + charPinyin);
-                            }
-                        }
+                        resultPinyinBuilder.append(charPinyin);
                     }
-                    resultPinyinSet.clear();
-                    resultPinyinSet.addAll(resultPinyinSetTmp);
-                    resultPinyinSetTmp.clear();
                 } else {
                     final String currentCharStr = String.valueOf(str.charAt(i)).toLowerCase();
-                    if (resultPinyinSet.isEmpty()) {
-                        resultPinyinSetTmp.add(currentCharStr);
-                    } else {
-                        for (String currentPinyinStr : resultPinyinSet) {
-                            resultPinyinSetTmp.add(currentPinyinStr + currentCharStr);
-                        }
-                    }
-                    resultPinyinSet.clear();
-                    resultPinyinSet.addAll(resultPinyinSetTmp);
-                    resultPinyinSetTmp.clear();
+                    resultPinyinBuilder.append(currentCharStr);
                 }
             } catch (BadHanyuPinyinOutputFormatCombination badHanyuPinyinOutputFormatCombination) {
                 badHanyuPinyinOutputFormatCombination.printStackTrace();
             }
         }
+        resultPinyinSet.add(resultPinyinBuilder.toString());
         return resultPinyinSet;
     }
 

@@ -8,7 +8,7 @@ import java.util.Date;
 
 public class Log {
 
-    public static final boolean DEBUG = true;
+    public static final boolean DEBUG = false;
 
     public static SimpleDateFormat sSimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 

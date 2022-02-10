@@ -6,7 +6,7 @@ plugins {
 
 group 'com.bytedance.tools'
 
-version '1.2.2'
+version '1.2.3'
 
 runIde {
     jvmArgs '-Xmx10G'

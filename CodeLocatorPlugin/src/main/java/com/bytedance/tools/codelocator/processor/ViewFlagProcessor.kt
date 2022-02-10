@@ -16,6 +16,10 @@ class ViewFlagProcessor(project: Project, type: String, view: WView) : ViewValue
         const val CLICKABLE = "Clickable"
     }
 
+    override fun isChanged(): Boolean {
+        return true
+    }
+
     override fun getHint(view: WView): String {
         return when (type) {
             VISIBILITY -> "格式: gone|visible|invisible|g|i|v 示例: gone"

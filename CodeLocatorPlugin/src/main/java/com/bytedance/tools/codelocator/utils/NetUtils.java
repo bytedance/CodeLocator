@@ -16,7 +16,7 @@ public class NetUtils {
 
     public static final String DOC_URL = "https://github.com/bytedance/CodeLocator/blob/main/how_to_use_codelocator.md";
 
-    public static final String SERVER_URL = "";
+    public static final String SERVER_URL = "https://qcl92v.api.cloudendpoint.cn/log";
 
     public static final String FILE_SERVER_URL = "";
 

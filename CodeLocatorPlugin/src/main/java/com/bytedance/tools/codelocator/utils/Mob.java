@@ -226,7 +226,7 @@ public class Mob {
             System.out.println("Mob action: " + action + ", name: " + buttonName);
             Log.d("action: " + action + ", button: " + buttonName);
         } else {
-            if (NetUtils.SERVER_URL.isEmpty()) {
+            if (NetUtils.SERVER_URL.isEmpty() || Action.EXEC.equals(action)) {
                 Log.d("action: " + action + ", button: " + buttonName);
                 return;
             }

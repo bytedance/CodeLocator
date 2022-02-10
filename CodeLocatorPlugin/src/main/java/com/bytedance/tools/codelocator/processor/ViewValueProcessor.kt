@@ -40,7 +40,7 @@ abstract class ViewValueProcessor(val project: Project, val type: String, view: 
 
     open fun onInputTextChange(view: WView, changeString: String) {}
 
-    fun isChanged(): Boolean = (originShowValue != getCurrentText())
+    open fun isChanged(): Boolean = (originShowValue != getCurrentText())
 
     open fun isValid(changeText: String): Boolean = true
 
