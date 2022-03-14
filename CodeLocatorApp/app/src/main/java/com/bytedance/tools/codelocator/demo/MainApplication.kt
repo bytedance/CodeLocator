@@ -3,6 +3,7 @@ package com.bytedance.tools.codelocator.demo
 import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.graphics.Rect
 import android.view.View
 import android.widget.Toast
@@ -81,7 +82,8 @@ class MainApplication : Application() {
                     }
 
                     override fun providerAllSchema(): Collection<SchemaInfo>? {
-                        return mutableListOf(SchemaInfo("MockSchema", "Mock schema just for test"));
+                        return mutableListOf(SchemaInfo("MockSchema", "Mock schema just for test"),
+                            SchemaInfo("codelocator://testActivity", "Open Test Page"))
                     }
 
                     override fun processSchema(schema: String): Boolean {
@@ -92,6 +94,9 @@ class MainApplication : Application() {
                                 Toast.LENGTH_SHORT
                             )
                                 .show()
+                            return true
+                        } else if (schema == "codelocator://testActivity") {
+                            CodeLocator.sCurrentActivity.startActivity(Intent(CodeLocator.sCurrentActivity, TestActivity::class.java))
                             return true
                         }
                         return false

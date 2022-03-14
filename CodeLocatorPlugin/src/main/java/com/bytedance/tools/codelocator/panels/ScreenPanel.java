@@ -707,7 +707,10 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         final int width = activity.getDecorView().getWidth();
         final int height = activity.getDecorView().getHeight();
         if (mIsLandScape) {
-            if (width != mApplication.getOverrideScreenWidth() && height != mApplication.getOverrideScreenHeight()
+            if (width == mApplication.getOverrideScreenHeight() && height == mApplication.getOverrideScreenWidth()) {
+                mApplication.setOverrideScreenWidth(width);
+                mApplication.setOverrideScreenHeight(height);
+            } else if (width != mApplication.getOverrideScreenWidth() && height != mApplication.getOverrideScreenHeight()
                     && width != mApplication.getOverrideScreenHeight() && height != mApplication.getOverrideScreenWidth()) {
                 if (width * mApplication.getOverrideScreenHeight() == height * mApplication.getOverrideScreenWidth()) {
                     mApplication.setOverrideScreenWidth(width);
@@ -731,7 +734,10 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                 }
             }
         } else {
-            if (width != mApplication.getOverrideScreenWidth() && height != mApplication.getOverrideScreenHeight()
+            if (width == mApplication.getOverrideScreenHeight() && height == mApplication.getOverrideScreenWidth()) {
+                mApplication.setOverrideScreenWidth(width);
+                mApplication.setOverrideScreenHeight(height);
+            } else if (width != mApplication.getOverrideScreenWidth() && height != mApplication.getOverrideScreenHeight()
                     && width != mApplication.getOverrideScreenHeight() && height != mApplication.getOverrideScreenWidth()) {
                 if (width * mApplication.getOverrideScreenHeight() == height * mApplication.getOverrideScreenWidth()) {
                     mApplication.setOverrideScreenWidth(width);
