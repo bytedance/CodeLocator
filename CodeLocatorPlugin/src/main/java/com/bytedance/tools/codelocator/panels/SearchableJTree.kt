@@ -3,8 +3,9 @@ package com.bytedance.tools.codelocator.panels
 import com.bytedance.tools.codelocator.listener.OnShiftClickListener
 import com.bytedance.tools.codelocator.panels.SearchableComponent.Companion.SEARCH_AUTO_DIS_TIME
 import com.bytedance.tools.codelocator.utils.ClipboardUtils
+import com.bytedance.tools.codelocator.utils.ResUtils
+import com.bytedance.tools.codelocator.utils.ThreadUtils
 import com.bytedance.tools.codelocator.utils.TimeUtils
-import com.intellij.openapi.application.ApplicationManager
 import java.awt.Color
 import java.awt.Font
 import java.awt.Graphics
@@ -41,34 +42,7 @@ interface SearchableComponent {
 
 }
 
-class ClearSearchTimerTask(val sb: StringBuilder, val restoreable: SearchableComponent) : TimerTask() {
-    override fun run() {
-        sb.clear()
-        ApplicationManager.getApplication().invokeLater {
-            restoreable.restoreAction()
-        }
-    }
-}
-
-interface OnEventListener<E : JComponent> {
-
-    fun onSearchKeyChange(component: E, keyWord: String): Int
-
-    fun onSearchKeyDown(component: E, keyWord: String, keyCode: Int)
-
-    fun onControlKeyDown(component: E, keyCode: Int)
-
-    fun onClickKeyDown(component: E, keyCode: Int)
-
-    fun onShiftKeyDown(component: E, keyCode: Int)
-
-    fun onMetaKeyDown(component: E, keyCode: Int)
-
-    fun onFliterKeyDown(component: E, keyCode: Int)
-
-}
-
-class SearchableJTree(newModel: TreeModel, val tip: String = "(按ESC可退出)") : JTree(newModel), SearchableComponent {
+class SearchableJTree(newModel: TreeModel) : JTree(newModel), SearchableComponent {
 
     val mDrawRectColor = Color(128, 128, 128, 204)
 
@@ -81,30 +55,30 @@ class SearchableJTree(newModel: TreeModel, val tip: String = "(按ESC可退出)"
     private var mClearSearchTask: ClearSearchTimerTask? = null
 
     private var charArray = arrayOf(
-        '-',
-        '+',
-        '=',
-        '*',
-        '/',
-        '%',
-        '&',
-        '^',
-        '@',
-        '!',
-        ' ',
-        ';',
-        ':',
-        '>',
-        '<',
-        ',',
-        '.',
-        '{',
-        '}',
-        '|',
-        '$',
-        '~',
-        '_',
-        '?'
+            '-',
+            '+',
+            '=',
+            '*',
+            '/',
+            '%',
+            '&',
+            '^',
+            '@',
+            '!',
+            ' ',
+            ';',
+            ':',
+            '>',
+            '<',
+            ',',
+            '.',
+            '{',
+            '}',
+            '|',
+            '$',
+            '~',
+            '_',
+            '?'
     )
 
     private var preiousKey: String = "selectPrevious"
@@ -195,9 +169,9 @@ class SearchableJTree(newModel: TreeModel, val tip: String = "(按ESC可退出)"
                         rebuildTask()
                     }
                 } else if (e.keyChar in 'a'..'z'
-                    || e.keyChar in 'A'..'Z'
-                    || e.keyChar in '0'..'9'
-                    || e.keyChar in charArray
+                        || e.keyChar in 'A'..'Z'
+                        || e.keyChar in '0'..'9'
+                        || e.keyChar in charArray
                 ) {
                     removeAction()
                     if (e.isMetaDown && e.keyChar == 'v') {
@@ -293,98 +267,82 @@ class SearchableJTree(newModel: TreeModel, val tip: String = "(按ESC可退出)"
 
         if (g !is Graphics2D) return
 
+        if (searchFont == null) {
+            searchFont = Font(g.font.name, Font.PLAIN, 10)
+            g.font = searchFont
+        }
+
         if (mSearchSb.isEmpty() && currentMode == SearchableComponent.MODE_NORMAL) {
             return
         }
 
-        if (searchFont == null) {
-            searchFont = Font("宋体", Font.PLAIN, 10)
-            g.font = searchFont
-        }
-
-        val fontMetrics = g.getFontMetrics(g.font)
+        val fontMetrics = g.getFontMetrics()
         g.setColor(mDrawRectColor)
 
         if (currentMode == SearchableComponent.MODE_CONTROL) {
-            val drawStr = getModeTip("只看可点击View", mTotalCount, mCurrentSelectIndex)
+            val drawStr = getModeTip(ResUtils.getString("show_click_view"), mTotalCount, mCurrentSelectIndex)
             val stringWidth = fontMetrics.stringWidth(drawStr)
-            g.fillRect(
-                scrollX + visibleRect.width - stringWidth - 12,
-                scrollY,
-                stringWidth + 12,
-                fontMetrics.height + 8
-            )
+            g.fillRect(scrollX + visibleRect.width - stringWidth - 12, scrollY, stringWidth + 12, fontMetrics.height + 8)
             g.setColor(Color.WHITE)
-            g.drawString(
-                drawStr,
-                scrollX + 6 + visibleRect.width - stringWidth - 12,
-                scrollY + (8 / 2) + fontMetrics.getAscent()
-            )
+            g.drawString(drawStr, scrollX + 6 + visibleRect.width - stringWidth - 12, scrollY + (8 / 2) + fontMetrics.getAscent())
         } else if (currentMode == SearchableComponent.MODE_CLICK) {
-            val drawStr = getModeTip("只看响应本次触摸事件的View", mTotalCount, mCurrentSelectIndex)
+            val drawStr = getModeTip(ResUtils.getString("show_touch_view"), mTotalCount, mCurrentSelectIndex)
             val stringWidth = fontMetrics.stringWidth(drawStr)
-            g.fillRect(
-                scrollX + visibleRect.width - stringWidth - 12,
-                scrollY,
-                stringWidth + 12,
-                fontMetrics.height + 8
-            )
+            g.fillRect(scrollX + visibleRect.width - stringWidth - 12, scrollY, stringWidth + 12, fontMetrics.height + 8)
             g.setColor(Color.WHITE)
-            g.drawString(
-                drawStr,
-                scrollX + 6 + visibleRect.width - stringWidth - 12,
-                scrollY + (8 / 2) + fontMetrics.getAscent()
-            )
+            g.drawString(drawStr, scrollX + 6 + visibleRect.width - stringWidth - 12, scrollY + (8 / 2) + fontMetrics.getAscent())
         } else if (currentMode == SearchableComponent.MODE_SHIFT) {
-            val drawStr = getModeTip("只看选中的View", mTotalCount, mCurrentSelectIndex)
+            val drawStr = getModeTip(ResUtils.getString("show_select_view"), mTotalCount, mCurrentSelectIndex)
             val stringWidth = fontMetrics.stringWidth(drawStr)
-            g.fillRect(
-                scrollX + visibleRect.width - stringWidth - 12,
-                scrollY,
-                stringWidth + 12,
-                fontMetrics.height + 8
-            )
+            g.fillRect(scrollX + visibleRect.width - stringWidth - 12, scrollY, stringWidth + 12, fontMetrics.height + 8)
             g.setColor(Color.WHITE)
-            g.drawString(
-                drawStr,
-                scrollX + 6 + visibleRect.width - stringWidth - 12,
-                scrollY + (8 / 2) + fontMetrics.getAscent()
-            )
+            g.drawString(drawStr, scrollX + 6 + visibleRect.width - stringWidth - 12, scrollY + (8 / 2) + fontMetrics.getAscent())
         } else if (currentMode == SearchableComponent.MODE_CUSTOM_FLITER) {
-            val drawStr = getModeTip("只看符合要求的View", mTotalCount, mCurrentSelectIndex)
+            val drawStr = getModeTip(ResUtils.getString("show_fit_view"), mTotalCount, mCurrentSelectIndex)
             val stringWidth = fontMetrics.stringWidth(drawStr)
-            g.fillRect(
-                scrollX + visibleRect.width - stringWidth - 12,
-                scrollY,
-                stringWidth + 12,
-                fontMetrics.height + 8
-            )
+            g.fillRect(scrollX + visibleRect.width - stringWidth - 12, scrollY, stringWidth + 12, fontMetrics.height + 8)
             g.setColor(Color.WHITE)
-            g.drawString(
-                drawStr,
-                scrollX + 6 + visibleRect.width - stringWidth - 12,
-                scrollY + (8 / 2) + fontMetrics.getAscent()
-            )
+            g.drawString(drawStr, scrollX + 6 + visibleRect.width - stringWidth - 12, scrollY + (8 / 2) + fontMetrics.getAscent())
         } else {
-            val drawStr = getModeTip("查找: $mSearchSb", mTotalCount, mCurrentSelectIndex)
+            val drawStr = getModeTip(ResUtils.getString("search", "$mSearchSb"), mTotalCount, mCurrentSelectIndex)
             val stringWidth = fontMetrics.stringWidth(drawStr)
-            g.fillRect(
-                scrollX + visibleRect.width - stringWidth - 12,
-                scrollY,
-                stringWidth + 12,
-                fontMetrics.height + 8
-            )
+            g.fillRect(scrollX + visibleRect.width - stringWidth - 12, scrollY, stringWidth + 12, fontMetrics.height + 8)
             g.setColor(Color.WHITE)
-            g.drawString(
-                drawStr,
-                scrollX + 6 + visibleRect.width - stringWidth - 12,
-                scrollY + (8 / 2) + fontMetrics.getAscent()
-            )
+            g.drawString(drawStr, scrollX + 6 + visibleRect.width - stringWidth - 12, scrollY + (8 / 2) + fontMetrics.getAscent())
         }
     }
 
     fun isSearchMode() = mSearchSb.isNotEmpty()
 
     private fun getModeTip(title: String, totalCount: Int, currentIndex: Int) =
-        title + tip + " 共计: $totalCount" + (if (totalCount > 0) ", 当前: ${currentIndex + 1}" else "")
+        title + ResUtils.getString(
+            "exit_select_mode_tip", "$totalCount", if (totalCount > 0) "${currentIndex + 1}" else ""
+        )
+}
+
+class ClearSearchTimerTask(val sb: StringBuilder, val restoreable: SearchableComponent) : TimerTask() {
+    override fun run() {
+        sb.clear()
+        ThreadUtils.runOnUIThread {
+            restoreable.restoreAction()
+        }
+    }
+}
+
+interface OnEventListener<E : JComponent> {
+
+    fun onSearchKeyChange(component: E, keyWord: String): Int
+
+    fun onSearchKeyDown(component: E, keyWord: String, keyCode: Int)
+
+    fun onControlKeyDown(component: E, keyCode: Int)
+
+    fun onClickKeyDown(component: E, keyCode: Int)
+
+    fun onShiftKeyDown(component: E, keyCode: Int)
+
+    fun onMetaKeyDown(component: E, keyCode: Int)
+
+    fun onFliterKeyDown(component: E, keyCode: Int)
+
 }

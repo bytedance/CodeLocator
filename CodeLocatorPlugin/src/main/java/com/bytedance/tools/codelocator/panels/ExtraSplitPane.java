@@ -1,16 +1,15 @@
 package com.bytedance.tools.codelocator.panels;
 
-import com.bytedance.tools.codelocator.listener.OnSelectExtraListener;
 import com.bytedance.tools.codelocator.model.ExtraAction;
 import com.bytedance.tools.codelocator.model.ExtraInfo;
 import com.bytedance.tools.codelocator.model.WActivity;
 import com.bytedance.tools.codelocator.model.WView;
+import com.bytedance.tools.codelocator.listener.OnSelectExtraListener;
 import com.bytedance.tools.codelocator.utils.CoordinateUtils;
 import com.bytedance.tools.codelocator.utils.StringUtils;
 
-import java.util.List;
-
 import javax.swing.*;
+import java.util.List;
 
 public class ExtraSplitPane extends JSplitPane {
 

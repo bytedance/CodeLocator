@@ -1,15 +1,44 @@
 package com.bytedance.tools.codelocator.utils;
 
+import com.android.ddmlib.ShellCommandUnresponsiveException;
+import com.bytedance.tools.codelocator.exception.*;
 import com.bytedance.tools.codelocator.model.WView;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error.*;
+
 public class StringUtils {
 
+    public static Pattern sIpPattern = Pattern.compile("[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}");
+
+    public static Pattern sHexPattern = Pattern.compile("[0-9a-fA-F]+");
+
+    public static Pattern sNumPattern = Pattern.compile("[0-9]+");
+
     public static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM-dd HH:mm:ss");
+
+    public static String getStrNumber(String str, boolean hex) {
+        if (hex) {
+            final Matcher matcher = sHexPattern.matcher(str);
+            if (matcher.find()) {
+                return matcher.group();
+            }
+        } else {
+            final Matcher matcher = sNumPattern.matcher(str);
+            if (matcher.find()) {
+                return matcher.group();
+            }
+        }
+        return "";
+    }
 
     public static boolean textContains(WView view, String key) {
         if (view.getPinyins() == null) {
@@ -92,7 +121,8 @@ public class StringUtils {
         return versionNum;
     }
 
-    public static String grep(String originStr, String key) {
+    @Nullable
+    public static String grepLine(String originStr, String key) {
         if (originStr == null) {
             return null;
         }
@@ -103,6 +133,41 @@ public class StringUtils {
             }
         }
         return null;
+    }
+
+    @Nullable
+    public static List<String> grep(String originStr, String key) {
+        if (originStr == null) {
+            return null;
+        }
+        final ArrayList<String> grepLines = new ArrayList<>();
+        final String[] split = originStr.split("\n");
+        for (String line : split) {
+            if (line != null && line.contains(key)) {
+                grepLines.add(line);
+            }
+        }
+        return grepLines;
+    }
+
+    @NotNull
+    public static String getValue(String originStr, String key, String split) {
+        if (originStr == null || key == null) {
+            return "";
+        }
+        final int indexOfKey = originStr.indexOf(key);
+        if (indexOfKey > -1) {
+            if (split == null) {
+                return originStr.substring(indexOfKey + key.length());
+            }
+            final int indexOfValueEnd = originStr.indexOf(split, indexOfKey + key.length());
+            if (indexOfValueEnd > -1) {
+                return originStr.substring(indexOfKey + key.length(), indexOfValueEnd);
+            } else {
+                return originStr.substring(indexOfKey + key.length());
+            }
+        }
+        return "";
     }
 
     public static String getSimpleName(String className) {
@@ -182,6 +247,10 @@ public class StringUtils {
         }
     }
 
+    public static String getFileSize(long fileSize) {
+        return getFileSize(fileSize, false);
+    }
+
     public static String getFileSize(long fileSize, boolean withOriginSize) {
         String unit = "B";
         float size = 0;
@@ -201,5 +270,70 @@ public class StringUtils {
             size = (1.0f * fileSize / (1000L * 1000L * 1000L * 1000L));
         }
         return String.format("%.1f", size) + unit + (withOriginSize ? (" (" + fileSize + "B)") : "");
+    }
+
+    public static String getErrorTip(Throwable t) {
+        if (t instanceof DeviceUnLockException) {
+            return ResUtils.getString("unlock_device_tip");
+        }
+        if (t instanceof ShellCommandUnresponsiveException) {
+            return ResUtils.getString("execute_timeout");
+        }
+        if (t instanceof SDKNotInitException) {
+            return ResUtils.getString("sdk_not_init");
+        }
+        if (t instanceof NoSDKException) {
+            return ResUtils.getString("no_sdk_tip_format", ((NoSDKException) t).pkgName);
+        }
+        if (t instanceof NoDeviceException) {
+            return ResUtils.getString("no_device");
+        }
+        if (t instanceof NoResultException) {
+            return ResUtils.getString("device_no_result_check_foreground");
+        }
+        if (t instanceof ExecuteException) {
+            final String message = t.getMessage();
+            if (NOT_UI_THREAD.equals(message)) {
+                return ResUtils.getString("support_async_broadcast_setting_open_tips");
+            } else if (FRAGMENT_NOT_FOUND.equals(message)
+                || ACTIVITY_NOT_FOUND.equals(message)) {
+                return ResUtils.getString("get_intent_failed");
+            } else if (BUNDLE_IS_NULL.equals(message)) {
+                return ResUtils.getString("bundle_empty");
+            } else if (VIEW_NOT_FOUND.equals(message)) {
+                return ResUtils.getString("edit_view_error_tip");
+            } else if (OPERATE_NOT_SUPPORT.equals(message)) {
+                return ResUtils.getString("op_not_support");
+            } else if (FILE_NOT_EXIST.equals(message)) {
+                if (((ExecuteException) t).getExtra() != null) {
+                    return ResUtils.getString("file_not_exist_format", ((ExecuteException) t).getExtra());
+                } else {
+                    return ResUtils.getString("file_not_exist");
+                }
+            } else if (DELETE_FILE_FAILED.equals(message)) {
+                if (((ExecuteException) t).getExtra() != null) {
+                    return ResUtils.getString("file_not_exist_format", ((ExecuteException) t).getExtra());
+                } else {
+                    return ResUtils.getString("file_not_exist");
+                }
+            } else if (ERROR_WITH_STACK_TRACE.equals(message)) {
+                if (((ExecuteException) t).getExtra() != null) {
+                    Log.e("executeException, stacktrace" + ((ExecuteException) t).getExtra());
+                    return ResUtils.getString("internal_error_format", ((ExecuteException) t).getExtra());
+                } else {
+                    return ResUtils.getString("internal_error_feedback");
+                }
+            } else if (NO_CURRENT_ACTIVITY.equals(message)) {
+                return ResUtils.getString("sdk_not_init");
+            } else if (EDIT_CONTENT_ERROR.equals(message)) {
+                return ResUtils.getString("file_edit_error");
+            } else if (ARGS_EMPTY.equals(message)) {
+                return ResUtils.getString("args_empty");
+            }
+        }
+        if (t.getMessage() != null) {
+            return t.getMessage();
+        }
+        return t.toString();
     }
 }

@@ -15,4 +15,11 @@ public class MD5Utils {
         return "";
     }
 
+    public static String getMD5(String url) {
+        try {
+            return DigestUtils.md5Hex(url);
+        } catch (Exception e) {
+        }
+        return "";
+    }
 }

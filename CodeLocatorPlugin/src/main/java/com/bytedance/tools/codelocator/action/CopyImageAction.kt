@@ -1,15 +1,23 @@
 package com.bytedance.tools.codelocator.action
 
-import com.bytedance.tools.codelocator.model.EditViewBuilder
-import com.bytedance.tools.codelocator.model.GetBitmapModel
-import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
-import com.bytedance.tools.codelocator.parser.Parser
-import com.bytedance.tools.codelocator.model.WView
-import com.bytedance.tools.codelocator.dialog.EditViewDialog
+import com.bytedance.tools.codelocator.device.DeviceManager
+import com.bytedance.tools.codelocator.device.action.AdbCommand
+import com.bytedance.tools.codelocator.device.action.BroadcastAction
+import com.bytedance.tools.codelocator.device.action.CatFileAction
+import com.bytedance.tools.codelocator.device.action.DeleteFileAction
+import com.bytedance.tools.codelocator.device.action.PullFileAction
+import com.bytedance.tools.codelocator.device.response.BytesResponse
 import com.bytedance.tools.codelocator.dialog.ShowImageDialog
+import com.bytedance.tools.codelocator.exception.ExecuteException
+import com.bytedance.tools.codelocator.model.*
+import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.utils.*
+import com.bytedance.tools.codelocator.model.WView
+import com.bytedance.tools.codelocator.response.BaseResponse
+import com.bytedance.tools.codelocator.response.OperateResponse
+import com.bytedance.tools.codelocator.response.StringResponse
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import java.awt.Image
@@ -19,27 +27,31 @@ import java.awt.datatransfer.UnsupportedFlavorException
 import java.io.ByteArrayInputStream
 import java.io.File
 import javax.imageio.ImageIO
-import javax.swing.Icon
 
 class CopyImageAction(
-    project: Project,
-    codeLocatorWindow: CodeLocatorWindow,
-    text: String,
-    icon: Icon?,
-    val copyView: WView? = null
-) : BaseAction(project, codeLocatorWindow, text, text, icon) {
+    val project: Project,
+    val codeLocatorWindow: CodeLocatorWindow,
+    val copyView: WView? = null,
+    val commandType: String? = null,
+    title: String? = null
+) : BaseAction(
+    title ?: ResUtils.getString("copy_screen"),
+    title ?: ResUtils.getString("copy_screen"),
+    ImageUtils.loadIcon("copy_image")
+) {
 
     override fun actionPerformed(e: AnActionEvent) {
-        if (!enable) return
-
-        Mob.mob(Mob.Action.CLICK, Mob.Button.COPY_IMAGE_TO_CLIPBORAD)
-
-        if (copyView != null) {
-            ThreadUtils.submit {
+        ThreadUtils.submit {
+            if (copyView != null) {
                 getViewImage(copyView)
+            } else {
+                getScreenImage()
             }
+        }
+        if (commandType == null) {
+            Mob.mob(Mob.Action.CLICK, Mob.Button.COPY_IMAGE_TO_CLIPBORAD)
         } else {
-            getScreenImage()
+            Mob.mob(Mob.Action.CLICK, "copy_image_$commandType")
         }
     }
 
@@ -47,139 +59,114 @@ class CopyImageAction(
         copyImageToClipboard(codeLocatorWindow.rootPanel.mainPanel.screenPanel.screenCapImage)
     }
 
+    private fun getTitleByType(): String? {
+        if (commandType == null) {
+            return null
+        }
+        if (commandType == GetViewBitmapModel.TYPE_BACK) {
+            return ResUtils.getString("look_view_image_background")
+        } else if (commandType == GetViewBitmapModel.TYPE_FORE) {
+            return ResUtils.getString("look_view_image_foreground")
+        } else {
+            return ResUtils.getString("look_view_image_all")
+        }
+    }
+
     private fun copyImageToClipboard(image: Image) {
-        ClipboardUtils.copyImageToClipboard(image)
-        Log.d("拷贝图片成功 " + image.getWidth(null) + " " + image.getHeight(null))
-        ApplicationManager.getApplication().invokeLater {
+        ThreadUtils.runOnUIThread {
             ShowImageDialog(
-                    codeLocatorWindow.project,
-                    codeLocatorWindow,
-                    image
-            ).showAndGet()
+                codeLocatorWindow.project,
+                codeLocatorWindow,
+                image,
+                setTitle = getTitleByType()
+            ).show()
+        }
+        if (commandType == null) {
+            ClipboardUtils.copyImageToClipboard(image)
         }
     }
 
     private fun getViewImage(copyView: WView) {
-        val builderEditCommand = EditViewBuilder(copyView).edit(GetBitmapModel()).builderEditCommand()
+        val builderEditCommand = EditViewBuilder(copyView).edit(GetViewBitmapModel(commandType)).builderEditCommand()
         try {
-            val execCommand = ShellHelper.execCommand(
-                    "${String.format(
-                            EditViewDialog.SET_VIEW_INFO_COMMAND,
-                            DeviceManager.getCurrentDevice()
-                    )}'${builderEditCommand}'"
+            if (copyView.activity.application.androidVersion >= CodeLocatorConstants.USE_TRANS_FILE_SDK_VERSION) {
+                DeviceManager.executeCmd(
+                    project,
+                    AdbCommand(
+                        DeleteFileAction(
+                            CodeLocatorConstants.TMP_TRANS_IMAGE_FILE_PATH
+                        )
+                    ),
+                    StringResponse::class.java
+                )
+            }
+            val operateResponse = DeviceManager.executeCmd(
+                project,
+                AdbCommand(
+                    BroadcastAction(CodeLocatorConstants.ACTION_CHANGE_VIEW_INFO)
+                        .args(
+                            CodeLocatorConstants.KEY_CHANGE_VIEW,
+                            builderEditCommand
+                        )
+                ),
+                OperateResponse::class.java
             )
-            val resultData = String(execCommand.resultBytes)
-            val parserCommandResult = Parser.parserCommandResult(DeviceManager.getCurrentDevice(), resultData, false)
-            if (parserCommandResult == null) {
-                Log.e("获取View图片信息失败 parserCommandResult is null")
-                ThreadUtils.runOnUIThread {
-                    Messages.showMessageDialog(
-                            project,
-                            "复制图片失败, 请点击反馈按钮进行反馈",
-                            "CodeLocator",
-                            Messages.getInformationIcon()
-                    )
-                }
-                return
+            val data = operateResponse.data
+            val errorMsg = data.getResult(CodeLocatorConstants.ResultKey.ERROR)
+            if (errorMsg != null) {
+                throw ExecuteException(errorMsg, CodeLocatorConstants.ResultKey.STACK_TRACE)
             }
-            val splitLines = parserCommandResult.split(",")
-            var pkgName: String? = null
-            var imgPath: String? = null
-            for (line in splitLines) {
-                if (line.startsWith("PN:")) {
-                    pkgName = line.substring("PN:".length).trim()
-                } else if (line.startsWith("G:")) {
-                    imgPath = line.substring("G:".length).trim()
-                }
-            }
+            var pkgName: String? = data.getResult(CodeLocatorConstants.ResultKey.PKG_NAME)
+            var imgPath: String? = data.getResult(CodeLocatorConstants.ResultKey.FILE_PATH)
             if (pkgName == null || imgPath == null) {
-                Log.e("获取View图片信息失败, name: $pkgName, path: $imgPath")
-                ThreadUtils.runOnUIThread {
-                    Messages.showMessageDialog(
-                            project,
-                            "复制图片失败, 请点击反馈按钮进行反馈",
-                            "CodeLocator",
-                            Messages.getInformationIcon()
-                    )
-                }
-                return
+                throw ExecuteException(ResUtils.getString("copy_view_image_error_tip"))
             }
-            val viewImageFile = File(FileUtils.codelocatorMainDir.absoluteFile, "codelocator_image.png")
+            val viewImageFile =
+                File(FileUtils.sCodeLocatorMainDirPath, CodeLocatorConstants.TMP_IMAGE_FILE_NAME)
             if (viewImageFile.exists()) {
                 viewImageFile.delete()
             }
-            if (ShellHelper.isWindows()) {
-                val pullImageCommand = String.format(
-                    "adb -s %s pull %s %s",
-                    DeviceManager.getCurrentDevice(), imgPath, viewImageFile
-                )
-                ShellHelper.execCommand(pullImageCommand)
-                val viewImage = ImageIO.read(viewImageFile)
+            val bytesResponse =
+                DeviceManager.executeCmd(project, AdbCommand(
+                    CatFileAction(
+                        imgPath
+                    )
+                ), BytesResponse::class.java)
+            var viewImage = ImageIO.read(ByteArrayInputStream(bytesResponse.data))
+            if (viewImage == null) {
+                DeviceManager.executeCmd(project, AdbCommand(PullFileAction(imgPath, viewImageFile.absolutePath)), BaseResponse::class.java)
+                if (viewImageFile.exists()) {
+                    viewImage = ImageIO.read(viewImageFile);
+                }
                 if (viewImage == null) {
-                    ThreadUtils.runOnUIThread {
-                        Messages.showMessageDialog(
-                            project,
-                            "复制图片失败, 请点击反馈按钮进行反馈",
-                            "CodeLocator",
-                            Messages.getInformationIcon()
-                        )
-                    }
-                }
-                val viewImageWidth = viewImage?.getWidth { img, infoflags, x, y, width, height ->
-                    copyImageToClipboard(viewImage)
-                    false
-                }
-                if (viewImageWidth != -1) {
-                    copyImageToClipboard(viewImage)
-                }
-            } else {
-                val pullImageCommand = String.format(
-                    "adb -s %s shell cat %s",
-                    DeviceManager.getCurrentDevice(), imgPath
-                )
-                val imageBytes = ShellHelper.execCommand(pullImageCommand)
-                if ((imageBytes?.resultBytes?.size ?: 0) > 0) {
-                    val viewImage = ImageIO.read(ByteArrayInputStream(imageBytes.resultBytes))
-                    if (viewImage == null) {
-                        Log.e("创建图片失败 bytesize: " + (imageBytes?.resultBytes?.size ?: 0))
-                        ThreadUtils.runOnUIThread {
-                            Messages.showMessageDialog(
-                                project,
-                                "复制图片失败, 请点击反馈按钮进行反馈",
-                                "CodeLocator",
-                                Messages.getInformationIcon()
-                            )
-                        }
-                    }
-                    val viewImageWidth = viewImage?.getWidth { img, infoflags, x, y, width, height ->
-                        copyImageToClipboard(viewImage)
-                        false
-                    }
-                    if (viewImageWidth != -1) {
-                        copyImageToClipboard(viewImage)
-                    }
-                } else {
-                    Log.e("图片文件不存在")
-                    ThreadUtils.runOnUIThread {
-                        Messages.showMessageDialog(
-                            project,
-                            "复制图片失败, 请点击反馈按钮进行反馈",
-                            "CodeLocator",
-                            Messages.getInformationIcon()
-                        )
-                    }
+                    Log.e("创建图片失败 bytesize: " + (bytesResponse.data?.size ?: 0))
+                    throw ExecuteException(ResUtils.getString("copy_view_image_error_tip"))
                 }
             }
+            val viewImageWidth = viewImage?.getWidth { img, infoflags, x, y, width, height ->
+                copyImageToClipboard(viewImage)
+                false
+            }
+            if (viewImageWidth != -1) {
+                copyImageToClipboard(viewImage)
+            }
         } catch (t: Throwable) {
-            t.printStackTrace()
+            ThreadUtils.runOnUIThread {
+                Messages.showMessageDialog(
+                    project,
+                    StringUtils.getErrorTip(t),
+                    "CodeLocator",
+                    Messages.getInformationIcon()
+                )
+            }
+            return
         }
     }
 
-    override fun update(e: AnActionEvent) {
-        super.update(e)
-        enable = codeLocatorWindow.getScreenPanel()?.screenCapImage != null || copyView != null
-        updateView(e, "copy_image_disable", "copy_image_enable")
+    override fun isEnable(e: AnActionEvent): Boolean {
+        return (codeLocatorWindow.getScreenPanel()?.screenCapImage != null || (copyView != null && codeLocatorWindow.currentApplication?.isFromSdk == true))
     }
+
 }
 
 internal class ImageTransferable(private val image: Image) : Transferable {

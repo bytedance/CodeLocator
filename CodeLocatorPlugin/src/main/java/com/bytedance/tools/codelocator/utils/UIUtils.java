@@ -14,7 +14,7 @@ public class UIUtils {
 
     public static int px2dip(float density, int pxValue) {
         float offset = pxValue >= 0 ? 0.5f : -0.5f;
-        return (int) (pxValue / density + offset);
+        return (int) (pxValue / Math.max(1, density) + offset);
     }
 
     public static float px2dipFloat(float density, int pxValue) {
@@ -90,8 +90,8 @@ public class UIUtils {
         if (view == null) {
             return "";
         }
-        int width = view.getRight() - view.getLeft();
-        int height = view.getBottom() - view.getTop();
+        int width = view.getRealWidth();
+        int height = view.getRealHeight();
         StringBuilder sb = new StringBuilder();
         sb.append(width);
         sb.append("px, ");
@@ -111,7 +111,16 @@ public class UIUtils {
         if (view == null) {
             return "";
         }
-        return "Screen: [" + view.getDrawLeft() + "," + view.getDrawTop() + "][" + view.getDrawRight() + "," + view.getDrawBottom() + "] Parent: [" + view.getLeft() + "," + view.getTop() + "][" + view.getRight() + "," + view.getBottom() + "]";
+        return "Screen: [" + view.getDrawLeft() + "," + view.getDrawTop() + "][" + view.getDrawRight() + "," + view.getDrawBottom() + "] Parent: " + getParentPositionStr(view);
+    }
+
+    public static String getParentPositionStr(WView view) {
+        if (view.getParentView() == null) {
+            return "[" + view.getDrawLeft() + "," + view.getDrawTop() + "][" + view.getDrawRight() + "," + view.getBottom() + "]";
+        } else {
+            return "[" + (view.getDrawLeft() - view.getParentView().getDrawLeft()) + "," + (view.getDrawTop() - view.getParentView().getDrawTop()) + "]" +
+                "[" + (view.getDrawRight() - view.getParentView().getDrawLeft()) + "," + (view.getDrawBottom() - view.getParentView().getDrawTop()) + "]";
+        }
     }
 
     public static String getLayoutStr(String layoutStr, WApplication application) {

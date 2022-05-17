@@ -1,22 +1,10 @@
 package com.bytedance.tools.codelocator.model;
 
-import com.bytedance.tools.codelocator.constants.CodeLocatorConstants;
 import com.google.gson.annotations.SerializedName;
 
 import java.io.Serializable;
 
 public class ShowInfo implements Serializable {
-
-    public static ShowInfo parser(String showInfoStr) {
-        if (showInfoStr == null || showInfoStr.isEmpty()) {
-            return null;
-        }
-        final String[] split = showInfoStr.split(CodeLocatorConstants.SEPARATOR);
-        if (split.length > 3) {
-            return new ShowInfo(split[0], split[1], split[2], Long.valueOf(split[3]));
-        }
-        return null;
-    }
 
     public ShowInfo(String showType, String showInfo, String keyword, long showTime) {
         this.mShowType = showType;
@@ -25,19 +13,19 @@ public class ShowInfo implements Serializable {
         this.mShowTime = showTime;
     }
 
-    @SerializedName("mShowType")
+    @SerializedName("cm")
     private String mShowType;
 
-    @SerializedName("mKeyword")
+    @SerializedName("cn")
     private String mKeyword;
 
-    @SerializedName("mShowInfo")
+    @SerializedName("co")
     private String mShowInfo;
 
-    @SerializedName("mShowTime")
+    @SerializedName("cp")
     private long mShowTime;
 
-    @SerializedName("mJumpInfo")
+    @SerializedName("cq")
     private JumpInfo mJumpInfo;
 
     public JumpInfo getJumpInfo() {
@@ -64,8 +52,4 @@ public class ShowInfo implements Serializable {
         return mShowType;
     }
 
-    @Override
-    public String toString() {
-        return mShowType + CodeLocatorConstants.SEPARATOR + mShowInfo + CodeLocatorConstants.SEPARATOR + mKeyword + CodeLocatorConstants.SEPARATOR + mShowTime;
-    }
 }

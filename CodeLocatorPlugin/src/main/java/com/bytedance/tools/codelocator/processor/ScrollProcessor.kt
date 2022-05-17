@@ -3,6 +3,7 @@ package com.bytedance.tools.codelocator.processor
 import com.bytedance.tools.codelocator.model.EditModel
 import com.bytedance.tools.codelocator.model.EditScrollModel
 import com.bytedance.tools.codelocator.model.WView
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.bytedance.tools.codelocator.utils.UIUtils
 import com.intellij.openapi.project.Project
 import java.util.regex.Pattern
@@ -16,7 +17,7 @@ class ScrollProcessor(project: Project, view: WView) : ViewValueProcessor(projec
     }
 
     override fun getHint(view: WView): String {
-        return "格式: scrollX, scrollY 示例: 10px, 108dp"
+        return ResUtils.getString("edit_scroll_tip")
     }
 
     override fun isValid(changeText: String): Boolean {

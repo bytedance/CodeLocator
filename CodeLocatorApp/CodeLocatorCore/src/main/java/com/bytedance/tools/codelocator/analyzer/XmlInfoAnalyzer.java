@@ -4,6 +4,8 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.bytedance.tools.codelocator.CodeLocator;
+
 public class XmlInfoAnalyzer {
 
     public static void analysisAndAppendInfoToView(View view, int xmlResId, int tag) {
@@ -11,7 +13,7 @@ public class XmlInfoAnalyzer {
             final String resourceName = getResourceName(view, xmlResId);
             traverseView(view, resourceName, tag);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "analysisAndAppendInfoToView Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "analysisAndAppendInfoToView Error " + Log.getStackTraceString(t));
         }
     }
 

@@ -1,8 +1,7 @@
 package com.bytedance.tools.codelocator.model;
 
-import java.util.List;
-
 import javax.swing.*;
+import java.util.List;
 
 public class SearchableListModel<T> extends DefaultListModel<String> {
 

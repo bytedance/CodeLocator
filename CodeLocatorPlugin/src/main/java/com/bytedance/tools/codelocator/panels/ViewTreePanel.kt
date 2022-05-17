@@ -5,8 +5,11 @@ import com.bytedance.tools.codelocator.listener.OnSelectViewListener
 import com.bytedance.tools.codelocator.listener.OnShiftClickListener
 import com.bytedance.tools.codelocator.listener.OnViewRightClickListener
 import com.bytedance.tools.codelocator.model.WView
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.bytedance.tools.codelocator.utils.StringUtils
-import com.intellij.openapi.application.ApplicationManager
+import com.bytedance.tools.codelocator.utils.ThreadUtils
+import com.bytedance.tools.codelocator.model.WActivity
+import java.awt.Color
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -19,7 +22,7 @@ import kotlin.Comparator
 
 class ViewTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEventListener<JTree> {
 
-    private var mView: WView? = null
+    private var mActivity: WActivity? = null
 
     private var mTreeRoot: DefaultMutableTreeNode? = null
 
@@ -41,13 +44,13 @@ class ViewTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
 
     private var isShiftSelect = false
 
-    private val myTreeCellRenderer = MyTreeCellRenderer(codeLocatorWindow)
+    private val myTreeCellRenderer = MyTreeCellRenderer(codeLocatorWindow, MyTreeCellRenderer.TYPE_VIEW_TREE)
 
     init {
         setLayout(BoxLayout(this, BoxLayout.Y_AXIS))
         border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
         mJTree = SearchableJTree(mTreeModel)
-        mJTree!!.toolTipText = "支持输入内容搜索, 右键, Command + 左键可跳转ViewParent, Shift + 左键有惊喜哦"
+        mJTree!!.toolTipText = ResUtils.getString("view_tree_tip")
 
         val scrollPane = JScrollPane(mJTree)
         add(scrollPane)
@@ -74,11 +77,10 @@ class ViewTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
                 mOnSelectViewListener?.onSelectView(null, isShiftSelect)
                 return@addTreeSelectionListener
             }
-            var selectView = selectNode.userObject as WView
+            var selectView = selectNode.userObject as? WView
 
             if (!currentViewStack.isEmpty() && (!currentViewStack.contains(selectView)
-                        && selectView != currentViewStack.peek().parentView)
-            ) {
+                    && selectView != currentViewStack.peek().parentView)) {
                 currentViewStack.clear()
             }
 
@@ -114,7 +116,7 @@ class ViewTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
 
     private fun addListenserForScreenPanel() {
         if (codeLocatorWindow.getScreenPanel() == null) {
-            ApplicationManager.getApplication().invokeLater {
+            ThreadUtils.runOnUIThread {
                 addListenserForScreenPanel()
             }
         } else {
@@ -144,6 +146,18 @@ class ViewTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
                     selectViewAtIndex()
                     mJTree!!.requestFocus()
                 }
+
+                override fun onMarkViewChange(map: Map<String, Color>) {
+                    myTreeCellRenderer.setMarkInfo(map)
+                }
+
+                override fun onFoldView(view: WView) {
+                    collapseSiblingView(view)
+                }
+
+                override fun jumpParentView(view: WView) {
+                    selectParentView(view)
+                }
             })
         }
     }
@@ -155,14 +169,25 @@ class ViewTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
         setCurrentSelectView(view)
     }
 
+    fun reset() {
+        mTreeRoot ?: return
+        val rootTreePath = rootTreePath()
+        val childCount = mTreeRoot!!.childCount
+        for (i in 0 until childCount) {
+            val findViewNode = mTreeRoot!!.getChildAt(i)
+            val pathByAddingChild = rootTreePath.pathByAddingChild(findViewNode)
+            mJTree!!.collapsePath(pathByAddingChild)
+        }
+    }
+
     override fun onSearchKeyChange(jTree: JTree, keyWord: String): Int {
         currentViewList.clear()
         currentSelectViewIndex = 0
-        if (mView == null || keyWord.isEmpty()) {
+        if (mActivity == null || keyWord.isEmpty()) {
             selectViewAtIndex()
             return 0
         }
-        buildSelectView(mView!!, keyWord)
+        buildSelectView(mActivity!!, keyWord)
         currentViewList.sortWith(Comparator { o1, o2 ->
             val o1ClassNamecontains = o1.className?.contains(keyWord) ?: false
             val o2ClassNamecontains = o2.className?.contains(keyWord) ?: false
@@ -190,13 +215,16 @@ class ViewTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
         return currentViewList.size
     }
 
+    fun buildSelectView(activity: WActivity, keyWord: String) {
+        activity.decorViews.forEach { buildSelectView(it, keyWord) }
+    }
+
     fun buildSelectView(view: WView, keyWord: String) {
         if ((StringUtils.fuzzyMatching(view.className, keyWord)
-                    || StringUtils.fuzzyMatching(view.idStr, keyWord)
-                    || StringUtils.fuzzyMatching(view.memAddr, keyWord)
-                    || StringUtils.fuzzyMatching("" + Integer.valueOf(view.memAddr, 16), keyWord)
-                    || StringUtils.fuzzyMatching(view.text, keyWord)) || StringUtils.textContains(view, keyWord)
-        ) {
+                || StringUtils.fuzzyMatching(view.idStr, keyWord)
+                || StringUtils.fuzzyMatching(view.memAddr, keyWord)
+                || StringUtils.fuzzyMatching("" + Integer.valueOf(view.memAddr, 16), keyWord)
+                || StringUtils.fuzzyMatching(view.text, keyWord)) || StringUtils.textContains(view, keyWord)) {
             currentViewList.add(view)
         }
         for (i in 0 until view.childCount) {
@@ -325,13 +353,14 @@ class ViewTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
     }
 
     private fun getCurrentView(): WView? {
-        val selectNode = mJTree!!.lastSelectedPathComponent as? DefaultMutableTreeNode ?: return null
+        val selectNode = mJTree!!.lastSelectedPathComponent as? DefaultMutableTreeNode
+            ?: return null
         return selectNode.userObject as? WView
     }
 
     @JvmOverloads
     fun setCurrentSelectView(view: WView?, fromInner: Boolean = false) {
-        if (getCurrentView() == view && view != null) {
+        if (getCurrentView() == view) {
             return
         }
         if (!fromInner) {
@@ -340,16 +369,62 @@ class ViewTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
         if (view == null) {
             mJTree!!.clearSelection()
             mTreeModel.reload()
-            mOnSelectViewListener?.onSelectView(null, false)
             return
         }
 
         var path: TreePath? = expandView(view) ?: return
         mJTree!!.selectionPath = path
-        SwingUtilities.invokeLater {
+        ThreadUtils.runOnUIThread {
             mJTree!!.scrollPathToVisible(path)
         }
         repaint()
+    }
+
+    private fun selectParentView(view: WView?) {
+        view?.parentView ?: return
+        mTreeRoot ?: return
+        var path: TreePath = getViewPath(view.parentView) ?: return
+        mJTree!!.selectionPath = path
+    }
+
+    private fun collapseSiblingView(view: WView?) {
+        view ?: return
+        mTreeRoot ?: return
+        val siblings = (view.parentView?.children ?: mActivity!!.decorViews)
+        val collapseSiblings = siblings.toMutableList().filter { it != view }
+        if (collapseSiblings.isEmpty()) {
+            return
+        }
+        var path: TreePath = if (view.parentView == null) rootTreePath() else getViewPath(view.parentView)!!
+
+        for (sibling in collapseSiblings) {
+            val findViewNode = findViewNode(sibling, mTreeRoot!!)
+            findViewNode ?: continue
+            val pathByAddingChild = path.pathByAddingChild(findViewNode)
+            mJTree!!.collapsePath(pathByAddingChild)
+        }
+    }
+
+    private fun getViewPath(view: WView?): TreePath? {
+        view ?: return null
+        mTreeRoot ?: return null
+        var stack: Stack<WView> = Stack()
+        var tmpView = view
+        while (tmpView != null) {
+            stack.push(tmpView)
+            tmpView = tmpView.parentView
+        }
+        var path: TreePath = rootTreePath()
+        while (!stack.isEmpty()) {
+            val findViewNode = findViewNode(stack.pop(), mTreeRoot!!)
+            findViewNode ?: return null
+            path = path.pathByAddingChild(findViewNode)
+        }
+        return path
+    }
+
+    private fun rootTreePath(): TreePath {
+        return TreePath(mTreeRoot)
     }
 
     private fun expandView(view: WView?): TreePath? {
@@ -360,15 +435,11 @@ class ViewTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
             stack.push(tmpView)
             tmpView = tmpView.parentView
         }
-        var path: TreePath? = null
+        var path = TreePath(mTreeRoot!!)
         while (!stack.isEmpty()) {
             val findViewNode = findViewNode(stack.pop(), mTreeRoot!!)
             findViewNode ?: return null
-            if (path == null) {
-                path = TreePath(findViewNode)
-            } else {
-                path = path.pathByAddingChild(findViewNode)
-            }
+            path = path.pathByAddingChild(findViewNode)
             mJTree!!.expandPath(path)
         }
         return path
@@ -387,15 +458,23 @@ class ViewTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
         return null
     }
 
-    fun setView(view: WView?) {
-        mView = view
+    fun setActivity(activity: WActivity?) {
+        mActivity = activity
         currentViewStack.clear()
-        if (mView == null) {
+        if (mActivity == null) {
             mTreeRoot = null
         } else {
-            mTreeRoot = createTreeNodeByView(mView!!)
+            mTreeRoot = createTreeNodeByActivity(mActivity!!)
         }
         mTreeModel.setRoot(mTreeRoot)
+    }
+
+    private fun createTreeNodeByActivity(activity: WActivity): DefaultMutableTreeNode {
+        val activityNode = DefaultMutableTreeNode(activity)
+        for (i in 0 until activity.decorViews.size) {
+            activityNode.add(createTreeNodeByView(activity.decorViews.get(i)))
+        }
+        return activityNode
     }
 
     private fun createTreeNodeByView(view: WView): DefaultMutableTreeNode {

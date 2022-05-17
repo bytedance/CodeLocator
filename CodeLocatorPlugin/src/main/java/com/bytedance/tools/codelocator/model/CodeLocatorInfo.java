@@ -1,6 +1,10 @@
 package com.bytedance.tools.codelocator.model;
 
-import com.bytedance.tools.codelocator.utils.*;
+import com.bytedance.tools.codelocator.utils.AutoUpdateUtils;
+import com.bytedance.tools.codelocator.utils.DataUtils;
+import com.bytedance.tools.codelocator.utils.FileUtils;
+import com.bytedance.tools.codelocator.utils.Log;
+import com.bytedance.tools.codelocator.utils.GsonUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -14,7 +18,7 @@ public class CodeLocatorInfo {
 
     private static final String CODELOCATOR_TAG = "CodeLocator";
 
-    private static final String CODELOCATOR_VERSION = UpdateUtils.getCurrentVersion();
+    private static final String CODELOCATOR_VERSION = AutoUpdateUtils.getCurrentPluginVersion();
 
     public static final int INT_SIZE = 4;
 
@@ -45,7 +49,7 @@ public class CodeLocatorInfo {
 
     public byte[] toBytes() {
         try {
-            final String appStr = NetUtils.sGson.toJson(mWApplication);
+            final String appStr = GsonUtils.sGson.toJson(mWApplication);
             final byte[] appBytes = appStr.getBytes(FileUtils.CHARSET_NAME);
             final byte[] codelocatorBytes = CODELOCATOR_TAG.getBytes(FileUtils.CHARSET_NAME);
             final byte[] codelocatorVersionBytes = CODELOCATOR_VERSION.getBytes(FileUtils.CHARSET_NAME);
@@ -104,8 +108,8 @@ public class CodeLocatorInfo {
             offset += appLength;
 
             final String appStr = new String(appBytes, FileUtils.CHARSET_NAME);
-            WApplication application = NetUtils.sGson.fromJson(appStr, WApplication.class);
-            DataUtils.restoreAllStructInfo(application);
+            WApplication application = GsonUtils.sGson.fromJson(appStr, WApplication.class);
+            DataUtils.restoreAllStructInfo(application, true);
 
             final int imageLength = bytes.length - offset;
             byte[] imageBytes = new byte[imageLength];

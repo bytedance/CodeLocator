@@ -1,21 +1,26 @@
 package com.bytedance.tools.codelocator.dialog
 
-import com.bytedance.tools.codelocator.constants.CodeLocatorConstants
+import com.bytedance.tools.codelocator.device.Device
+import com.bytedance.tools.codelocator.device.DeviceManager
+import com.bytedance.tools.codelocator.device.action.AdbCommand
+import com.bytedance.tools.codelocator.device.action.BroadcastAction
+import com.bytedance.tools.codelocator.exception.ExecuteException
+import com.bytedance.tools.codelocator.listener.OnClickListener
 import com.bytedance.tools.codelocator.model.MethodInfo
 import com.bytedance.tools.codelocator.model.WView
 import com.bytedance.tools.codelocator.model.*
 import com.bytedance.tools.codelocator.panels.OnEventListener
 import com.bytedance.tools.codelocator.panels.SearchableJList
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
-import com.bytedance.tools.codelocator.parser.Parser
 import com.bytedance.tools.codelocator.utils.*
 import com.bytedance.tools.codelocator.views.JTextHintField
+import com.bytedance.tools.codelocator.response.OperateResponse
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.*
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.wm.ex.WindowManagerEx
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
-import com.intellij.ui.table.JBTable
 import java.awt.*
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
@@ -68,8 +73,6 @@ class InvokeMethodDialog(
 
     var editableTableModel = EditableTableModel()
 
-    var schemaArgTable = JBTable(editableTableModel)
-
     lateinit var listScrollPane: JBScrollPane
 
     init {
@@ -77,7 +80,7 @@ class InvokeMethodDialog(
     }
 
     private fun initContentPanel() {
-        title = "调用View基础方法"
+        title = ResUtils.getString("invoke_method_title")
         dialogContentPanel = JPanel()
         dialogContentPanel.border = BorderFactory.createEmptyBorder(
             CoordinateUtils.DEFAULT_BORDER,
@@ -90,6 +93,11 @@ class InvokeMethodDialog(
         minimumSize = Dimension(DIALOG_WIDTH, DIALOG_HEIGHT)
 
         setLocationRelativeTo(WindowManagerEx.getInstance().getFrame(project))
+        JComponentUtils.supportCommandW(dialogContentPanel, object : OnClickListener {
+            override fun onClick() {
+                hide()
+            }
+        })
 
         addSearchText()
         addMethodList()
@@ -102,16 +110,16 @@ class InvokeMethodDialog(
 
     private fun addSearchText() {
         methodField = JTextHintField("")
-        methodField.setHint("请在下方选择要调用的方法")
-        methodField.toolTipText = "选择要调用的方法"
+        methodField.setHint(ResUtils.getString("select_method"))
+        methodField.toolTipText = ResUtils.getString("select_method")
         methodField.isEditable = false
         methodField.maximumSize = Dimension(
             10086,
             EditViewDialog.LINE_HEIGHT
         )
         argField = JTextHintField("")
-        argField.setHint("如果有参数可输入")
-        argField.toolTipText = "如果有参数可输入"
+        argField.setHint(ResUtils.getString("input_arg_tip"))
+        argField.toolTipText = ResUtils.getString("input_arg_tip")
         argField.maximumSize = Dimension(
             10086,
             EditViewDialog.LINE_HEIGHT
@@ -120,8 +128,9 @@ class InvokeMethodDialog(
         methodField.border = BorderFactory.createEmptyBorder(2, 2, 2, 2)
 
 
-        val callMethod = JButton("<html><body style='text-align:center;font-size:11px;'>调用方法</body></html>")
-        callMethod.toolTipText = "调用方法"
+        val callMethod =
+            JButton("<html><body style='text-align:center;font-size:11px;'>" + ResUtils.getString("invoke_method") + "</body></html>")
+        callMethod.toolTipText = ResUtils.getString("invoke_method")
         rootPane.defaultButton = callMethod
         callMethod.addMouseListener(object : MouseAdapter() {
             override fun mousePressed(e: MouseEvent) {
@@ -129,7 +138,7 @@ class InvokeMethodDialog(
                 if (methodInfo == null) {
                     Messages.showMessageDialog(
                         dialogContentPanel,
-                        "调用方法不能为空",
+                        ResUtils.getString("invoke_method_empty_name"),
                         "CodeLocator",
                         Messages.getInformationIcon()
                     )
@@ -138,7 +147,7 @@ class InvokeMethodDialog(
                 if (!isParamsLegal(methodInfo!!, argField.text)) {
                     Messages.showMessageDialog(
                         dialogContentPanel,
-                        "参数不合法, 请检查输入",
+                        ResUtils.getString("illegal_content", ""),
                         "CodeLocator",
                         Messages.getInformationIcon()
                     )
@@ -173,58 +182,64 @@ class InvokeMethodDialog(
     }
 
     private fun invokeMethodCall(methodInfo: MethodInfo) {
-        DeviceManager.execCommand(project, AdbCommand(
-            BroadcastBuilder(CodeLocatorConstants.ACTION_CHANGE_VIEW_INFO).arg(
-                CodeLocatorConstants.KEY_CHANGE_VIEW,
-                EditViewBuilder(view).edit(InvokeMethodModel(methodInfo)).builderEditCommand()
-            )
-        ),
-            object : DeviceManager.OnExecutedListener {
-                override fun onExecSuccess(device: Device?, execResult: ExecResult?) {
-                    try {
-                        if (execResult?.resultCode == 0) {
-                            val parserCommandResult =
-                                Parser.parserCommandResult(device, String(execResult?.resultBytes), false)
-                            if (parserCommandResult != null && parserCommandResult.startsWith("true")) {
-                                ThreadUtils.runOnUIThread {
-                                    var tip = ""
-                                    if (parserCommandResult.startsWith("true:")) {
-                                        tip = parserCommandResult.substring("true:".length).trim()
-                                        if (tip != "null") {
-                                            ClipboardUtils.copyContentToClipboard(project, tip, false)
-                                            tip = ", 返回结果: $tip, 内容已拷贝至剪切板"
-                                        }
-                                    }
-                                    NotificationUtils.showNotification(
-                                        project,
-                                        "调用函数 " + methodInfo.name + (if (methodInfo.argType != null) "(${methodInfo.argValue})" else "") + " 成功" + tip,
-                                        5000L
-                                    )
-                                }
-                            } else {
-                                notifyCallMethodFailed(parserCommandResult)
+        DeviceManager.enqueueCmd(
+            project,
+            AdbCommand(
+                BroadcastAction(ACTION_CHANGE_VIEW_INFO).args(
+                    KEY_CHANGE_VIEW,
+                    EditViewBuilder(view).edit(InvokeMethodModel(methodInfo)).builderEditCommand()
+                )
+            ),
+            OperateResponse::class.java,
+            object : DeviceManager.OnExecutedListener<OperateResponse> {
+                override fun onExecSuccess(device: Device, response: OperateResponse) {
+                    val resultData = response.data
+                    val errorMsg = resultData.getResult(ResultKey.ERROR)
+                    if (errorMsg != null) {
+                        throw ExecuteException(errorMsg, resultData.getResult(ResultKey.STACK_TRACE))
+                    }
+                    val data = resultData.getResult(ResultKey.DATA)
+                    if (data.isNotEmpty()) {
+                        ThreadUtils.runOnUIThread {
+                            var result = ResUtils.getString("invoke_method_result_format", data)
+                            val showOkCancelDialog = Messages.showOkCancelDialog(
+                                contentPane,
+                                ResUtils.getString(
+                                    "invoke_method_success_tip_format",
+                                    methodInfo.name,
+                                    (if (methodInfo.argType != null) "(${methodInfo.argValue})" else ""),
+                                    result
+                                ),
+                                "CodeLocator",
+                                Messages.OK_BUTTON,
+                                ResUtils.getString("copy_to_clipboard"),
+                                Messages.getInformationIcon()
+                            )
+                            if (showOkCancelDialog == Messages.CANCEL) {
+                                ClipboardUtils.copyContentToClipboard(project, data)
                             }
-                        } else {
-                            notifyCallMethodFailed("调用失败, 请检查应用是否在前台")
                         }
-                    } catch (t: Throwable) {
-                        notifyCallMethodFailed("调用失败, 请检查应用是否在前台")
+                    } else {
+                        NotificationUtils.showNotifyInfoShort(
+                            project,
+                            ResUtils.getString(
+                                "invoke_method_success_tip_format",
+                                methodInfo.name,
+                                (if (methodInfo.argType != null) "(${methodInfo.argValue})" else ""),
+                                ""
+                            ),
+                            5000L
+                        )
                     }
                 }
 
-                override fun onExecFailed(failedReason: String?) {
+                override fun onExecFailed(t: Throwable) {
                     Messages.showMessageDialog(
                         codeLocatorWindow,
-                        failedReason, "CodeLocator", Messages.getInformationIcon()
+                        StringUtils.getErrorTip(t), "CodeLocator", Messages.getInformationIcon()
                     )
                 }
             })
-    }
-
-    private fun notifyCallMethodFailed(msg: String) {
-        ThreadUtils.runOnUIThread {
-            Messages.showMessageDialog(codeLocatorWindow, msg, "CodeLocator", Messages.getInformationIcon())
-        }
     }
 
     private fun isParamsLegal(methodInfo: MethodInfo, argStr: String): Boolean {
@@ -296,7 +311,7 @@ class InvokeMethodDialog(
 
         callMethodListJComponent.font =
             Font(callMethodListJComponent.font.name, callMethodListJComponent.font.style, 16)
-        callMethodListJComponent.toolTipText = "双击可选择Method, 支持搜索"
+        callMethodListJComponent.toolTipText = ResUtils.getString("method_select_tool_tip_text")
         callMethodListJComponent.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
                 super.mouseClicked(e)
@@ -308,10 +323,15 @@ class InvokeMethodDialog(
                         methodInfo = callMethodList[locationToIndex]
                         if (methodInfo?.argType != null) {
                             argField.text = ""
-                            argField.setHint("需要类型为" + StringUtils.getSimpleName(methodInfo!!.argType) + "参数")
+                            argField.setHint(
+                                ResUtils.getString(
+                                    "need_params",
+                                    StringUtils.getSimpleName(methodInfo!!.argType)
+                                )
+                            )
                         } else {
                             argField.text = ""
-                            argField.setHint("不需要参数")
+                            argField.setHint(ResUtils.getString("no_params"))
                         }
                         Mob.mob(Mob.Action.CLICK, Mob.Button.METHOD_ITEM)
                     }

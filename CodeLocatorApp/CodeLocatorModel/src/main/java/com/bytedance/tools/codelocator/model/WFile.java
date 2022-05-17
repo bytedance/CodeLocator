@@ -12,37 +12,37 @@ public class WFile implements Serializable {
 
     private transient String mPullFilePath;
 
-    @SerializedName("mChildren")
+    @SerializedName("a")
     private List<WFile> mChildren;
 
-    @SerializedName("mLength")
+    @SerializedName("c1")
     private long mLength;
 
-    @SerializedName("mDirectory")
+    @SerializedName("c2")
     private boolean mDirectory;
 
-    @SerializedName("mIsExists")
+    @SerializedName("c3")
     private boolean mIsExists;
 
-    @SerializedName("mInSDCard")
+    @SerializedName("c4")
     private boolean mInSDCard;
 
-    @SerializedName("mLastModified")
+    @SerializedName("c5")
     private long mLastModified;
 
-    @SerializedName("mName")
+    @SerializedName("c6")
     private String mName;
 
-    @SerializedName("mAbsoluteFilePath")
+    @SerializedName("c7")
     private String mAbsoluteFilePath;
 
-    @SerializedName("mCustomTag")
+    @SerializedName("c8")
     private String mCustomTag;
 
-    @SerializedName("mEditable")
+    @SerializedName("c9")
     private boolean mEditable;
 
-    @SerializedName("mIsJson")
+    @SerializedName("ca")
     private boolean mIsJson;
 
     public boolean isIsJson() {

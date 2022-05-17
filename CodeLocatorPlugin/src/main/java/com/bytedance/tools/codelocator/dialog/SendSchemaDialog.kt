@@ -1,26 +1,35 @@
-@file:Suppress("JAVA_MODULE_DOES_NOT_EXPORT_PACKAGE")
 package com.bytedance.tools.codelocator.dialog
 
+import com.bytedance.tools.codelocator.model.SchemaInfo
 import com.bytedance.tools.codelocator.action.SimpleAction
-import com.bytedance.tools.codelocator.constants.CodeLocatorConstants
+import com.bytedance.tools.codelocator.device.Device
+import com.bytedance.tools.codelocator.device.DeviceManager
+import com.bytedance.tools.codelocator.device.action.AdbAction
+import com.bytedance.tools.codelocator.device.action.AdbCommand
+import com.bytedance.tools.codelocator.device.action.BroadcastAction
+import com.bytedance.tools.codelocator.exception.ExecuteException
+import com.bytedance.tools.codelocator.listener.DocumentListenerAdapter
 import com.bytedance.tools.codelocator.listener.OnActionListener
 import com.bytedance.tools.codelocator.model.*
+import com.bytedance.tools.codelocator.device.action.AdbCommand.*
+import com.bytedance.tools.codelocator.listener.OnClickListener
 import com.bytedance.tools.codelocator.panels.OnEventListener
 import com.bytedance.tools.codelocator.panels.SearchableJList
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
-import com.bytedance.tools.codelocator.parser.Parser
 import com.bytedance.tools.codelocator.utils.ClipboardUtils
 import com.bytedance.tools.codelocator.utils.CoordinateUtils
-import com.bytedance.tools.codelocator.utils.DeviceManager
 import com.bytedance.tools.codelocator.utils.JComponentUtils
 import com.bytedance.tools.codelocator.utils.Log
 import com.bytedance.tools.codelocator.utils.Mob
 import com.bytedance.tools.codelocator.utils.NotificationUtils
-import com.bytedance.tools.codelocator.utils.ShellHelper
+import com.bytedance.tools.codelocator.utils.OSHelper
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.bytedance.tools.codelocator.utils.StringUtils
 import com.bytedance.tools.codelocator.utils.ThreadUtils
-import com.bytedance.tools.codelocator.utils.TimeUtils
 import com.bytedance.tools.codelocator.views.JTextHintField
+import com.bytedance.tools.codelocator.response.StatesResponse
+import com.bytedance.tools.codelocator.response.StringResponse
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
@@ -33,6 +42,8 @@ import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.table.JBTable
 import com.sun.jndi.toolkit.url.Uri
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.disposables.Disposable
 import java.awt.Component
 import java.awt.Dimension
 import java.awt.Font
@@ -41,7 +52,7 @@ import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.net.URLDecoder
-import java.util.*
+import java.util.concurrent.TimeUnit
 import javax.swing.BorderFactory
 import javax.swing.Box
 import javax.swing.BoxLayout
@@ -105,14 +116,14 @@ class SendSchemaDialog(
     @Volatile
     var isProcessing = false
 
-    var checkInputTask: TimerTask? = null
+    var disposable: Disposable? = null
 
     init {
         initContentPanel()
     }
 
     private fun initContentPanel() {
-        title = "输入Schema"
+        title = ResUtils.getString("input_schema")
         dialogContentPanel = JPanel()
         dialogContentPanel.border = BorderFactory.createEmptyBorder(
             CoordinateUtils.DEFAULT_BORDER,
@@ -122,15 +133,25 @@ class SendSchemaDialog(
         )
         dialogContentPanel.layout = BoxLayout(dialogContentPanel, BoxLayout.Y_AXIS)
         contentPane = dialogContentPanel
-        title = "发送Schema"
+        title = ResUtils.getString("send_schema")
         minimumSize = Dimension(DIALOG_WIDTH, DIALOG_HEIGHT)
-
         setLocationRelativeTo(WindowManagerEx.getInstance().getFrame(project))
+
+        JComponentUtils.supportCommandW(dialogContentPanel, object : OnClickListener {
+            override fun onClick() {
+                hide()
+            }
+        })
 
         addSearchText()
         addArgsTable()
         addSchemaList()
         addSplitPane()
+    }
+
+    override fun show() {
+        super.show()
+        OSHelper.instance.adjustDialog(this, project)
     }
 
     private fun addSplitPane() {
@@ -148,24 +169,22 @@ class SendSchemaDialog(
 
     private fun addSearchText() {
         textField = JTextHintField("")
-        textField.setHint("输入发送到设备的Schema内容")
-        textField.toolTipText = "输入发送到设备的Schema内容"
+        textField.setHint(ResUtils.getString("send_schema_title"))
+        textField.toolTipText = ResUtils.getString("send_schema_title")
         textField.maximumSize = Dimension(
             10086,
             EditViewDialog.LINE_HEIGHT
         )
         textField.border = BorderFactory.createEmptyBorder(2, 2, 2, 2)
-        textField.document.addDocumentListener(object : EditViewDialog.DocumentListenerAdapter() {
+        textField.document.addDocumentListener(object : DocumentListenerAdapter() {
 
             override fun insertUpdate(e: DocumentEvent?) {
-                checkInputTask?.cancel()
-                TimeUtils.sTimer.purge()
-                checkInputTask = object : TimerTask() {
-                    override fun run() {
-                        checkInputContent()
-                    }
+                if (disposable?.isDisposed != true) {
+                    disposable?.dispose()
                 }
-                TimeUtils.sTimer.schedule(checkInputTask, 500)
+                disposable = Observable.timer(500, TimeUnit.MILLISECONDS).subscribe {
+                    checkInputContent()
+                }
             }
 
             override fun removeUpdate(e: DocumentEvent?) {
@@ -179,8 +198,9 @@ class SendSchemaDialog(
         val createHorizontalBox = Box.createHorizontalBox()
         createHorizontalBox.add(textField)
 
-        val sendSchema = JButton("<html><body style='text-align:center;font-size:11px;'>发送Schema</body></html>")
-        sendSchema.toolTipText = "发送Schema, 右键复制Schema"
+        val sendSchema =
+            JButton("<html><body style='text-align:center;font-size:11px;'>" + ResUtils.getString("send_schema") + "</body></html>")
+        sendSchema.toolTipText = ResUtils.getString("send_schema_tip")
         JComponentUtils.setSize(sendSchema, 105, 35)
         rootPane.defaultButton = sendSchema
         sendSchema.addMouseListener(object : MouseAdapter() {
@@ -190,7 +210,7 @@ class SendSchemaDialog(
                 if (textField.text.isNullOrEmpty()) {
                     Messages.showMessageDialog(
                         dialogContentPanel,
-                        "发送的Schema不能为空",
+                        ResUtils.getString("schema_empty"),
                         "CodeLocator",
                         Messages.getInformationIcon()
                     )
@@ -266,65 +286,46 @@ class SendSchemaDialog(
     }
 
     private fun sendSchemaToDevice(schema: String) {
-        DeviceManager.execCommand(
+        DeviceManager.enqueueCmd(
             project,
-            AdbCommand("shell am start -d \"${adjustStrForAdbShell(schema)}\""),
-            object : DeviceManager.OnExecutedListener {
-                override fun onExecSuccess(device: Device?, execResult: ExecResult?) {
-                    val execResult = String(execResult!!.resultBytes)
-                    if (execResult.contains("Error")) {
-                        val execCommand = ShellHelper.execCommand(
+            AdbCommand(
+                AdbAction(
+                    ACTION.AM,
+                    "start -d '${adjustStrForAdbShell(schema)}'"
+                )
+            ),
+            StringResponse::class.java,
+            object : DeviceManager.OnExecutedListener<StringResponse> {
+                override fun onExecSuccess(device: Device, response: StringResponse) {
+                    val result = response.data
+                    if (result.contains("Error")) {
+                        val states = DeviceManager.executeCmd(
+                            project,
                             AdbCommand(
-                                BroadcastBuilder(CodeLocatorConstants.ACTION_PROCESS_SCHEMA).arg(
+                                BroadcastAction(
+                                    CodeLocatorConstants.ACTION_PROCESS_SCHEMA
+                                ).args(
                                     CodeLocatorConstants.KEY_SCHEMA,
-                                    adjustStrForAdbShell(schema)
+                                    schema
                                 )
-                            ).toString()
+                            ),
+                            StatesResponse::class.java
                         )
-                        if (execCommand.resultCode == 0) {
-                            val processSchemaResult =
-                                Parser.parserCommandResult(device, String(execCommand.resultBytes), false)
-                            if ("true" == processSchemaResult) {
-                                onSendSchemaSuccess(schema)
-                            } else if ("false" == processSchemaResult) {
-                                ThreadUtils.runOnUIThread {
-                                    Messages.showMessageDialog(
-                                        dialogContentPanel,
-                                        "Schema未能被处理, 请检查输入是否有误 参数是否正确",
-                                        "CodeLocator",
-                                        Messages.getInformationIcon()
-                                    )
-                                }
-                            } else {
-                                ThreadUtils.runOnUIThread {
-                                    Messages.showMessageDialog(
-                                        dialogContentPanel,
-                                        "请检查设备连接或者应用是否在前台",
-                                        "CodeLocator",
-                                        Messages.getInformationIcon()
-                                    )
-                                }
-                            }
-                        } else {
-                            ThreadUtils.runOnUIThread {
-                                Messages.showMessageDialog(
-                                    dialogContentPanel,
-                                    "请检查设备连接或者应用是否在前台",
-                                    "CodeLocator",
-                                    Messages.getInformationIcon()
-                                )
-                            }
+                        if (states.msg != null) {
+                            throw ExecuteException(states.msg)
                         }
-                    } else {
-                        Log.d(execResult)
-                        onSendSchemaSuccess(schema)
+                        if (states.data) {
+                            onSendSchemaSuccess(schema)
+                            return
+                        }
                     }
+                    throw ExecuteException(ResUtils.getString("schema_process_error"))
                 }
 
-                override fun onExecFailed(failedReason: String?) {
+                override fun onExecFailed(t: Throwable) {
                     Messages.showMessageDialog(
                         dialogContentPanel,
-                        failedReason,
+                        StringUtils.getErrorTip(t),
                         "CodeLocator",
                         Messages.getInformationIcon()
                     )
@@ -343,12 +344,12 @@ class SendSchemaDialog(
             schemaList.add(0, schemaInfo)
             SchemaHistory.loadHistory().addHistory(schemaInfo)
         }
-        if (CodeLocatorConfig.loadConfig().isCloseDialogWhenSchemaSend) {
+        if (CodeLocatorUserConfig.loadConfig().isCloseDialogWhenSchemaSend) {
             dispose()
         } else {
             update()
         }
-        NotificationUtils.showNotification(project, "发送schema: $schema 成功", 15000L)
+        NotificationUtils.showNotifyInfoLong(project, ResUtils.getString("send_schema_success", schema))
     }
 
     private fun addArgsTable() {
@@ -357,7 +358,7 @@ class SendSchemaDialog(
 
         schemaArgTable.font = Font(schemaArgTable.font.name, schemaArgTable.font.style, 16)
         schemaArgTable.tableHeader.reorderingAllowed = false
-        schemaArgTable.toolTipText = "可添加参数, 右键可添加 OR 删除"
+        schemaArgTable.toolTipText = ResUtils.getString("send_schema_tip")
         schemaArgTable.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
                 super.mouseClicked(e)
@@ -393,13 +394,13 @@ class SendSchemaDialog(
     private fun showMenuList(e: MouseEvent, clickedRow: Int) {
         val actionGroup: DefaultActionGroup =
             DefaultActionGroup("listGroup", true)
-        actionGroup.add(SimpleAction("添加一行", object : OnActionListener {
+        actionGroup.add(SimpleAction(ResUtils.getString("add_line"), object : OnActionListener {
             override fun actionPerformed(e: AnActionEvent) {
                 editableTableModel.addRow(clickedRow)
             }
         }))
         if (editableTableModel.rowCount > 1) {
-            actionGroup.add(SimpleAction("删除此行", object : OnActionListener {
+            actionGroup.add(SimpleAction(ResUtils.getString("delete_line"), object : OnActionListener {
                 override fun actionPerformed(e: AnActionEvent) {
                     editableTableModel.removeRow(clickedRow)
                 }
@@ -439,13 +440,15 @@ class SendSchemaDialog(
         }
 
         schemaListJComponent.font = Font(schemaListJComponent.font.name, schemaListJComponent.font.style, 16)
-        schemaListJComponent.toolTipText = "双击可选择schema, 支持搜索"
+        schemaListJComponent.toolTipText = ResUtils.getString("send_schema_op_tip")
         schemaListJComponent.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
                 super.mouseClicked(e)
 
                 val locationToIndex = schemaListJComponent.locationToIndex(Point(e.x, e.y))
-                if (lastClickIndex == locationToIndex) {
+                if (e.isMetaDown) {
+                    ClipboardUtils.copyContentToClipboard(project, showSchemaList[locationToIndex].schema.trim())
+                } else if (lastClickIndex == locationToIndex) {
                     if (System.currentTimeMillis() - lastClickTime < 1000) {
                         textField.text = showSchemaList[locationToIndex].schema.trim()
                         Mob.mob(Mob.Action.CLICK, Mob.Button.SCHEMA_ITEM)

@@ -1,25 +1,15 @@
 package com.bytedance.tools.codelocator.utils;
 
-import com.bytedance.tools.codelocator.model.WApplication;
-import com.bytedance.tools.codelocator.model.CodeLocatorInfo;
-import com.bytedance.tools.codelocator.panels.ScreenPanel;
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow;
+import okhttp3.*;
 
-import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.UnknownHostException;
 
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.FormBody;
-import okhttp3.MediaType;
-import okhttp3.MultipartBody;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+//import com.bytedance.codelocator.parser.Parser;
 
 public class Mob {
 
@@ -32,6 +22,8 @@ public class Mob {
         String RIGHT_CLICK = "right_click";
 
         String EXEC = "exec";
+
+        String ERROR = "error";
 
         String CLICK_CONFIG = "click_config";
 
@@ -48,11 +40,13 @@ public class Mob {
 
         String GRAB = "grab";
 
+        String HISTORY = "history";
+
+        String REMOVE_IMPORT = "remove_import";
+
         String ID = "id";
 
         String CLICK = "click";
-
-        String HISTORY = "history";
 
         String OPEN_VIEW_CHANGE_TAB = "open_view_change_tab";
 
@@ -66,6 +60,26 @@ public class Mob {
 
         String CLOSE_SHOW_VIEW_LEVEL = "close_show_view_level";
 
+        String OPEN_MOUSE_WHEEL = "open_mouse_wheel";
+
+        String CLOSE_MOUSE_WHEEL = "close_mouse_wheel";
+
+        String OPEN_PREVIEW = "open_preview";
+
+        String CLOSE_PREVIEW = "close_preview";
+
+        String OPEN_CODE_INDEX = "open_code_index";
+
+        String CLOSE_CODE_INDEX = "close_code_index";
+
+        String OPEN_VISION = "open_vision";
+
+        String CLOSE_VISION = "close_vision";
+
+        String OPEN_VOICE = "open_voice";
+
+        String CLOSE_VOICE = "close_voice";
+
         String OPEN_JUMP_BLAME_TAB = "open_jump_blame_tab";
 
         String CLOSE_JUMP_BLAME_TAB = "close_jump_blame_tab";
@@ -77,6 +91,12 @@ public class Mob {
         String CLOSE_DIALOG_WHEN_SCHEMA_SEND = "close_dialog_when_schema_send";
 
         String OPEN_DIALOG_WHEN_SCHEMA_SEND = "open_dialog_when_schema_send";
+
+        String SEARCH_NEXT = "search_next";
+
+        String SEARCH_PRE = "search_pre";
+
+        String COLOR_MODE = "color_mode";
 
         String TOUCH = "touch";
 
@@ -109,6 +129,12 @@ public class Mob {
         String SETTING = "setting";
 
         String COPY_IMAGE_TO_CLIPBORAD = "copy_image_to_clipborad";
+
+        String MARK_VIEW = "mark_view";
+
+        String JUMP_PARENT = "jump_parent";
+
+        String CLEAR_MARK = "clear_mark";
 
         String GET_VIEW_DATA = "get_view_data";
 
@@ -146,6 +172,8 @@ public class Mob {
 
         String CLASS = "class";
 
+        String INTENT = "intent";
+
         String DRAWABLE = "drawable";
 
         String INSTALL_APK_BTN = "install_apk_btn";
@@ -158,9 +186,13 @@ public class Mob {
 
         String UPDATE = "update";
 
+        String TIP = "tip";
+
         String FORCE_UPDATE = "force_update";
 
         String SEARCH_CODE_INDEX = "search_code_index";
+
+        String SEARCH_VISION = "search_vision";
 
         String VIEW_TREE = "view_tree";
 
@@ -224,21 +256,20 @@ public class Mob {
     public static void mob(String action, String buttonName) {
         if (Log.DEBUG) {
             System.out.println("Mob action: " + action + ", name: " + buttonName);
-            Log.d("action: " + action + ", button: " + buttonName);
         } else {
             if (NetUtils.SERVER_URL.isEmpty() || Action.EXEC.equals(action)) {
                 Log.d("action: " + action + ", button: " + buttonName);
                 return;
             }
             FormBody formBody = new FormBody.Builder()
-                    .add("action", action)
-                    .add("button", buttonName)
-                    .add("type", "log")
-                    .build();
+                .add("action", action)
+                .add("button", buttonName)
+                .add("type", "log")
+                .build();
             final Request request = new Request.Builder()
-                    .url(NetUtils.SERVER_URL)
-                    .post(formBody)
-                    .build();
+                .url(NetUtils.SERVER_URL)
+                .post(formBody)
+                .build();
             NetUtils.sOkHttpClient.newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
@@ -246,7 +277,7 @@ public class Mob {
 
                 @Override
                 public void onResponse(Call call, Response response) throws IOException {
-                    response.body().string();
+                    response.body().close();
                 }
             });
         }
@@ -260,16 +291,16 @@ public class Mob {
             return;
         }
         final FormBody.Builder errorBuilder = new FormBody.Builder()
-                .add("error", errorMsg)
-                .add("type", "error");
+            .add("type", "error")
+            .add("error", errorMsg);
         if (throwable != null) {
             errorBuilder.add("throwable", getStackTraceString(throwable));
         }
         FormBody formBody = errorBuilder.build();
         final Request request = new Request.Builder()
-                .url(NetUtils.SERVER_URL)
-                .post(formBody)
-                .build();
+            .url(NetUtils.SERVER_URL)
+            .post(formBody)
+            .build();
         NetUtils.sOkHttpClient.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
@@ -277,7 +308,7 @@ public class Mob {
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                final String string = response.body().string();
+                response.body().close();
             }
         });
     }
@@ -301,37 +332,24 @@ public class Mob {
 
                 @Override
                 public void onResponse(Call call, Response response) throws IOException {
-                    final String string = response.body().string();
+                    response.body().close();
                 }
             });
         }
     }
 
-    public static void uploadLog(CodeLocatorWindow codeLocatorWindow) {
-        if (FileUtils.logFile == null || !FileUtils.logFile.exists()) {
-            return;
-        }
+    public static void uploadUserLog(CodeLocatorWindow codeLocatorWindow) {
         if (NetUtils.FILE_SERVER_URL.isEmpty()) {
             return;
         }
+        if (FileUtils.sLogFilePath == null) {
+            return;
+        }
         ThreadUtils.submitLog(() -> {
-            try {
-                if (codeLocatorWindow != null && codeLocatorWindow.getScreenPanel() != null) {
-                    final ScreenPanel screenPanel = codeLocatorWindow.getScreenPanel();
-                    final Image screenCapImage = screenPanel.getScreenCapImage();
-                    final WApplication application = screenPanel.getApplication();
-                    if (screenCapImage != null && application != null) {
-                        final CodeLocatorInfo codeLocatorInfo = new CodeLocatorInfo(application, screenCapImage);
-                        FileUtils.saveContentToFile(new File(FileUtils.codelocatorMainDir, FileUtils.UPLOAD_LOG_FILE_NAME), codeLocatorInfo.toBytes());
-                    }
-                }
-            } catch (Throwable t) {
-                Log.e("保存抓取信息失败", t);
-            }
-
+            FileUtils.saveGrabInfo(codeLocatorWindow);
             File zipFile = null;
             try {
-                String zipFilePath = ZipUtils.compress(FileUtils.codelocatorMainDir);
+                String zipFilePath = ZipUtils.compress(new File(FileUtils.sCodeLocatorMainDirPath));
                 zipFile = new File(zipFilePath);
             } catch (Exception e) {
                 Log.e("压缩Zip失败", e);
@@ -342,21 +360,21 @@ public class Mob {
             }
 
             RequestBody requestBody = new MultipartBody.Builder()
-                    .setType(MultipartBody.FORM)
-                    .addFormDataPart("file", zipFile.getName(), RequestBody.create(MediaType.parse("multipart/form-data"), zipFile))
-                    .addFormDataPart("user", NetUtils.getUserName())
-                    .addFormDataPart("version", UpdateUtils.getCurrentVersion())
-                    .addFormDataPart("project", FileUtils.sProjectName)
-                    .addFormDataPart("time", String.valueOf(System.currentTimeMillis() / 1000))
-                    .addFormDataPart("pkgName", FileUtils.sPkgName)
-                    .addFormDataPart("ideVersion", IdeaUtils.getVersionStr())
-                    .addFormDataPart("sdkVersion", NetUtils.sSdkVersion == null ? "unKnow" : NetUtils.sSdkVersion)
-                    .build();
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("file", zipFile.getName(), RequestBody.create(MediaType.parse("multipart/form-data"), zipFile))
+                .addFormDataPart("user", DataUtils.getUserName())
+                .addFormDataPart("version", AutoUpdateUtils.getCurrentPluginVersion())
+                .addFormDataPart("project", DataUtils.getCurrentProjectName())
+                .addFormDataPart("time", String.valueOf(System.currentTimeMillis() / 1000))
+                .addFormDataPart("pkgName", DataUtils.getCurrentApkName())
+                .addFormDataPart("ideVersion", IdeaUtils.getVersionStr())
+                .addFormDataPart("sdkVersion", DataUtils.getCurrentSDKVersion())
+                .build();
 
             Request request = new Request.Builder()
-                    .url(NetUtils.FILE_SERVER_URL)
-                    .post(requestBody)
-                    .build();
+                .url(NetUtils.FILE_SERVER_URL)
+                .post(requestBody)
+                .build();
 
             File finalZipFile = zipFile;
             NetUtils.sOkHttpClient.newCall(request).enqueue(new Callback() {
@@ -368,7 +386,7 @@ public class Mob {
 
                 @Override
                 public void onResponse(Call call, Response response) throws IOException {
-                    Log.d("Upload Log Success response: " + response.body().string());
+                    response.body().close();
                 }
             });
         });
@@ -378,8 +396,6 @@ public class Mob {
         if (tr == null) {
             return "";
         }
-        // This is to reduce the amount of log spew that apps do in the non-error
-        // condition of the network being unavailable.
         Throwable t = tr;
         while (t != null) {
             if (t instanceof UnknownHostException) {

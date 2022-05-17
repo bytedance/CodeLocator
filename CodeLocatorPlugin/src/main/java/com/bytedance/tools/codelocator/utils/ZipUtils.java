@@ -1,18 +1,10 @@
 package com.bytedance.tools.codelocator.utils;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.zip.CRC32;
-import java.util.zip.CheckedOutputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
+import java.util.List;
+import java.util.zip.*;
 
 import static com.bytedance.tools.codelocator.utils.FileUtils.UPDATE_FILE_NAME;
 import static com.bytedance.tools.codelocator.utils.FileUtils.UPDATE_TMP_FILE_NAME;
@@ -25,9 +17,19 @@ public class ZipUtils {
 
     private static final String BASE_DIR = "";
 
+    public static List<String> DONT_COMPRESS_NAME_LIST = new ArrayList<String>() {
+        {
+            add(UPDATE_FILE_NAME);
+            add(UPDATE_TMP_FILE_NAME);
+            add("tempFile");
+            add("image");
+            add("historyFile");
+        }
+    };
+
     public static void unZip(File srcFile, String destDirPath) throws Exception {
         if (!srcFile.exists()) {
-            throw new FileNotFoundException(srcFile.getPath() + "所指文件不存在");
+            throw new FileNotFoundException(ResUtils.getString("file_not_exist_format", srcFile.getAbsolutePath()));
         }
         ZipFile zipFile = null;
         try {
@@ -87,17 +89,18 @@ public class ZipUtils {
     }
 
     public static void compress(String srcPath, String destPath)
-            throws Exception {
+        throws Exception {
         File srcFile = new File(srcPath);
         compress(srcFile, destPath);
     }
 
     public static void compress(File srcFile, File destFile) throws Exception {
+        // 对输出文件做CRC32校验
         if (!destFile.exists()) {
             destFile.createNewFile();
         }
         CheckedOutputStream cos = new CheckedOutputStream(new FileOutputStream(
-                destFile), new CRC32());
+            destFile), new CRC32());
         ZipOutputStream zos = new ZipOutputStream(cos);
         compress(srcFile, zos, BASE_DIR);
         zos.flush();
@@ -107,12 +110,11 @@ public class ZipUtils {
     private static void compress(File srcFile, ZipOutputStream zos,
                                  String basePath) throws Exception {
         if (srcFile.isDirectory()) {
-            if (!"tempFile".equals(srcFile.getName()) && !"historyFile".equals(srcFile.getName())) {
+            if (!DONT_COMPRESS_NAME_LIST.contains(srcFile.getName())) {
                 compressDir(srcFile, zos, basePath);
             }
         } else {
-            if (!UPDATE_TMP_FILE_NAME.equals(srcFile.getName())
-                    && !UPDATE_FILE_NAME.equals(srcFile.getName())) {
+            if (!DONT_COMPRESS_NAME_LIST.contains(srcFile.getName())) {
                 compressFile(srcFile, zos, basePath);
             }
         }

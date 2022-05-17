@@ -10,16 +10,16 @@ public class MethodInfo implements Serializable {
 
     private transient Method mMethod;
 
-    @SerializedName("mName")
+    @SerializedName("c6")
     private String mName;
 
-    @SerializedName("mReturnType")
+    @SerializedName("ct")
     private String mReturnType;
 
-    @SerializedName("mArgType")
+    @SerializedName("cu")
     private String mArgType;
 
-    @SerializedName("mArgValue")
+    @SerializedName("cv")
     private String mArgValue;
 
     public Method getMethod() {

@@ -1,25 +1,31 @@
 package com.bytedance.tools.codelocator.utils;
 
+import com.bytedance.tools.codelocator.model.WActivity;
 import com.bytedance.tools.codelocator.model.WView;
 import com.bytedance.tools.codelocator.panels.ScreenPanel;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Stack;
-
 import javax.annotation.Nullable;
+import java.util.*;
 
 public class ViewUtils {
 
-    public static @Nullable
-    WView findClickedView(WView rootView, int clickX, int clickY, boolean justFindClickableView) {
+    @Nullable
+    public static WView findClickedView(WActivity activity, int clickX, int clickY, boolean orderByArea, List<WView> forbidViews) {
+        if (activity == null) {
+            return null;
+        }
+        final List<WView> decorViews = activity.getDecorViews();
+        final ArrayList<WView> clickViews = new ArrayList<>();
+        for (int i = 0; i < decorViews.size(); i++) {
+            findClickedView(decorViews.get(i), clickX, clickY, clickViews, orderByArea, forbidViews);
+        }
+        return findClickViewInList(orderByArea, clickViews);
+    }
+
+    private static WView findClickViewInList(boolean orderByArea, ArrayList<WView> clickViews) {
         WView clickedView = null;
-        ArrayList<WView> clickViews = new ArrayList<>();
-        findClickedView(rootView, clickX, clickY, clickViews, false);
         clickViews.sort((o1, o2) -> {
-            if (justFindClickableView) {
+            if (!orderByArea) {
                 if (o2.getZIndex().equals(o1.getZIndex())) {
                     return o2.getArea() - o1.getArea();
                 }
@@ -28,7 +34,7 @@ public class ViewUtils {
                 return o1.getArea() - o2.getArea();
             }
         });
-        if (justFindClickableView) {
+        if (!orderByArea) {
             for (int i = 0; i < clickViews.size(); i++) {
                 if (clickViews.get(i).isClickable()) {
                     if (clickedView != null) {
@@ -42,70 +48,44 @@ public class ViewUtils {
                     clickedView = clickViews.get(i);
                 }
             }
-        } else {
-            if (clickViews.size() > 0) {
-                clickedView = clickViews.get(0);
-            }
+        } else if (clickViews.size() > 0) {
+            clickedView = clickViews.get(0);
         }
         tryFindViewClickInfo(clickedView);
         return clickedView;
     }
 
-    public static @Nullable
-    List<WView> findClickedViewList(WView rootView, int clickX, int clickY) {
+    @Nullable
+    public static List<WView> findClickedViewList(WActivity wActivity, int clickX, int clickY, List<WView> forbidViews) {
         ArrayList<WView> clickViews = new ArrayList<>();
-        findClickedView(rootView, clickX, clickY, clickViews, true);
+        final List<WView> decorViews = wActivity.getDecorViews();
+        for (WView decorView : decorViews) {
+            findClickedView(decorView, clickX, clickY, clickViews, true, forbidViews);
+        }
         clickViews.sort(Comparator.comparing(WView::getZIndex));
         return clickViews;
     }
 
-    public static WView findViewUniqueIdParent(WView parentView, WView view) {
-        if (view == null) {
+    @Nullable
+    public static List<WView> findViewList(@Nullable WActivity activity, @Nullable List<String> viewIdList) {
+        if (activity == null || viewIdList == null || viewIdList.isEmpty()) {
             return null;
         }
-        if (parentView == null) {
-            parentView = view.getActivity().getDecorView();
+        final List<WView> decorViews = activity.getDecorViews();
+        if (decorViews == null) {
+            return null;
         }
-        while (view != null) {
-            if (viewIdIsUnique(parentView, view.getIdStr())) {
-                return view;
+        for (WView decor : decorViews) {
+            final List<WView> viewList = findViewList(decor, viewIdList);
+            if (viewList != null) {
+                return viewList;
             }
-            if (view == parentView) {
-                return null;
-            }
-            view = view.getParentView();
         }
-        return view;
+        return null;
     }
 
-    public static boolean viewIdIsUnique(WView rootView, String viewIdStr) {
-        if (rootView == null || viewIdStr == null || viewIdStr.isEmpty()) {
-            return false;
-        }
-        int findCount = 0;
-        LinkedList<WView> views = new LinkedList<>();
-        views.add(rootView);
-        while (!views.isEmpty()) {
-            int levelCount = views.size();
-            for (int i = 0; i < levelCount; i++) {
-                final WView view = views.getFirst();
-                views.remove(view);
-                if (viewIdStr.equals(view.getIdStr())) {
-                    findCount++;
-                }
-                for (int index = 0; index < view.getChildCount(); index++) {
-                    views.add(view.getChildAt(index));
-                }
-            }
-            if (findCount > 1) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public static @Nullable
-    List<WView> findViewList(@Nullable WView rootView, @Nullable List<String> viewIdList) {
+    @Nullable
+    public static List<WView> findViewList(@Nullable WView rootView, @Nullable List<String> viewIdList) {
         if (rootView == null || viewIdList == null || viewIdList.isEmpty()) {
             return null;
         }
@@ -142,7 +122,9 @@ public class ViewUtils {
         int count = 0;
         WView parent = clickedView;
         String clickTag = clickedView.getClickTag();
-        while (clickTag == null && count < 10) {
+        while (clickTag == null
+            && parent != null
+            && count < 10) {
             parent = parent.getParentView();
             if (parent == null) {
                 break;
@@ -165,7 +147,9 @@ public class ViewUtils {
         int count = 0;
         WView parent = touchView;
         String touchTag = touchView.getTouchTag();
-        while (touchTag == null && count < 10) {
+        while (touchTag == null
+            && parent != null
+            && count < 10) {
             parent = parent.getParentView();
             if (parent == null) {
                 break;
@@ -180,14 +164,14 @@ public class ViewUtils {
         }
     }
 
-    private static boolean findClickedView(WView view, int clickX, int clickY, ArrayList<WView> clickViews, boolean findJustClickView) {
-        if (view == null) {
+    private static boolean findClickedView(WView view, int clickX, int clickY, ArrayList<WView> clickViews, boolean findJustClickView, List<WView> forbidViews) {
+        if (view == null || (forbidViews != null && forbidViews.contains(view))) {
             return false;
         }
         if ('V' == view.getVisibility() && view.contains(clickX, clickY)) {
             boolean hasClickChild = false;
             for (int i = view.getChildCount() - 1; i > -1; i--) {
-                hasClickChild = findClickedView(view.getChildAt(i), clickX, clickY, clickViews, findJustClickView) || hasClickChild;
+                hasClickChild = findClickedView(view.getChildAt(i), clickX, clickY, clickViews, findJustClickView, forbidViews) || hasClickChild;
             }
             if (!hasClickChild) {
                 if (view.isClickable()) {
@@ -268,4 +252,5 @@ public class ViewUtils {
         }
         return count;
     }
+
 }

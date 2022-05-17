@@ -4,7 +4,9 @@ import com.bytedance.tools.codelocator.listener.OnActionListener
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.model.JumpInfo
 import com.bytedance.tools.codelocator.utils.IdeaUtils
+import com.bytedance.tools.codelocator.utils.ImageUtils
 import com.bytedance.tools.codelocator.utils.Mob
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.Project
@@ -12,15 +14,15 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.awt.RelativePoint
 import java.awt.Component
 import java.awt.Point
-import javax.swing.Icon
 
 class FindClickListenerAction(
-    project: Project,
-    codeLocatorWindow: CodeLocatorWindow,
-    text: String?,
-    icon: Icon?
-) : BaseAction(project, codeLocatorWindow, text, text, icon) {
-
+    val project: Project,
+    val codeLocatorWindow: CodeLocatorWindow
+) : BaseAction(
+    ResUtils.getString("jump_clickListener"),
+    ResUtils.getString("jump_clickListener"),
+    ImageUtils.loadIcon("click")
+) {
 
     var mShowPopX = -1
 
@@ -29,8 +31,6 @@ class FindClickListenerAction(
     var mShowComponet: Component? = null
 
     override fun actionPerformed(e: AnActionEvent) {
-        if (!enable) return
-
         Mob.mob(Mob.Action.CLICK, Mob.Button.CLICK)
 
         if (codeLocatorWindow.currentSelectView!!.clickJumpInfo.size > 1) {
@@ -40,16 +40,12 @@ class FindClickListenerAction(
         }
     }
 
-    override fun update(e: AnActionEvent) {
-        super.update(e)
-        enable = !codeLocatorWindow.currentSelectView?.clickJumpInfo.isNullOrEmpty()
-        updateView(e, "click_disable", "click_enable")
+    override fun isEnable(e: AnActionEvent): Boolean {
+        return !codeLocatorWindow.currentSelectView?.clickJumpInfo.isNullOrEmpty()
     }
 
-
     private fun showChooseList(e: AnActionEvent) {
-        val actionGroup: DefaultActionGroup =
-                DefaultActionGroup("listGroup", true)
+        val actionGroup = DefaultActionGroup("listGroup", true)
         for (info in codeLocatorWindow.currentSelectView!!.clickJumpInfo) {
             val text = if (info.needJumpById()) {
                 info.simpleFileName
@@ -65,11 +61,11 @@ class FindClickListenerAction(
 
         val factory = JBPopupFactory.getInstance()
         val pop = factory.createActionGroupPopup(
-                "",
-                actionGroup,
-                e.dataContext,
-                JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
-                false
+            "",
+            actionGroup,
+            e.dataContext,
+            JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
+            false
         )
         if (e.inputEvent == null) {
             val point = Point(mShowPopX, mShowPopY)
@@ -84,11 +80,12 @@ class FindClickListenerAction(
         }
     }
 
+
     private fun jumpSingleInfo(jumpInfo: JumpInfo) {
         if (jumpInfo.needJumpById()) {
             IdeaUtils.navigateByJumpInfo(
-                    codeLocatorWindow, project, jumpInfo,
-                    true, "@OnClick(", jumpInfo.id, true
+                codeLocatorWindow, project, jumpInfo,
+                true, "@OnClick(", jumpInfo.id, true
             )
         } else {
             IdeaUtils.navigateByJumpInfo(codeLocatorWindow, project, jumpInfo, false, "", "", true)

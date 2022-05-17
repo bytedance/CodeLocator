@@ -107,7 +107,7 @@ class FileInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
     fun showPop(container: JComponent, copyInfo: String, x: Int, y: Int) {
         val actionGroup: DefaultActionGroup =
             DefaultActionGroup("listGroup", true)
-        actionGroup.add(CopyInfoAction(codeLocatorWindow.project, "复制", copyInfo))
+        actionGroup.add(CopyInfoAction(codeLocatorWindow.project, copyInfo))
         val factory = JBPopupFactory.getInstance()
         val pop = factory.createActionGroupPopup(
             "CodeLocator",

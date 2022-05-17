@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="CompilerConfiguration">
-    <bytecodeTargetLevel target="1.7">
+    <bytecodeTargetLevel target="1.8">
       <module name="CodeLocatorApp.app" target="11" />
       <module name="CodeLocatorApp.CodeLocatorCore" target="11" />
       <module name="CodeLocatorApp.CodeLocatorLancetActivity" target="11" />
+      <module name="CodeLocatorApp.CodeLocatorLancetAll" target="11" />
       <module name="CodeLocatorApp.CodeLocatorLancetDialog" target="11" />
       <module name="CodeLocatorApp.CodeLocatorLancetPopup" target="11" />
       <module name="CodeLocatorApp.CodeLocatorLancetToast" target="11" />

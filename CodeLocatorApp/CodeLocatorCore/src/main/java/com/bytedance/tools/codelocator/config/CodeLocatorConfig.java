@@ -1,12 +1,11 @@
 package com.bytedance.tools.codelocator.config;
 
+import com.google.gson.annotations.SerializedName;
 import com.bytedance.tools.codelocator.processer.ICodeLocatorProcessor;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
 
 public class CodeLocatorConfig {
@@ -21,65 +20,98 @@ public class CodeLocatorConfig {
 
     private static final int DEFAULT_MAX_BROADCAST_TRANSFER_LENGTH = 240000;
 
-    private boolean mDebug;
+    @SerializedName("debug")
+    private boolean mDebug = true;
 
+    @SerializedName("fetchConfig")
+    private boolean mFetchConfig = true;
+
+    @SerializedName("lazyInit")
+    private boolean mLazyInit;
+
+    @SerializedName("enableHookInflater")
     private boolean mEnableHookInflater;
 
+    @SerializedName("skipSystemTraceCount")
     private int mSkipSystemTraceCount;
 
+    @SerializedName("viewMaxLoopCount")
     private int mViewMaxLoopCount;
 
+    @SerializedName("activityMaxLoopCount")
     private int mActivityMaxLoopCount;
 
+    @SerializedName("maxShowInfoLogCount")
     private int mMaxShowInfoLogCount;
 
+    @SerializedName("maxBroadcastTransferLength")
     private int mMaxBroadcastTransferLength;
 
-    private AppInfoProvider mAppInfoProvider;
+    private transient AppInfoProvider mAppInfoProvider;
 
-    private Set<String> mViewIgnoreByClazzs;
+    @SerializedName("viewIgnoreByClazzs")
+    private Set<String> mViewIgnoreByClazzs = new HashSet<>();
 
+    @SerializedName("dialogIgnoreByClazzs")
     private Set<String> mDialogIgnoreByClazzs = new HashSet<String>() {
         {
             add("android.support.v4.app.DialogFragment");
-            add("androidx.fragment.app.DialogFragment");
+            add("androidx.appcompat.app.AlertDialog$Builder");
         }
     };
 
+    @SerializedName("dialogReturnByClazzs")
     private Set<String> mDialogReturnByClazzs = new HashSet<String>() {
         {
             add("android.support.v4.app.Fragment");
-            add("androidx.fragment.app.Fragment");
         }
     };
 
-    private Set<String> mToastIgnoreByClazzs;
+    @SerializedName("toastIgnoreByClazzs")
+    private Set<String> mToastIgnoreByClazzs = new HashSet<>();
 
-    private Set<String> mPopupIgnoreByClazzs;
+    @SerializedName("popupIgnoreByClazzs")
+    private Set<String> mPopupIgnoreByClazzs = new HashSet<>();
 
-    private Set<String> mViewReturnByClazzs;
+    @SerializedName("viewReturnByClazzs")
+    private Set<String> mViewReturnByClazzs = new HashSet<String>() {
+        {
+            add("androidx.constraintlayout.widget.ConstraintLayout");
+        }
+    };
 
-    private Set<String> mViewReturnByKeyWords;
+    @SerializedName("viewReturnByKeyWords")
+    private Set<String> mViewReturnByKeyWords = new HashSet<>();
 
-    private Set<ICodeLocatorProcessor> mCodeLocatorProcessors;
+    private transient Set<ICodeLocatorProcessor> mCodeLocatorProcessors;
 
+    @SerializedName("viewIgnoreByKeyWords")
     private Set<String> mViewIgnoreByKeyWords = new HashSet<String>() {
         {
             add("butterknife");
+            add("_$_findCachedViewById");
+            add("Lancet_");
+            add("_lancet");
         }
     };
 
+    @SerializedName("activityIgnoreByClazzs")
     private Set<String> mActivityIgnoreByClazzs = new HashSet<String>() {
         {
-            add("androidx.fragment.app.FragmentActivity");
             add("androidx.fragment.app.FragmentActivity$HostCallbacks");
+            add("androidx.fragment.app.FragmentActivity");
             add("android.app.Activity");
+            add("com.bytedance.router.route.ActivityRoute");
+            add("com.bytedance.router.RouteManager");
+            add("com.bytedance.router.route.SysComponentRoute");
+            add("com.bytedance.router.SmartRoute");
             add("android.support.v4.app.BaseFragmentActivityApi16");
             add("android.support.v4.app.FragmentActivity");
             add("androidx.core.content.ContextCompat");
         }
     };
 
+    @SerializedName("activityIgnoreByKeyWords")
     private Set<String> mActivityIgnoreByKeyWords = new HashSet<String>() {
         {
             add("_lancet");
@@ -87,21 +119,27 @@ public class CodeLocatorConfig {
         }
     };
 
+    @SerializedName("dialogIgnoreByKeyWords")
     private Set<String> mDialogIgnoreByKeyWords = new HashSet<String>() {
         {
             add("_lancet");
+            add("Lancet_");
         }
     };
 
+    @SerializedName("popupIgnoreByKeyWords")
     private Set<String> mPopupIgnoreByKeyWords = new HashSet<String>() {
         {
             add("_lancet");
+            add("Lancet_");
         }
     };
 
+    @SerializedName("toastIgnoreByKeyWords")
     private Set<String> mToastIgnoreByKeyWords = new HashSet<String>() {
         {
             add("_lancet");
+            add("Lancet_");
         }
     };
 
@@ -117,22 +155,41 @@ public class CodeLocatorConfig {
         return mMaxBroadcastTransferLength;
     }
 
+    private CodeLocatorConfig() {
+    }
+
     private CodeLocatorConfig(Builder builder) {
         mAppInfoProvider = new AppInfoProviderWrapper(builder.mAppInfoProvider);
         mViewMaxLoopCount = builder.mViewMaxLoopCount <= 0 ? DEFAULT_VIEW_MAX_LOOP_TIMES : builder.mViewMaxLoopCount;
         mActivityMaxLoopCount = builder.mActivityMaxLoopCount <= 0 ? DEFAULT_ACTIVITY_MAX_LOOP_TIMES : builder.mActivityMaxLoopCount;
         mSkipSystemTraceCount = builder.mSkipSystemTraceCount <= 0 ? DEFAULT_SKIP_SYSTEM_TRACE_COUNT : builder.mSkipSystemTraceCount;
         mMaxShowInfoLogCount = builder.mMaxShowInfoLogCount <= 0 ? DEFAULT_MAX_SHOWINFO_LOG_COUNT : builder.mMaxShowInfoLogCount;
-        mViewIgnoreByClazzs = builder.mViewIgnoreByClazzs == null ? new HashSet<String>() : builder.mViewIgnoreByClazzs;
-        mViewReturnByClazzs = builder.mViewReturnByClazzs == null ? Collections.EMPTY_SET : builder.mViewReturnByClazzs;
-        mViewReturnByKeyWords = builder.mViewReturnByKeyWords == null ? Collections.EMPTY_SET : builder.mViewReturnByKeyWords;
-        mToastIgnoreByClazzs = builder.mToastIgnoreByClazzs == null ? new HashSet<String>() : builder.mToastIgnoreByClazzs;
-        mPopupIgnoreByClazzs = builder.mPopupIgnoreByClazzs == null ? new HashSet<String>() : builder.mPopupIgnoreByClazzs;
         mCodeLocatorProcessors = builder.mCodeLocatorProcessors == null ? Collections.EMPTY_SET : builder.mCodeLocatorProcessors;
         mMaxBroadcastTransferLength = builder.mMaxBroadcastTransferLength <= 0 ? DEFAULT_MAX_BROADCAST_TRANSFER_LENGTH : builder.mMaxBroadcastTransferLength;
 
         mDebug = builder.mDebug;
+        mLazyInit = builder.mLazyInit;
         mEnableHookInflater = builder.mEnableHookInflater;
+        mFetchConfig = builder.mFetchConfig;
+
+        if (builder.mViewIgnoreByClazzs != null) {
+            mViewIgnoreByClazzs.addAll(builder.mViewIgnoreByClazzs);
+        }
+
+        if (builder.mViewReturnByKeyWords != null) {
+            mViewReturnByKeyWords.addAll(builder.mViewReturnByKeyWords);
+        }
+        if (builder.mToastIgnoreByClazzs != null) {
+            mToastIgnoreByClazzs.addAll(builder.mToastIgnoreByClazzs);
+        }
+
+        if (builder.mPopupIgnoreByClazzs != null) {
+            mPopupIgnoreByClazzs.addAll(builder.mPopupIgnoreByClazzs);
+        }
+
+        if (builder.mViewReturnByClazzs != null) {
+            mViewReturnByClazzs.addAll(builder.mViewReturnByClazzs);
+        }
 
         if (builder.mDialogIgnoreByClazzs != null) {
             mDialogIgnoreByClazzs.addAll(builder.mDialogIgnoreByClazzs);
@@ -167,8 +224,88 @@ public class CodeLocatorConfig {
         }
     }
 
+    public void updateConfig(CodeLocatorConfig config) {
+        if (config == null) {
+            return;
+        }
+        if (config.mViewMaxLoopCount > 0) {
+            mViewMaxLoopCount = config.mViewMaxLoopCount;
+        }
+        if (config.mActivityMaxLoopCount > 0) {
+            mActivityMaxLoopCount = config.mActivityMaxLoopCount;
+        }
+        if (config.mSkipSystemTraceCount > 0) {
+            mSkipSystemTraceCount = config.mSkipSystemTraceCount;
+        }
+        if (config.mMaxShowInfoLogCount > 0) {
+            mMaxShowInfoLogCount = config.mMaxShowInfoLogCount;
+        }
+        if (config.mMaxBroadcastTransferLength > 0) {
+            mMaxBroadcastTransferLength = config.mMaxBroadcastTransferLength;
+        }
+        mDebug = config.mDebug;
+        mLazyInit = config.mLazyInit;
+        mEnableHookInflater = config.mEnableHookInflater;
+        mFetchConfig = config.mFetchConfig;
+
+        if (config.mViewIgnoreByClazzs != null) {
+            mViewIgnoreByClazzs.addAll(config.mViewIgnoreByClazzs);
+        }
+
+        if (config.mViewReturnByKeyWords != null) {
+            mViewReturnByKeyWords.addAll(config.mViewReturnByKeyWords);
+        }
+        if (config.mToastIgnoreByClazzs != null) {
+            mToastIgnoreByClazzs.addAll(config.mToastIgnoreByClazzs);
+        }
+
+        if (config.mPopupIgnoreByClazzs != null) {
+            mPopupIgnoreByClazzs.addAll(config.mPopupIgnoreByClazzs);
+        }
+
+        if (config.mViewReturnByClazzs != null) {
+            mViewReturnByClazzs.addAll(config.mViewReturnByClazzs);
+        }
+
+        if (config.mDialogIgnoreByClazzs != null) {
+            mDialogIgnoreByClazzs.addAll(config.mDialogIgnoreByClazzs);
+        }
+
+        if (config.mDialogReturnByClazzs != null) {
+            mDialogReturnByClazzs.addAll(config.mDialogReturnByClazzs);
+        }
+
+        if (config.mViewIgnoreByKeyWords != null) {
+            mViewIgnoreByKeyWords.addAll(config.mViewIgnoreByKeyWords);
+        }
+
+        if (config.mActivityIgnoreByKeyWords != null) {
+            mActivityIgnoreByKeyWords.addAll(config.mActivityIgnoreByKeyWords);
+        }
+
+        if (config.mDialogIgnoreByKeyWords != null) {
+            mDialogIgnoreByKeyWords.addAll(config.mDialogIgnoreByKeyWords);
+        }
+
+        if (config.mToastIgnoreByKeyWords != null) {
+            mToastIgnoreByKeyWords.addAll(config.mToastIgnoreByKeyWords);
+        }
+
+        if (config.mActivityIgnoreByClazzs != null) {
+            mActivityIgnoreByClazzs.addAll(config.mActivityIgnoreByClazzs);
+        }
+
+        if (config.mPopupIgnoreByKeyWords != null) {
+            mPopupIgnoreByKeyWords.addAll(config.mPopupIgnoreByKeyWords);
+        }
+    }
+
     public Set<ICodeLocatorProcessor> getCodeLocatorProcessors() {
         return mCodeLocatorProcessors;
+    }
+
+    public boolean isLazyInit() {
+        return mLazyInit;
     }
 
     public Set<String> getPopupIgnoreByKeyWords() {
@@ -185,6 +322,10 @@ public class CodeLocatorConfig {
 
     public int getSkipSystemTraceCount() {
         return mSkipSystemTraceCount;
+    }
+
+    public boolean canFetchConfig() {
+        return mFetchConfig;
     }
 
     public int getViewMaxLoopCount() {
@@ -287,11 +428,13 @@ public class CodeLocatorConfig {
 
         private AppInfoProvider mAppInfoProvider;
 
-        private boolean mDebug;
+        private boolean mDebug = true;
+
+        private boolean mFetchConfig = true;
 
         private boolean mLazyInit;
 
-        private boolean mEnableHookInflater = true;
+        private boolean mEnableHookInflater;
 
         private int mViewMaxLoopCount;
 
@@ -302,8 +445,6 @@ public class CodeLocatorConfig {
         private int mMaxShowInfoLogCount;
 
         private int mMaxBroadcastTransferLength;
-
-        private List<List<String>> mAliasActivityGroup;
 
         private Set<String> mViewIgnoreByClazzs;
 
@@ -333,24 +474,6 @@ public class CodeLocatorConfig {
 
         private Set<String> mPopupIgnoreByKeyWords;
 
-        public Builder aliasActivityGroup(List<List<String>> aliasActivityGroup) {
-            if (aliasActivityGroup == null) {
-                mAliasActivityGroup = null;
-                return this;
-            }
-            mAliasActivityGroup = new LinkedList<>();
-            for (int i = 0; i < aliasActivityGroup.size(); i++) {
-                final List<String> group = aliasActivityGroup.get(i);
-                if (group == null || group.isEmpty()) {
-                    continue;
-                }
-                final LinkedList<String> tmpGroup = new LinkedList();
-                tmpGroup.addAll(group);
-                mAliasActivityGroup.add(tmpGroup);
-            }
-            return this;
-        }
-
         public Builder appInfoProvider(AppInfoProvider appInfoProvider) {
             mAppInfoProvider = appInfoProvider;
             return this;
@@ -363,6 +486,11 @@ public class CodeLocatorConfig {
 
         public Builder debug(boolean debug) {
             mDebug = debug;
+            return this;
+        }
+
+        public Builder enableFetchConfig(boolean mFetchConfig) {
+            this.mFetchConfig = mFetchConfig;
             return this;
         }
 
@@ -397,9 +525,9 @@ public class CodeLocatorConfig {
             return this;
         }
 
-        public Builder codeLocatorProcessors(Collection<ICodeLocatorProcessor> codelocatorProcessors) {
+        public Builder codeLocatorProcessors(Collection<ICodeLocatorProcessor> codeLocatorProcessors) {
             mCodeLocatorProcessors = new HashSet<>();
-            mCodeLocatorProcessors.addAll(codelocatorProcessors);
+            mCodeLocatorProcessors.addAll(codeLocatorProcessors);
             return this;
         }
 

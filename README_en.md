@@ -7,7 +7,7 @@ English | **[简体中文](README.md)**
 A picture takes you through CodeLocator  
 <img src="misc/CodeLocator.gif" alt="CodeLocator"/>
 
-CodeLocator is a toolset that includes Android SDK and Android Studio plugins. It has the following functions(Support Mac Only):
+CodeLocator is a toolset that includes Android SDK and Android Studio plugins. It has the following functions(Support Mac, Windows Only):
 
 1. Display the current View information
 2. Display current Activity information
@@ -58,18 +58,22 @@ allprojects {
 
 // To integrate the basic capabilities, just add one dependency
 dependencies {
-    implementation "com.bytedance.tools.codelocator:codelocator-core:1.0.0"
+    implementation "com.bytedance.tools.codelocator:codelocator-core:2.0.0"
 }
 ```
 If you need to integrate code jump capability, you need to integrate [Lancet](https://github.com/eleme/lancet) first and add the following dependencies
 ```gradle
 dependencies {
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-activity:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-view:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-toast:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-popup:1.0.0"
+    // If it depends on lancet all, it includes all lancet capabilities
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-all:2.0.0"
+    
+    // Rely on the corresponding lancet module respectively, including the corresponding jump ability
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-activity:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-view:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-toast:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-popup:2.0.0"
 }
 ```
 

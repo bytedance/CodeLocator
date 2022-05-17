@@ -1,21 +1,51 @@
 package com.bytedance.tools.codelocator.action
 
+import com.bytedance.tools.codelocator.device.DeviceManager
+import com.bytedance.tools.codelocator.model.ScanInfo
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
-import com.bytedance.tools.codelocator.utils.Mob
+import com.bytedance.tools.codelocator.utils.*
+import com.bytedance.tools.codelocator.utils.GsonUtils
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
-import javax.swing.Icon
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Response
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.TimeUnit
 
 class GrabViewWithStopAnimAction(
-    project: Project,
-    codeLocatorWindow: CodeLocatorWindow,
-    text: String?,
-    icon: Icon?
-) : BaseAction(project, codeLocatorWindow, text, text, icon) {
+    val project: Project,
+    val codeLocatorWindow: CodeLocatorWindow
+) : BaseAction(
+    ResUtils.getString("stop_anim_and_grab_action_text"),
+    ResUtils.getString("stop_anim_and_grab_action_text"),
+    ImageUtils.loadIcon("grab_stop_anim")
+) {
+
+    override fun isEnable(e: AnActionEvent): Boolean {
+        return DeviceManager.hasAndroidDevice()
+    }
 
     override fun actionPerformed(e: AnActionEvent) {
         codeLocatorWindow.rootPanel.startGrab(null, true)
-        Mob.mob(Mob.Action.CLICK, Mob.Button.GRAB)
+
+        Mob.mob(Mob.Action.CLICK, "grab_stop_anim")
+
+        if (System.currentTimeMillis() - GrabViewAction.sLastShowToastTime > TimeUnit.HOURS.toMillis(8)) {
+            val timeFormat = SimpleDateFormat("HH")
+            try {
+                val format = timeFormat.format(Date())
+                val useTime = format.toInt()
+                if (useTime >= 23 || useTime <= 6) {
+                    NotificationUtils.showNotifyInfoShort(project, ResUtils.getString("late_tip"), 15000L)
+                    GrabViewAction.sLastShowToastTime = System.currentTimeMillis()
+                }
+            } catch (t: Throwable) {
+                // ignore
+            }
+        }
     }
 
 }

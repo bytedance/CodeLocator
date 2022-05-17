@@ -28,10 +28,11 @@ public class ToastLancet {
             }
             CodeLocator.notifyShowToast(Thread.currentThread().getStackTrace(), keyword);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "getToast info Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "getToast info Error " + Log.getStackTraceString(t));
         }
         Origin.callVoid();
     }
+
 
     @Proxy("show")
     @TargetClass(value = "android.widget.Toast", scope = Scope.ALL)
@@ -46,9 +47,8 @@ public class ToastLancet {
             }
             CodeLocator.notifyShowToast(Thread.currentThread().getStackTrace(), keyword);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "getToast info Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "getToast info Error " + Log.getStackTraceString(t));
         }
         Origin.callVoid();
     }
-
 }

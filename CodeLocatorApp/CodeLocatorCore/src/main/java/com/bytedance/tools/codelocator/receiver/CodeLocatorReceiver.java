@@ -1,102 +1,163 @@
 package com.bytedance.tools.codelocator.receiver;
 
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_CHANGE_VIEW_INFO;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_CONFIG_SDK;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_DEBUG_FILE_INFO;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_DEBUG_FILE_OPERATE;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_DEBUG_LAYOUT_INFO;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_GET_TOUCH_VIEW;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_MOCK_TOUCH_VIEW;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_PROCESS_CONFIG_LIST;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_PROCESS_SCHEMA;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_USE_TOOLS_INFO;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error.ARGS_EMPTY;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error.DELETE_FILE_FAILED;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error.ERROR_WITH_STACK_TRACE;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error.FILE_NOT_EXIST;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error.NOT_UI_THREAD;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error.NO_CURRENT_ACTIVITY;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_ACTION_ADD;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_ACTION_CLEAR;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_ACTION_DELETE;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_ACTION_MOVE;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_ACTION_PULL;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_ACTION_SET;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_ASYNC;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_CHANGE_VIEW;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_CODELOCATOR_ACTION;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_CONFIG_TYPE;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_DATA;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_MOCK_CLICK_X;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_MOCK_CLICK_Y;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_NEED_COLOR;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_PROCESS_FILE_OPERATE;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_PROCESS_SOURCE_FILE_PATH;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_PROCESS_TARGET_FILE_PATH;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_SAVE_TO_FILE;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_SCHEMA;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_STOP_ALL_ANIM;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_TOOLS_COMMAND;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.FILE_PATH;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.SPLIT;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.TMP_DATA_FILE_NAME;
+
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
-import android.util.Base64;
+import android.os.Looper;
 import android.util.Log;
 
 import com.bytedance.tools.codelocator.CodeLocator;
+import com.bytedance.tools.codelocator.async.AsyncBroadcastHelper;
+import com.bytedance.tools.codelocator.config.CodeLocatorConfigFetcher;
+import com.bytedance.tools.codelocator.model.OperateData;
+import com.bytedance.tools.codelocator.model.ResultData;
+import com.bytedance.tools.codelocator.model.SmartArgs;
 import com.bytedance.tools.codelocator.model.WApplication;
 import com.bytedance.tools.codelocator.model.WFile;
-import com.bytedance.tools.codelocator.operate.OperateUtils;
 import com.bytedance.tools.codelocator.processer.ICodeLocatorProcessor;
+import com.bytedance.tools.codelocator.response.ApplicationResponse;
+import com.bytedance.tools.codelocator.response.BaseResponse;
+import com.bytedance.tools.codelocator.response.ErrorResponse;
+import com.bytedance.tools.codelocator.response.FilePathResponse;
+import com.bytedance.tools.codelocator.response.FileResponse;
+import com.bytedance.tools.codelocator.response.OperateResponse;
+import com.bytedance.tools.codelocator.response.StatesResponse;
+import com.bytedance.tools.codelocator.response.TouchViewResponse;
 import com.bytedance.tools.codelocator.utils.ActivityUtils;
-import com.bytedance.tools.codelocator.utils.FileUtils;
-import com.bytedance.tools.codelocator.utils.Tools;
+import com.bytedance.tools.codelocator.utils.Base64;
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants;
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType;
 import com.bytedance.tools.codelocator.utils.CodeLocatorUtils;
+import com.bytedance.tools.codelocator.utils.FileUtils;
+import com.bytedance.tools.codelocator.utils.GsonUtils;
+import com.bytedance.tools.codelocator.utils.OperateUtils;
+import com.bytedance.tools.codelocator.utils.ReflectUtils;
+import com.bytedance.tools.codelocator.utils.Tools;
 
 import java.io.File;
-import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Set;
 
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.ACTION_CHANGE_VIEW_INFO;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.ACTION_DEBUG_FILE_INFO;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.ACTION_DEBUG_FILE_OPERATE;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.ACTION_DEBUG_LAYOUT_INFO;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.ACTION_GET_TOUCH_VIEW;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.ACTION_PROCESS_CONFIG_LIST;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.ACTION_PROCESS_SCHEMA;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.ACTION_USE_TOOLS_INFO;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_ACTION_ADD;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_ACTION_CLEAR;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_ACTION_DELETE;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_ACTION_MOVE;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_ACTION_PULL;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_CHANGE_VIEW;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_CODELOCATOR_ACTION;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_CONFIG_TYPE;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_DATA;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_PROCESS_FILE_OPERATE;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_PROCESS_SOURCE_FILE_PATH;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_PROCESS_TARGET_FILE_PATH;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_SAVE_TO_FILE;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_SCHEMA;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_STOP_ALL_ANIM;
-import static com.bytedance.tools.codelocator.constants.CodeLocatorConstants.KEY_TOOLS_COMMAND;
-
 public class CodeLocatorReceiver extends BroadcastReceiver {
+
+    private boolean isMainThread;
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (intent.getAction() == null) {
+        clearAsyncResult();
+        if (intent == null || intent.getAction() == null) {
             return;
         }
+        isMainThread = (Thread.currentThread() == Looper.getMainLooper().getThread());
+
+        final SmartArgs smartArgs = new SmartArgs(intent);
+        final boolean isAsync = smartArgs.getBoolean(KEY_ASYNC, false);
+        AsyncBroadcastHelper.setEnableAsyncBroadcast(context, isAsync);
+
         switch (intent.getAction()) {
             case ACTION_DEBUG_LAYOUT_INFO:
-                processGetLayoutAction(context, intent);
+                if (isMainThread) {
+                    processGetLayoutAction(context, smartArgs);
+                } else if (isAsync) {
+                    CodeLocator.sHandler.post(() -> processGetLayoutAction(context, smartArgs));
+                } else {
+                    sendResult(context, smartArgs, new ErrorResponse(NOT_UI_THREAD));
+                }
                 break;
             case ACTION_CHANGE_VIEW_INFO:
-                processChangeViewAction(context, intent);
+                if (isMainThread) {
+                    processChangeViewAction(context, smartArgs);
+                } else if (isAsync) {
+                    CodeLocator.sHandler.post(() -> processChangeViewAction(context, smartArgs));
+                } else {
+                    sendResult(context, smartArgs, new ErrorResponse(NOT_UI_THREAD));
+                }
                 break;
             case ACTION_USE_TOOLS_INFO:
-                processToolsAction(context, intent);
+                processToolsAction(context, smartArgs);
                 break;
             case ACTION_DEBUG_FILE_INFO:
-                processGetFileAction(context, intent);
+                processGetFileAction(context, smartArgs);
                 break;
             case ACTION_DEBUG_FILE_OPERATE:
-                processFileOperateAction(context, intent);
+                processFileOperateAction(context, smartArgs);
                 break;
             case ACTION_GET_TOUCH_VIEW:
-                processGetTouchViewAction(context, intent);
+                processGetTouchViewAction(context, smartArgs);
+                break;
+            case ACTION_MOCK_TOUCH_VIEW:
+                processMockTouchViewAction(context, smartArgs);
                 break;
             case ACTION_PROCESS_CONFIG_LIST:
-                processConfigListAction(context, intent);
+                processConfigListAction(context, smartArgs);
                 break;
             case ACTION_PROCESS_SCHEMA:
-                processSchemaAction(context, intent);
+                processSchemaAction(context, smartArgs);
+                break;
+            case ACTION_CONFIG_SDK:
+                processConfigSDk(context, smartArgs);
                 break;
             default:
-                final Set<ICodeLocatorProcessor> codelocatorProcessors = CodeLocator.sGlobalConfig.getCodeLocatorProcessors();
-                if (codelocatorProcessors != null && !codelocatorProcessors.isEmpty()) {
-                    boolean saveToFile = "true".equals(intent.getStringExtra(KEY_SAVE_TO_FILE));
-                    for (ICodeLocatorProcessor processor : codelocatorProcessors) {
+                final Set<ICodeLocatorProcessor> codeLocatorProcessors = CodeLocator.sGlobalConfig.getCodeLocatorProcessors();
+                if (codeLocatorProcessors != null && !codeLocatorProcessors.isEmpty()) {
+                    for (ICodeLocatorProcessor processor : codeLocatorProcessors) {
                         if (processor == null) {
                             continue;
                         }
                         try {
-                            final String result = processor.processIntentAction(context, intent, intent.getAction());
-                            if (result != null) {
-                                sendResult(context, saveToFile, result);
+                            final BaseResponse response = processor.processIntentAction(context, smartArgs, intent.getAction());
+                            if (response != null) {
+                                sendResult(context, smartArgs, response);
                                 break;
                             }
                         } catch (Throwable t) {
-                            Log.e("CodeLocator", "process error " + Log.getStackTraceString(t));
+                            sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, Log.getStackTraceString(t)));
+                            Log.e(CodeLocator.TAG, "process error " + Log.getStackTraceString(t));
                         }
                     }
                 }
@@ -104,30 +165,76 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
         }
     }
 
-    private void processSchemaAction(Context context, Intent intent) {
+    private void clearAsyncResult() {
+        AsyncBroadcastHelper.sendResultForAsyncBroadcast(CodeLocator.sCurrentActivity, null);
+    }
+
+    private void processMockTouchViewAction(Context context, SmartArgs smartArgs) {
         try {
-            boolean saveToFile = "true".equals(intent.getStringExtra(KEY_SAVE_TO_FILE));
-            String schema = intent.getStringExtra(KEY_SCHEMA);
-            final boolean process = CodeLocator.sGlobalConfig.getAppInfoProvider().processSchema(schema);
-            sendResult(context, saveToFile, "" + process);
-            if (CodeLocator.sGlobalConfig.isDebug()) {
-                Log.d("CodeLocator", "CodeLocator已调用AppInfo process schema, 处理结果: " + process);
+            Activity activity = CodeLocator.sCurrentActivity;
+            if (activity != null) {
+                final int clickX = smartArgs.getInt(KEY_MOCK_CLICK_X, -1);
+                final int clickY = smartArgs.getInt(KEY_MOCK_CLICK_Y, -1);
+                sendResult(context, smartArgs, new TouchViewResponse(ActivityUtils.INSTANCE.getCurrentTouchViewInfo(activity, clickX, clickY)));
+                return;
             }
+            sendResult(context, smartArgs, new ErrorResponse(NO_CURRENT_ACTIVITY));
         } catch (Throwable t) {
-            Log.e("CodeLocator", "CodeLocator处理Schema失败, 错误信息: " + Log.getStackTraceString(t));
+            sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, Log.getStackTraceString(t)));
         }
     }
 
-    private void processConfigListAction(Context context, Intent intent) {
+    private void processSchemaAction(Context context, SmartArgs smartArgs) {
         try {
-            boolean saveToFile = "true".equals(intent.getStringExtra(KEY_SAVE_TO_FILE));
-            String action = intent.getStringExtra(KEY_CODELOCATOR_ACTION);
-            String type = intent.getStringExtra(KEY_CONFIG_TYPE);
-            String data = intent.getStringExtra(KEY_DATA);
+            String schema = smartArgs.getString(KEY_SCHEMA);
+            final boolean process = CodeLocator.sGlobalConfig.getAppInfoProvider().processSchema(schema);
+            sendResult(context, smartArgs, new StatesResponse(process));
+            if (CodeLocator.sGlobalConfig.isDebug()) {
+                Log.d(CodeLocator.TAG, "CodeLocator已调用AppInfo process schema, 处理结果: " + process);
+            }
+        } catch (Throwable t) {
+            final String errorMsg = Log.getStackTraceString(t);
+            Log.e(CodeLocator.TAG, "CodeLocator process schema error, stackTrace: " + errorMsg);
+            sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
+        }
+    }
+
+    private void processConfigSDk(Context context, SmartArgs smartArgs) {
+        try {
+            String type = smartArgs.getString(KEY_CONFIG_TYPE);
+            if (type == null || type.isEmpty()) {
+                sendResult(context, smartArgs, new ErrorResponse(ARGS_EMPTY));
+                return;
+            }
+            final String action = smartArgs.getString(KEY_CODELOCATOR_ACTION);
+            if (type == EditType.FECTH_URL) {
+                if (KEY_ACTION_SET.equals(action)) {
+                    CodeLocatorConfigFetcher.setFetchUrl(context, smartArgs.getString(KEY_DATA));
+                    sendResult(context, smartArgs, new StatesResponse(true));
+                }
+            } else if (type == EditType.ASYNC_BROADCAST) {
+                if (KEY_ACTION_SET.equals(action)) {
+                    AsyncBroadcastHelper.setEnableAsyncBroadcast(context, smartArgs.getBoolean(KEY_DATA));
+                    sendResult(context, smartArgs, new StatesResponse(true));
+                }
+            }
+        } catch (Throwable t) {
+            final String errorMsg = Log.getStackTraceString(t);
+            sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
+            Log.e(CodeLocator.TAG, "Config SDK错误, StackTrace: " + errorMsg);
+        }
+    }
+
+    private void processConfigListAction(Context context, SmartArgs smartArgs) {
+        try {
+            String action = smartArgs.getString(KEY_CODELOCATOR_ACTION);
+            String type = smartArgs.getString(KEY_CONFIG_TYPE);
+            String data = smartArgs.getString(KEY_DATA);
 
             if (action == null) {
-                Log.e("CodeLocator", "调用Config参数错误 type: " + type + ", data: " + data + ", action: " + action);
-                sendResult(context, saveToFile, "false");
+                String errorMsg = "type: " + type + ", data: " + data + ", action: " + null;
+                Log.e(CodeLocator.TAG, "调用Config参数错误" + "type: " + type + ", data: " + data + ", action: " + null);
+                sendResult(context, smartArgs, new ErrorResponse(ARGS_EMPTY, errorMsg));
                 return;
             }
 
@@ -136,239 +243,305 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
                 case KEY_ACTION_ADD:
                     process = CodeLocator.appendToIgnoreList(type, data);
                     break;
+                case KEY_ACTION_SET:
+                    CodeLocator.appendExtraViewInfoIntoSp(data);
+                    process = true;
+                    break;
                 case KEY_ACTION_CLEAR:
                     process = CodeLocator.clearIgnoreList();
                     break;
                 default:
                     break;
             }
-            sendResult(context, saveToFile, "" + process);
+            sendResult(context, smartArgs, new StatesResponse(process));
             if (CodeLocator.sGlobalConfig.isDebug()) {
-                Log.d("CodeLocator", "CodeLocator已调用Config, 处理结果: " + process);
+                Log.d(CodeLocator.TAG, "CodeLocator已调用Config, 处理结果: " + process);
             }
-            return;
         } catch (Throwable t) {
-            Log.e("CodeLocator", "CodeLocator处理Config List失败, 错误信息: " + Log.getStackTraceString(t));
+            final String errorMsg = Log.getStackTraceString(t);
+            sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
+            Log.e(CodeLocator.TAG, "Config SDK 失败, StackTrace: " + errorMsg);
         }
-        sendResult(context, false, "false");
     }
 
-    private void processGetTouchViewAction(Context context, Intent intent) {
+    private void processGetTouchViewAction(Context context, SmartArgs smartArgs) {
         try {
             Activity activity = CodeLocator.sCurrentActivity;
             if (activity != null) {
-                boolean saveToFile = "true".equals(intent.getStringExtra(KEY_SAVE_TO_FILE));
-                final String touchViewInfo = ActivityUtils.getCurrentTouchViewInfo(activity);
-                sendResult(context, saveToFile, touchViewInfo);
-                if (CodeLocator.sGlobalConfig.isDebug()) {
-                    Log.d("CodeLocator", "CodeLocator已返回当前触摸View, 数据大小: " + touchViewInfo.length());
-                }
+                sendResult(context, smartArgs, new TouchViewResponse(ActivityUtils.INSTANCE.getCurrentTouchViewInfo(activity)));
+                return;
+            } else {
+                sendResult(context, smartArgs, new ErrorResponse(NO_CURRENT_ACTIVITY));
             }
         } catch (Throwable t) {
-            Log.e("CodeLocator", "CodeLocator获取当前触摸View失败, 错误信息: " + Log.getStackTraceString(t));
+            String errorMsg = Log.getStackTraceString(t);
+            sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
+            Log.e(CodeLocator.TAG, "获取TouchView链失败, StackTrace: " + errorMsg);
         }
     }
 
-    private void processToolsAction(Context context, Intent intent) {
+    private void processToolsAction(Context context, SmartArgs smartArgs) {
         try {
-            final String command = intent.getStringExtra(KEY_TOOLS_COMMAND);
+            final String command = smartArgs.getString(KEY_TOOLS_COMMAND);
             if (CodeLocator.sGlobalConfig.isDebug()) {
-                Log.d("CodeLocator", "CodeLocator接收到Tools命令广播, 命令: " + command);
+                Log.d(CodeLocator.TAG, "CodeLocator接收到Tools命令广播, 命令: " + command);
             }
-            StringBuilder resultSb = new StringBuilder();
-            Tools.processTools(context, intent, command, resultSb);
-            if (resultSb.length() > 0) {
-                boolean saveToFile = "true".equals(intent.getStringExtra(KEY_SAVE_TO_FILE));
-                sendResult(context, saveToFile, resultSb.toString());
-            }
+            Tools.processTools(command);
+            sendResult(context, smartArgs, new BaseResponse());
         } catch (Throwable t) {
-            Log.e("CodeLocator", "CodeLocator执行Tools命令失败, 错误信息: " + Log.getStackTraceString(t));
+            final String errorMsg = Log.getStackTraceString(t);
+            sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
+            Log.e(CodeLocator.TAG, "执行Tool命令失败, StackTrace: " + errorMsg);
         }
     }
 
-    private void processChangeViewAction(Context context, Intent intent) {
+    private void processChangeViewAction(Context context, SmartArgs smartArgs) {
         try {
             if (CodeLocator.sGlobalConfig.isDebug()) {
-                Log.d("CodeLocator", "CodeLocator接收到修改View信息广播");
+                Log.d(CodeLocator.TAG, "CodeLocator接收到修改View信息广播");
             }
             final Activity currentActivity = CodeLocator.sCurrentActivity;
-            String command = intent.getStringExtra(KEY_CHANGE_VIEW);
-            boolean saveToFile = "true".equals(intent.getStringExtra(KEY_SAVE_TO_FILE));
-            if (currentActivity != null && command != null) {
-                command = new String(Base64.decode(command, Base64.DEFAULT), "UTF-8");
-                StringBuilder resultSb = new StringBuilder();
-                OperateUtils.changeInfoByCommand(currentActivity, command, resultSb);
-                if (resultSb.length() > 0) {
-                    sendResult(context, saveToFile, resultSb.toString());
+            final OperateData editData = smartArgs.getData(KEY_CHANGE_VIEW, OperateData.class);
+            if (currentActivity != null && editData != null) {
+                ResultData result = new ResultData();
+                OperateUtils.changeViewInfoByCommand(currentActivity, editData, result);
+                sendResult(context, smartArgs, new OperateResponse(result));
+            } else {
+                if (currentActivity == null) {
+                    sendResult(context, smartArgs, new ErrorResponse(NO_CURRENT_ACTIVITY));
+                } else {
+                    sendResult(context, smartArgs, new ErrorResponse(ARGS_EMPTY));
                 }
             }
         } catch (Throwable t) {
-            Log.e("CodeLocator", "CodeLocator修改View异常, 错误信息: " + Log.getStackTraceString(t));
+            String errorMsg = Log.getStackTraceString(t);
+            sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
+            Log.e(CodeLocator.TAG, "处理编辑命令异常, StackTrace: " + errorMsg);
         }
     }
 
-    private void processGetLayoutAction(Context context, Intent intent) {
+    private void processGetLayoutAction(Context context, SmartArgs smartArgs) {
         try {
             if (CodeLocator.sGlobalConfig.isDebug()) {
-                Log.d("CodeLocator", "CodeLocator接收到输出界面信息广播");
+                Log.d(CodeLocator.TAG, "CodeLocator接收到输出界面信息广播");
             }
-            getTopActivityLayoutInfo(context, "true".equals(intent.getStringExtra(KEY_SAVE_TO_FILE)), intent.getStringExtra(KEY_STOP_ALL_ANIM));
+            getTopActivityLayoutInfo(context, smartArgs);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "CodeLocator获取数据异常, 错误信息: " + Log.getStackTraceString(t));
+            final String errorMsg = Log.getStackTraceString(t);
+            sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, Log.getStackTraceString(t)));
+            Log.e(CodeLocator.TAG, "CodeLocator获取数据异常, StackTrace: " + errorMsg);
         }
     }
 
-    private void processGetFileAction(Context context, Intent intent) {
+    private Class mActivityThreadClass;
+
+    private String getHClassName() {
+        try {
+            if (mActivityThreadClass == null) {
+                mActivityThreadClass = Class.forName("android.app.ActivityThread");
+            }
+            final Field hField = ReflectUtils.getClassField(mActivityThreadClass, "mH");
+            final Field currentActivityThreadField = ReflectUtils.getClassField(mActivityThreadClass, "sCurrentActivityThread");
+            return hField.get(currentActivityThreadField.get(null)).getClass().getName();
+        } catch (Throwable ignore) {
+        }
+        return "";
+    }
+
+    private void processGetFileAction(Context context, SmartArgs smartArgs) {
         try {
             if (CodeLocator.sGlobalConfig.isDebug()) {
-                Log.d("CodeLocator", "CodeLocator接收到输出文件信息广播");
+                Log.d(CodeLocator.TAG, "CodeLocator接收到输出文件信息广播");
             }
-            getFileInfo(context, "true".equals(intent.getStringExtra(KEY_SAVE_TO_FILE)));
+            getFileInfo(context, smartArgs);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "CodeLocator获取数据异常, 错误信息: " + Log.getStackTraceString(t));
+            final String errorMsg = Log.getStackTraceString(t);
+            sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
+            Log.e(CodeLocator.TAG, "CodeLocator获取文件信息异常, StackTrace: " + errorMsg);
         }
     }
 
-    private void processFileOperateAction(Context context, Intent intent) {
+    private void processFileOperateAction(Context context, SmartArgs smartArgs) {
         try {
             if (CodeLocator.sGlobalConfig.isDebug()) {
-                Log.d("CodeLocator", "CodeLocator接收到操作文件信息广播");
+                Log.d(CodeLocator.TAG, "CodeLocator接收到操作文件信息广播");
             }
-            final boolean saveToFile = "true".equals(intent.getStringExtra(KEY_SAVE_TO_FILE));
-            final String sourceFilePath = intent.getStringExtra(KEY_PROCESS_SOURCE_FILE_PATH);
-            final String targetFilePath = intent.getStringExtra(KEY_PROCESS_TARGET_FILE_PATH);
-            final String operate = intent.getStringExtra(KEY_PROCESS_FILE_OPERATE);
+            final String sourceFilePath = smartArgs.getString(KEY_PROCESS_SOURCE_FILE_PATH);
+            final String targetFilePath = smartArgs.getString(KEY_PROCESS_TARGET_FILE_PATH);
+            final String operate = smartArgs.getString(KEY_PROCESS_FILE_OPERATE);
             if (KEY_ACTION_PULL.equals(operate)) {
                 if (sourceFilePath == null || sourceFilePath.isEmpty()) {
-                    sendResult(context, saveToFile, "msg:File is empty");
+                    sendResult(context, smartArgs, new ErrorResponse(FILE_NOT_EXIST));
                 } else {
                     final File sourceFile = new File(sourceFilePath);
                     if (!sourceFile.exists()) {
-                        sendResult(context, false, "msg:File not exist: " + sourceFile);
+                        sendResult(context, smartArgs, new ErrorResponse(FILE_NOT_EXIST, sourceFile.getAbsoluteFile()));
                     } else {
                         File targetFile = sourceFile;
-                        if (Build.VERSION.SDK_INT >= 30 || sourceFile.getAbsolutePath().startsWith(context.getCacheDir().getParentFile().getAbsolutePath())) {
+                        if (Build.VERSION.SDK_INT >= CodeLocatorConstants.USE_TRANS_FILE_SDK_VERSION || sourceFile.getAbsolutePath().startsWith(context.getCacheDir().getParentFile().getAbsolutePath())) {
                             try {
-                                try {
-                                    final String filePath = FileUtils.copyFile(context, sourceFile);
-                                    sendResult(context, saveToFile, "path:" + filePath);
-                                } catch (Throwable t) {
-                                    sendResult(context, saveToFile, "msg:File copy error " + Log.getStackTraceString(t));
+                                targetFile = FileUtils.getFile(context, sourceFile.getName());
+                                if (targetFile.exists()) {
+                                    targetFile.delete();
                                 }
+                                targetFile.createNewFile();
+                                FileUtils.copyFileTo(sourceFile, targetFile);
+                                sendResult(context, smartArgs, new FilePathResponse(targetFile.getAbsolutePath()));
                             } catch (Throwable t) {
-                                Log.e("CodeLocator", "CodeLocator拷贝文件失败, 错误信息: " + Log.getStackTraceString(t));
+                                final String errorMsg = Log.getStackTraceString(t);
+                                sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
+                                Log.e(CodeLocator.TAG, "CodeLocator拷贝文件失败, 错误信息: " + errorMsg);
                             }
                         } else {
-                            sendResult(context, saveToFile, "path:" + targetFile.getAbsolutePath());
+                            sendResult(context, smartArgs, new FilePathResponse(targetFile.getAbsolutePath()));
                         }
                     }
                 }
             } else if (KEY_ACTION_MOVE.equals(operate)) {
                 if (sourceFilePath == null || sourceFilePath.isEmpty() || targetFilePath == null || targetFilePath.isEmpty()) {
-                    sendResult(context, saveToFile, "msg:File move error");
+                    sendResult(context, smartArgs, new ErrorResponse(ARGS_EMPTY));
                     return;
                 }
                 File targetFile = new File(targetFilePath);
                 File sourceFile = new File(sourceFilePath);
                 if (!sourceFile.exists()) {
-                    sendResult(context, saveToFile, "msg:File not exist " + sourceFilePath);
+                    sendResult(context, smartArgs, new ErrorResponse(FILE_NOT_EXIST, sourceFilePath));
                     return;
                 }
                 try {
+                    if (targetFile.exists() && targetFile.isDirectory()) {
+                        targetFile = new File(targetFile, sourceFile.getName());
+                    }
+                    if (!targetFile.exists()) {
+                        targetFile.createNewFile();
+                    }
                     FileUtils.copyFileTo(sourceFile, targetFile);
                     if (targetFile.getName().endsWith(".xml") && targetFile.getAbsolutePath().endsWith("/shared_prefs/" + targetFile.getName())) {
                         try {
                             final String spName = targetFile.getName().substring(0, targetFile.getName().length() - ".xml".length());
                             final SharedPreferences sharedPreferences = context.getSharedPreferences(spName, Context.MODE_PRIVATE);
                             if (sharedPreferences != null) {
-                                final Class<? extends SharedPreferences> aClass = sharedPreferences.getClass();
-                                final Method startLoadFromDisk = aClass.getDeclaredMethod("startLoadFromDisk");
-                                startLoadFromDisk.setAccessible(true);
+                                Method startLoadFromDisk = ReflectUtils.getClassMethod(sharedPreferences.getClass(), "startLoadFromDisk");
                                 startLoadFromDisk.invoke(sharedPreferences);
                             }
                         } catch (Throwable t) {
-                            Log.e("CodeLocator", "反射修改失败 " + t);
+                            Log.e(CodeLocator.TAG, "反射修改失败 " + t);
                         }
                     }
-                    sendResult(context, saveToFile, "path:" + targetFile.getAbsolutePath());
+                    sendResult(context, smartArgs, new FilePathResponse(targetFile.getAbsolutePath()));
                 } catch (Throwable t) {
-                    sendResult(context, saveToFile, "msg:File copy error " + Log.getStackTraceString(t));
+                    sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, Log.getStackTraceString(t)));
                 }
             } else if (KEY_ACTION_DELETE.equals(operate)) {
                 if (sourceFilePath == null || sourceFilePath.isEmpty()) {
-                    sendResult(context, saveToFile, "msg:File delete no path error");
+                    sendResult(context, smartArgs, new ErrorResponse(ARGS_EMPTY));
                     return;
                 }
                 File sourceFile = new File(sourceFilePath);
                 if (!sourceFile.exists()) {
-                    sendResult(context, saveToFile, "msg:File not exist " + sourceFilePath);
+                    sendResult(context, smartArgs, new ErrorResponse(FILE_NOT_EXIST, sourceFilePath));
                     return;
                 }
                 final boolean deleteSuccess = FileUtils.deleteFile(sourceFile);
                 if (deleteSuccess) {
-                    sendResult(context, saveToFile, "path:" + sourceFilePath);
+                    sendResult(context, smartArgs, new FilePathResponse(sourceFilePath));
                 } else {
-                    sendResult(context, saveToFile, "msg:Delete Failed");
+                    sendResult(context, smartArgs, new ErrorResponse(DELETE_FILE_FAILED, sourceFilePath));
                 }
             }
         } catch (Throwable t) {
-            Log.e("CodeLocator", "CodeLocator文件操作异常, 错误信息: " + Log.getStackTraceString(t));
+            final String errorMsg = Log.getStackTraceString(t);
+            sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
+            Log.e(CodeLocator.TAG, "错误文件异常, StackTrace: " + errorMsg);
         }
     }
 
-    private void getFileInfo(Context context, boolean saveToFile) {
+    private void getFileInfo(Context context, SmartArgs smartArgs) {
         Activity activity = CodeLocator.sCurrentActivity;
         if (activity != null) {
-            final File codelocatorDir = new File(context.getExternalCacheDir(), "codelocator");
-            if (codelocatorDir.exists() && !codelocatorDir.isDirectory()) {
-                codelocatorDir.delete();
-            } else if (!codelocatorDir.exists()) {
-                codelocatorDir.mkdirs();
+            final File codeLocatorDir = new File(context.getExternalCacheDir(), CodeLocatorConstants.BASE_DIR_NAME);
+            if (codeLocatorDir.exists() && !codeLocatorDir.isDirectory()) {
+                codeLocatorDir.delete();
+            } else if (!codeLocatorDir.exists()) {
+                codeLocatorDir.mkdirs();
             }
             final WFile wFile = ActivityUtils.getFileInfo(activity);
-            final String fileInfo = CodeLocator.sGson.toJson(wFile);
-            sendResult(context, saveToFile, fileInfo);
-            if (CodeLocator.sGlobalConfig.isDebug()) {
-                Log.d("CodeLocator", "CodeLocator已返回当前文件信息, 数据大小: " + fileInfo.length());
-            }
+            sendResult(context, smartArgs, new FileResponse(wFile));
         }
     }
 
-    private void getTopActivityLayoutInfo(Context context, boolean saveToFile, String stopAnimTime) {
+    private void getTopActivityLayoutInfo(Context context, SmartArgs smartArgs) {
         Activity activity = CodeLocator.sCurrentActivity;
         if (activity != null) {
-            final WApplication application = ActivityUtils.getActivityDebugInfo(activity);
-            final String activityViewInfo = CodeLocator.sGson.toJson(application);
-            if (stopAnimTime != null && !stopAnimTime.isEmpty()) {
+            long stopAnimTime = smartArgs.getLong(KEY_STOP_ALL_ANIM);
+            boolean needColor = smartArgs.getBoolean(KEY_NEED_COLOR);
+            boolean isAsync = smartArgs.getBoolean(KEY_ASYNC);
+            final WApplication application = ActivityUtils.getActivityDebugInfo(activity, needColor, isMainThread);
+            application.setIsMainThread(isMainThread);
+            if (isAsync) {
+                application.setHClassName(getHClassName());
+            }
+            if (stopAnimTime != 0) {
                 try {
                     Thread.sleep(Long.valueOf(stopAnimTime));
                 } catch (Throwable t) {
-                    Log.e("CodeLocator", "CodeLocator stop anim 出现错误 " + Log.getStackTraceString(t));
+                    Log.e(CodeLocator.TAG, "CodeLocator stop anim 出现错误 " + Log.getStackTraceString(t));
                 }
             }
-            sendResult(context, saveToFile, activityViewInfo);
-            if (CodeLocator.sGlobalConfig.isDebug()) {
-                Log.d("CodeLocator", "CodeLocator已返回当前界面信息, 数据大小: " + activityViewInfo.length());
-            }
+            sendResult(context, smartArgs, new ApplicationResponse(application));
+        } else {
+            sendResult(context, smartArgs, new ErrorResponse(NO_CURRENT_ACTIVITY));
         }
     }
 
-    private void sendResult(Context context, boolean saveToFile, String result) {
+    private void sendResult(Context context, SmartArgs smartArgs, BaseResponse baseResponse) {
         String compressData = "";
+        int dataLength = 0;
+        boolean saveToFile = false;
+        boolean saveAsync = false;
+        File savedFile = null;
+        String filePath = null;
         try {
-            compressData = CodeLocatorUtils.gzipCompress(result);
-            saveToFile = saveToFile || (compressData.length() > CodeLocator.sGlobalConfig.getMaxBroadcastTransferLength());
-        } catch (IOException e) {
-            Log.e("CodeLocator", "compress data error " + Log.getStackTraceString(e));
-        }
-        if (saveToFile) {
-            File saveFile = FileUtils.getFile(context, "codelocator_data.txt");
-            final String filePath = FileUtils.saveContent(saveFile, compressData);
-            if (filePath != null) {
-                setResultData("FILE:" + filePath);
+            compressData = Base64.encodeToString(CodeLocatorUtils.compress(GsonUtils.sGson.toJson(baseResponse)));
+            dataLength = compressData.length();
+            saveAsync = smartArgs.getBoolean(KEY_ASYNC);
+            saveToFile = saveAsync || smartArgs.getBoolean(KEY_SAVE_TO_FILE) || (compressData.length() > CodeLocator.sGlobalConfig.getMaxBroadcastTransferLength());
+            if (saveToFile) {
+                savedFile = FileUtils.getFile(context, TMP_DATA_FILE_NAME);
+                filePath = FileUtils.saveContent(savedFile, compressData);
+                if (filePath != null) {
+                    setResultData(FILE_PATH + SPLIT + filePath);
+                    if (saveAsync) {
+                        AsyncBroadcastHelper.sendResultForAsyncBroadcast(CodeLocator.sCurrentActivity, FILE_PATH + SPLIT + filePath);
+                    }
+                } else {
+                    compressData = Base64.encodeToString(CodeLocatorUtils.compress(GsonUtils.sGson.toJson(new ErrorResponse(FILE_NOT_EXIST, savedFile.getAbsolutePath()))));
+                    setResultData(compressData);
+                }
+            } else {
+                setResultData(compressData);
             }
+        } catch (Throwable t) {
+            final String stackTraceString = Log.getStackTraceString(t);
+            try {
+                compressData = Base64.encodeToString(CodeLocatorUtils.compress(GsonUtils.sGson.toJson(new ErrorResponse(ERROR_WITH_STACK_TRACE, stackTraceString))));
+                setResultData(compressData);
+            } catch (Throwable ignore) {
+            }
+            Log.e(CodeLocator.TAG, "sendResult Error " + stackTraceString);
+        }
+
+        if (baseResponse instanceof ErrorResponse) {
+            Log.e(CodeLocator.TAG, "操作失败, 错误内容: " + baseResponse.getMsg());
         } else {
-            setResultData("\n" + Base64.encodeToString(compressData.getBytes(), Base64.DEFAULT) + "\n");
+            if (!CodeLocator.sGlobalConfig.isDebug()) {
+                return;
+            }
+            if (saveToFile) {
+                Log.d(CodeLocator.TAG, "CodeLocator调用成功, 返回数据文件 " + filePath + ", 输出内容大小 " + dataLength);
+            } else {
+                Log.d(CodeLocator.TAG, "CodeLocator调用成功, 输出内容大小 " + dataLength);
+            }
         }
     }
 }

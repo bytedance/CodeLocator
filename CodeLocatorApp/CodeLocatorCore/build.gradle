@@ -1,4 +1,5 @@
 apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
 
 if (getProperties("customUploadGradlePluginUrl") != null) {
     apply from: getProperties("customUploadGradlePluginUrl")
@@ -12,9 +13,11 @@ android {
         minSdkVersion MIN_SDK_VERSION
         targetSdkVersion TARGET_SDK_VERSION
         versionCode 1
-        versionName project["POM_VERSION_NAME"]
+        versionName codelocator_version
 
         consumerProguardFiles "consumer-rules.pro"
+
+        buildConfigField "String", "VERSION_NAME", "\"$codelocator_version\""
     }
 
     buildTypes {
@@ -27,9 +30,21 @@ android {
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation 'androidx.appcompat:appcompat:1.2.0'
-    api 'com.bytedance.tools.codelocator:codelocator-model:1.0.1'
-//    api project(path: ':CodeLocatorModel')
+
+    if (useSupport) {
+        implementation "com.android.support:appcompat-v7:$support_version"
+    } else {
+        implementation "androidx.appcompat:appcompat:$androidx_version"
+    }
+
+    if (useSourceCode) {
+        api project(path: ':CodeLocatorModel')
+    } else {
+        api "com.bytedance.tools.codelocator:codelocator-model:${codelocator_version}"
+    }
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    compileOnly("com.squareup.okhttp3:okhttp:3.8.1")
 }
 
-apply from: rootProject.file('publish.gradle')
+apply plugin: "com.vanniktech.maven.publish"

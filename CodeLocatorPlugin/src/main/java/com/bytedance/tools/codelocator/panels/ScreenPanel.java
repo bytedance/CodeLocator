@@ -1,79 +1,48 @@
 package com.bytedance.tools.codelocator.panels;
 
+import com.bytedance.tools.codelocator.action.MarkViewAction;
 import com.bytedance.tools.codelocator.action.OpenClassAction;
 import com.bytedance.tools.codelocator.action.ShowGrabHistoryAction;
 import com.bytedance.tools.codelocator.action.SimpleAction;
-import com.bytedance.tools.codelocator.constants.CodeLocatorConstants;
-import com.bytedance.tools.codelocator.listener.OnActionListener;
-import com.bytedance.tools.codelocator.listener.OnGetActivityInfoListener;
-import com.bytedance.tools.codelocator.listener.OnGetClickViewListener;
-import com.bytedance.tools.codelocator.listener.OnGetViewListListener;
-import com.bytedance.tools.codelocator.listener.OnGrabScreenListener;
-import com.bytedance.tools.codelocator.listener.OnViewRightClickListener;
-import com.bytedance.tools.codelocator.model.AdbCommand;
-import com.bytedance.tools.codelocator.model.BroadcastBuilder;
-import com.bytedance.tools.codelocator.model.CodeLocatorInfo;
-import com.bytedance.tools.codelocator.model.Device;
-import com.bytedance.tools.codelocator.model.ExecResult;
-import com.bytedance.tools.codelocator.model.ExtraAction;
-import com.bytedance.tools.codelocator.model.ExtraInfo;
-import com.bytedance.tools.codelocator.model.WActivity;
-import com.bytedance.tools.codelocator.model.WApplication;
-import com.bytedance.tools.codelocator.model.WFile;
-import com.bytedance.tools.codelocator.model.WView;
-import com.bytedance.tools.codelocator.parser.Parser;
-import com.bytedance.tools.codelocator.utils.ClipboardUtils;
-import com.bytedance.tools.codelocator.utils.ColorUtils;
-import com.bytedance.tools.codelocator.utils.CoordinateUtils;
-import com.bytedance.tools.codelocator.utils.DataUtils;
-import com.bytedance.tools.codelocator.utils.DeviceManager;
-import com.bytedance.tools.codelocator.utils.FileUtils;
-import com.bytedance.tools.codelocator.utils.ImageUtils;
-import com.bytedance.tools.codelocator.utils.JComponentUtils;
-import com.bytedance.tools.codelocator.utils.Log;
-import com.bytedance.tools.codelocator.utils.Mob;
-import com.bytedance.tools.codelocator.utils.NetUtils;
-import com.bytedance.tools.codelocator.utils.NotificationUtils;
-import com.bytedance.tools.codelocator.utils.ShellHelper;
-import com.bytedance.tools.codelocator.utils.StringUtils;
-import com.bytedance.tools.codelocator.utils.ThreadUtils;
-import com.bytedance.tools.codelocator.utils.TimeUtils;
-import com.bytedance.tools.codelocator.utils.UIUtils;
-import com.bytedance.tools.codelocator.utils.UpdateUtils;
-import com.bytedance.tools.codelocator.utils.ViewUtils;
+import com.bytedance.tools.codelocator.device.Device;
+import com.bytedance.tools.codelocator.device.DeviceManager;
+import com.bytedance.tools.codelocator.device.action.*;
+import com.bytedance.tools.codelocator.device.response.ImageResponse;
+import com.bytedance.tools.codelocator.listener.*;
+import com.bytedance.tools.codelocator.model.*;
+import com.bytedance.tools.codelocator.response.ApplicationResponse;
+import com.bytedance.tools.codelocator.response.BaseResponse;
+import com.bytedance.tools.codelocator.response.FileResponse;
+import com.bytedance.tools.codelocator.response.StringResponse;
+import com.bytedance.tools.codelocator.utils.*;
 import com.intellij.ide.DataManager;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.ui.popup.ListPopup;
 import com.intellij.ui.awt.RelativePoint;
-
 import org.jetbrains.annotations.NotNull;
-
-import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionListener;
-import java.awt.event.MouseWheelEvent;
-import java.awt.event.MouseWheelListener;
-import java.awt.geom.AffineTransform;
-import java.awt.image.BufferedImage;
-import java.awt.image.ImageObserver;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TimerTask;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.awt.geom.AffineTransform;
+import java.awt.image.BufferedImage;
+import java.awt.image.ImageObserver;
+import java.io.File;
+import java.io.FileInputStream;
+import java.lang.reflect.Method;
+import java.util.List;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.*;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error.ERROR_WITH_STACK_TRACE;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error.FILE_NOT_EXIST;
 
 public class ScreenPanel extends JPanel implements ImageObserver {
 
@@ -97,29 +66,32 @@ public class ScreenPanel extends JPanel implements ImageObserver {
 
     public static final int FILTER_OVER_DRAW = 3;
 
-    public static final long GRAB_SHELL_WAIT_TIME = 1500;
-
-    public static final long GRAB_FILE_WAIT_TIME = 2500;
+    public static final long GRAB_WAIT_TIME = 2000;
 
     private static Color[] sColors = new Color[]{
-            Color.RED,
-            Color.GREEN,
-            Color.decode("#00FFFF"),
-            Color.decode("#5CFFD1"),
-            Color.BLUE,
-            Color.PINK,
+        Color.RED,
+        Color.GREEN,
+        Color.decode("#00FFFF"),
+        Color.decode("#5CFFD1"),
+        Color.BLUE,
+        Color.PINK,
     };
 
     private static Color[] sTextBgColors = new Color[]{
-            Color.WHITE,
-            Color.YELLOW,
-            Color.CYAN,
-            Color.GREEN,
+        Color.BLACK,
+        Color.BLUE,
+        Color.YELLOW,
+        Color.CYAN,
+        Color.GREEN,
     };
 
-    private Color mNormalTextColor = new Color(255, 0, 0, 188);
+    private Color mTextBgColor = new Color(Color.BLACK.getRed(), Color.BLACK.getGreen(), Color.BLACK.getBlue(), 224);
 
-    private Color mHeightLightTextColor = new Color(255, 0, 0);
+    private Color mCheckViewTextBgColor = new Color(Color.BLACK.getRed(), Color.BLACK.getGreen(), Color.BLACK.getBlue(), 160);
+
+    private Color mNormalTextColor = Color.WHITE;//new Color(255, 0, 0, 188);
+
+    private Color mHeightLightTextColor = Color.WHITE;// new Color(255, 0, 0);
 
     private static long sLastClickTime;
 
@@ -129,11 +101,15 @@ public class ScreenPanel extends JPanel implements ImageObserver {
 
     private CodeLocatorWindow mCodeLocatorWindow;
 
+    private Project project;
+
     private Image mScreenCapImage;
 
-    private Image mScaledScreenImage;
+    private int rotateDegree = 0;
 
     private WApplication mApplication;
+
+    private ApplicationResponse mApplicationResponse;
 
     private WActivity mActivity;
 
@@ -151,13 +127,11 @@ public class ScreenPanel extends JPanel implements ImageObserver {
 
     private OnGrabScreenListener mOnGrabScreenListener;
 
-    private boolean mFindClickView = true;
-
     private boolean mDrawPaddingMargin = false;
 
     private boolean mLastDragHintRect = false;
 
-    private boolean mIsGrabing = false;
+    private boolean mIsGrabbing = false;
 
     private Color mSelectViewBgColor = new Color(0.1f, 0.3f, 0.3f, 0.3f);
 
@@ -165,11 +139,9 @@ public class ScreenPanel extends JPanel implements ImageObserver {
 
     private List<Rectangle> mCurrentDrawRect = new ArrayList<>();
 
-    private int mCureentMode = SearchableJTree.MODE_NORMAL;
+    private int mCurrentMode = SearchableJTree.MODE_NORMAL;
 
     private int mControlTransX = 7;
-
-    private volatile long mCallGrabStartTime = 0;
 
     private boolean mIsLandScape = false;
 
@@ -177,9 +149,9 @@ public class ScreenPanel extends JPanel implements ImageObserver {
 
     private boolean mRepaintByClick = false;
 
-    private int mCurrentMouseX;
+    private int mCurrentMouseX = -1;
 
-    private int mCurrentMouseY;
+    private int mCurrentMouseY = -1;
 
     private int mErrorCount = 0;
 
@@ -201,32 +173,45 @@ public class ScreenPanel extends JPanel implements ImageObserver {
 
     private int mDrawWidth;
 
-    private Method getBufferedImage;
+    private Font mTextFont;
+
+    private HashMap<String, Color> mMarkViewMap = new HashMap<>();
 
     private AtomicInteger mGrapStepCount = new AtomicInteger(0);
+
+    private int mDumpModeWidth;
 
     public ScreenPanel(CodeLocatorWindow codeLocatorWindow) {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         mCodeLocatorWindow = codeLocatorWindow;
-        setToolTipText("支持 Shift + 左键, Ctrl + 左键, Alt + 左键, 右键, 使用滚轮有惊喜~");
+        project = mCodeLocatorWindow.getProject();
+        setToolTipText(ResUtils.getString("screen_panel_tip"));
         addMouseMotionListener(new MouseMotionListener() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                if (mCureentMode == SearchableComponent.MODE_CONTROL) {
+                if (mCurrentMode == SearchableComponent.MODE_CONTROL) {
                     return;
                 }
                 if (mScaleRatio > 1) {
                     adjustCanvasTrans(e);
-
                     repaint();
                 }
             }
 
             @Override
             public void mouseMoved(MouseEvent e) {
-                if (mCureentMode != SearchableJTree.MODE_SHIFT) {
-                    mCurrentMouseX = -1;
-                    mCurrentMouseY = -1;
+                if (mCurrentMode != SearchableJTree.MODE_SHIFT) {
+                    if (e.isMetaDown()) {
+                        mCurrentMouseX = e.getX();
+                        mCurrentMouseY = e.getY();
+                        repaint();
+                    } else {
+                        if (mCurrentMouseX != -1) {
+                            repaint();
+                        }
+                        mCurrentMouseX = -1;
+                        mCurrentMouseY = -1;
+                    }
                     return;
                 }
                 mCurrentMouseX = e.getX();
@@ -250,7 +235,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             @Override
             public void mousePressed(MouseEvent e) {
                 super.mousePressed(e);
-                if (mCureentMode == SearchableComponent.MODE_CONTROL) {
+                if (mCurrentMode == SearchableComponent.MODE_CONTROL) {
                     return;
                 }
                 mDownTransX = mTransX;
@@ -266,14 +251,17 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                 boolean isAltDown = !isControlClick && !isShiftDown && e.isAltDown();
                 if (!e.isMetaDown()) {
                     if (System.currentTimeMillis() - sLastClickTime < 2500
-                            && (mPreviousView != null && mPreviousView.equals(mClickedView))) {
+                        && (mPreviousView != null && mPreviousView.equals(mClickedView))) {
                         sLastClickCount++;
                         if (sLastClickCount >= 5) {
-                            String appInfo = (mCodeLocatorWindow.getCurrentApplication().getSdkVersion() == null ? "" : "\n当前App集成SDK版本 " + mCodeLocatorWindow.getCurrentApplication().getSdkVersion());
-                            Messages.showMessageDialog(mCodeLocatorWindow.getProject(), "当前CodeLocator版本: " + UpdateUtils.getCurrentVersion()
-                                    + "\n最小支持SDK版本号 " + UpdateUtils.getMinSupportSdkVersion()
-                                    + appInfo
-                                    + "\n新增功能: \n" + UpdateUtils.getChangeLog().replace("\\n", "\n"), "CodeLocator", Messages.getInformationIcon());
+                            String appInfo = (mCodeLocatorWindow.getCurrentApplication().getSdkVersion() == null ? "" : ResUtils.getString("sdk_info_format", mCodeLocatorWindow.getCurrentApplication().getSdkVersion()));
+                            Messages.showMessageDialog(project,
+                                ResUtils.getString("plugin_info_format",
+                                    AutoUpdateUtils.getCurrentPluginVersion(),
+                                    AutoUpdateUtils.getMinSupportSdkVersion(),
+                                    appInfo,
+                                    AutoUpdateUtils.getChangeLog().replace("\\n", "\n")
+                                ), "CodeLocator", Messages.getInformationIcon());
                             sLastClickCount = 0;
                             sLastClickTime = System.currentTimeMillis();
                         } else if (sLastClickCount == 1 && System.currentTimeMillis() - sLastClickTime < 1000) {
@@ -289,9 +277,9 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                                         return;
                                     }
                                     OpenClassAction.jumpToClassName(codeLocatorWindow,
-                                            codeLocatorWindow.getProject(),
-                                            extraAction.getJumpInfo().getFileName(),
-                                            extraAction.getJumpInfo().getId());
+                                        codeLocatorWindow.getProject(),
+                                        extraAction.getJumpInfo().getFileName(),
+                                        extraAction.getJumpInfo().getId());
                                 }
                             } else {
                                 DefaultActionGroup actionGroup = new DefaultActionGroup("listGroup", true);
@@ -302,22 +290,22 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                                     if (extraAction.getJumpInfo() == null) {
                                         return;
                                     }
-                                    actionGroup.add(new SimpleAction(extraInfo.getTag(), ImageUtils.INSTANCE.loadIcon("jump_enable"), new OnActionListener() {
+                                    actionGroup.add(new SimpleAction(extraInfo.getTag(), ImageUtils.INSTANCE.loadIcon("jump"), new OnActionListener() {
                                         @Override
                                         public void actionPerformed(@NotNull AnActionEvent e) {
                                             OpenClassAction.jumpToClassName(codeLocatorWindow,
-                                                    codeLocatorWindow.getProject(),
-                                                    extraAction.getJumpInfo().getFileName(),
-                                                    extraAction.getJumpInfo().getId());
+                                                codeLocatorWindow.getProject(),
+                                                extraAction.getJumpInfo().getFileName(),
+                                                extraAction.getJumpInfo().getId());
                                         }
                                     }));
                                 }
                                 ListPopup pop = JBPopupFactory.getInstance().createActionGroupPopup(
-                                        "选择跳转类",
-                                        actionGroup,
-                                        DataManager.getInstance().getDataContext(),
-                                        JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
-                                        true
+                                    ResUtils.getString("choose_jump_class_pop_title"),
+                                    actionGroup,
+                                    DataManager.getInstance().getDataContext(),
+                                    JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
+                                    true
                                 );
                                 Point point = new Point(e.getX(), e.getY());
                                 pop.show(new RelativePoint(e.getComponent(), point));
@@ -337,29 +325,34 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                     return;
                 }
 
-                if (mCurrentViewList.size() > 0 && !(mCureentMode == SearchableJTree.MODE_SHIFT && isShiftDown)) {
+                if (mCurrentViewList.size() > 0 && !(mCurrentMode == SearchableJTree.MODE_SHIFT && isShiftDown)) {
                     mCurrentViewList.clear();
                 }
 
+                if (!isShiftDown) {
+                    mCurrentMouseX = -1;
+                    mCurrentMouseY = -1;
+                }
+
                 if (isControlClick) {
-                    mCureentMode = SearchableJTree.MODE_CONTROL;
-                    final List<WView> clickedViewList = ViewUtils.findClickedViewList(mApplication.getActivity().getDecorView(), convertX, convertY);
+                    mCurrentMode = SearchableJTree.MODE_CONTROL;
+                    final List<WView> clickedViewList = ViewUtils.findClickedViewList(mApplication.getActivity(), convertX, convertY, getForbidView());
                     if (clickedViewList.size() > 0) {
                         onClickViewChange(clickedViewList.get(0));
                         mCurrentViewList.addAll(clickedViewList);
                     }
                 } else if (isShiftDown) {
-                    mCureentMode = SearchableJTree.MODE_SHIFT;
+                    mCurrentMode = SearchableJTree.MODE_SHIFT;
                     mRepaintByClick = true;
                     mCurrentDrawRect.clear();
-                    WView clickedView = ViewUtils.findClickedView(mActivity.getDecorView(), convertX, convertY, false);
+                    WView clickedView = ViewUtils.findClickedView(mActivity, convertX, convertY, false, getForbidView());
                     addOrRemoveView(clickedView);
                 } else {
-                    mCureentMode = SearchableJTree.MODE_NORMAL;
-                    onClickViewChange(ViewUtils.findClickedView(mActivity.getDecorView(), convertX, convertY, !isAltDown && mFindClickView));
+                    mCurrentMode = SearchableJTree.MODE_NORMAL;
+                    onClickViewChange(ViewUtils.findClickedView(mActivity, convertX, convertY, isAltDown, getForbidView()));
                 }
                 if (mOnGetViewListListener != null) {
-                    mOnGetViewListListener.onGetViewList(mCureentMode, mCurrentViewList);
+                    mOnGetViewListListener.onGetViewList(mCurrentMode, mCurrentViewList);
                 }
                 if (e.isMetaDown() && mOnViewRightClickListener != null) {
                     mOnViewRightClickListener.onViewRightClick(ScreenPanel.this, e.getX(), e.getY(), false);
@@ -369,8 +362,8 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         addMouseWheelListener(new MouseWheelListener() {
             @Override
             public void mouseWheelMoved(MouseWheelEvent e) {
-                if (mCureentMode == SearchableComponent.MODE_CONTROL) {
-                    int rotation = e.getWheelRotation();
+                if (mCurrentMode == SearchableComponent.MODE_CONTROL) {
+                    double rotation = e.getPreciseWheelRotation();
                     int lastX = mControlTransX;
                     if (rotation > 0) {
                         mControlTransX += 5;
@@ -384,14 +377,16 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                         repaint();
                     }
                 } else {
-                    if (e.getWheelRotation() > 0) {
-                        mScaleRatio += 0.1f;
-                    } else {
-                        if (mScaleRatio == 1f) {
-                            return;
-                        }
-                        mScaleRatio -= 0.1f;
+                    float delta = e.getPreciseWheelRotation() < 0 ? 0.1f : -0.1f;
+                    if (codeLocatorWindow.getCodelocatorConfig().isMouseWheelDirection()) {
+                        delta = -delta;
                     }
+
+                    if (mScaleRatio <= 1f && delta < 0) {
+                        mScaleRatio = 1f;
+                        return;
+                    }
+                    mScaleRatio += delta;
                     mScaleRatio = Math.max(1f, mScaleRatio);
                     if (mScaleRatio == 1f) {
                         mTransX = 0;
@@ -403,6 +398,37 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                 }
             }
         });
+        mTextFont = new Font(getFont().getName(), getFont().getStyle(), 12);
+    }
+
+    public void clearMark(WView view) {
+        if (view == null) {
+            mMarkViewMap.clear();
+        } else {
+            mMarkViewMap.remove(view.getMemAddr());
+        }
+        if (mOnGetViewListListener != null) {
+            mOnGetViewListListener.onMarkViewChange(mMarkViewMap);
+        }
+    }
+
+    public void markView(WView view, Color color) {
+        mMarkViewMap.put(view.getMemAddr(), color);
+        if (mOnGetViewListListener != null) {
+            mOnGetViewListListener.onMarkViewChange(mMarkViewMap);
+        }
+    }
+
+    public void foldSiblingView(WView view) {
+        if (mOnGetViewListListener != null) {
+            mOnGetViewListListener.onFoldView(view);
+        }
+    }
+
+    public void jumpParentView(WView view) {
+        if (mOnGetViewListListener != null) {
+            mOnGetViewListListener.jumpParentView(view);
+        }
     }
 
     private void adjustCanvasTrans(MouseEvent e) {
@@ -425,7 +451,25 @@ public class ScreenPanel extends JPanel implements ImageObserver {
     }
 
     public void resetGrabState() {
-        mIsGrabing = false;
+        mIsGrabbing = false;
+    }
+
+    private List<WView> getForbidView() {
+        if (mMarkViewMap == null || mMarkViewMap.isEmpty()) {
+            return Collections.emptyList();
+        }
+        final Set<Map.Entry<String, Color>> entries = mMarkViewMap.entrySet();
+        List<WView> list = null;
+        for (Map.Entry<String, Color> entry : entries) {
+            if (entry.getValue() == MarkViewAction.getSUnSelectColor()) {
+                final WView sameView = mActivity.findSameView(entry.getKey());
+                if (list == null) {
+                    list = new ArrayList<>();
+                }
+                list.add(sameView);
+            }
+        }
+        return list == null ? Collections.emptyList() : list;
     }
 
     private void addOrRemoveView(WView clickedView) {
@@ -443,7 +487,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             }
             if (mCurrentViewList.isEmpty()) {
                 onClickViewChange(null);
-                mCureentMode = SearchableJTree.MODE_NORMAL;
+                mCurrentMode = SearchableJTree.MODE_NORMAL;
             } else {
                 onClickViewChange(mCurrentViewList.get(mCurrentViewList.size() - 1));
             }
@@ -455,7 +499,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
 
     public void notifyClickTab(String lineName, String lineValue) {
         if (!"padding".equalsIgnoreCase(lineName)
-                && !"margin".equalsIgnoreCase(lineName)) {
+            && !"margin".equalsIgnoreCase(lineName)) {
             if (mDrawPaddingMargin) {
                 mDrawPaddingMargin = false;
                 repaint();
@@ -477,12 +521,11 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             JComponentUtils.setSize(this, setWidth, setHeight);
             return;
         }
-        Log.e("尺寸与设置值不一致 尝试修复为 " + width + " " + height);
-        mScaledScreenImage = mScreenCapImage.getScaledInstance(width, height, Image.SCALE_SMOOTH);
-        mDrawWidth = width;
-        mDrawHeight = height;
-        mApplication.setPanelWidth(width);
-        mApplication.setPanelHeight(height);
+        Log.e("尺寸与设置值不一致 尝试修复为 " + setWidth + " " + setHeight);
+        mDrawWidth = setWidth;
+        mDrawHeight = setHeight;
+        mApplication.setPanelWidth(setWidth);
+        mApplication.setPanelHeight(setHeight);
         mApplication.setPanelToPhoneRatio(1.0 * mApplication.getOverrideScreenHeight() / mApplication.getPanelHeight());
         repaint();
     }
@@ -496,7 +539,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         mCurrentDrawRect.clear();
         mCurrentViewList.clear();
         mCurrentViewList.addAll(clickViewList);
-        mCureentMode = SearchableJTree.MODE_CLICK;
+        mCurrentMode = SearchableJTree.MODE_CLICK;
         if (mOnGetViewListListener != null) {
             mOnGetViewListListener.onGetViewList(SearchableJTree.MODE_CLICK, mCurrentViewList);
         }
@@ -521,14 +564,14 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         mRepaintByClick = false;
         mCurrentDrawRect.clear();
         mCurrentViewList.clear();
-        if (mCureentMode == SearchableJTree.MODE_NORMAL) {
+        if (mCurrentMode == SearchableJTree.MODE_NORMAL) {
             mScaleRatio = 1.0f;
             mTransX = 0;
             mTransY = 0;
         }
-        mCureentMode = SearchableJTree.MODE_NORMAL;
+        mCurrentMode = SearchableJTree.MODE_NORMAL;
         if (mOnGetViewListListener != null) {
-            mOnGetViewListListener.onGetViewList(mCureentMode, mCurrentViewList);
+            mOnGetViewListListener.onGetViewList(mCurrentMode, mCurrentViewList);
         }
         mControlTransX = 7;
         repaint();
@@ -540,8 +583,8 @@ public class ScreenPanel extends JPanel implements ImageObserver {
 
     private void onClickViewChange(WView clickedView) {
         if (clickedView != null
-                && clickedView.equals(mClickedView)
-                && clickedView.equals(mPreviousView)) {
+            && clickedView.equals(mClickedView)
+            && clickedView.equals(mPreviousView)) {
             return;
         }
         mPreviousView = mClickedView;
@@ -569,76 +612,52 @@ public class ScreenPanel extends JPanel implements ImageObserver {
     public void setClickedView(WView view, boolean isShiftSelect) {
         mDrawPaddingMargin = false;
 
-        if ((mCureentMode == SearchableJTree.MODE_NORMAL
-                || mCureentMode == SearchableJTree.MODE_SHIFT) && isShiftSelect) {
+        if ((mCurrentMode == SearchableJTree.MODE_NORMAL
+            || mCurrentMode == SearchableJTree.MODE_SHIFT) && isShiftSelect) {
             addOrRemoveView(view);
-            if (mCureentMode == SearchableJTree.MODE_NORMAL) {
-                mCureentMode = SearchableJTree.MODE_SHIFT;
+            if (mCurrentMode == SearchableJTree.MODE_NORMAL) {
+                mCurrentMode = SearchableJTree.MODE_SHIFT;
             }
             mRepaintByClick = true;
             if (mOnGetViewListListener != null) {
-                mOnGetViewListListener.onGetViewList(mCureentMode, mCurrentViewList);
+                mOnGetViewListListener.onGetViewList(mCurrentMode, mCurrentViewList);
             }
         }
 
-        Mob.mob(Mob.Action.CLICK, getModeStr(mCureentMode));
+        if (view != null) {
+            Mob.mob(Mob.Action.CLICK, getModeStr(mCurrentMode));
+        }
 
         mClickedView = view;
         ViewUtils.tryFindViewClickInfo(mClickedView);
         repaint();
     }
 
-    private void onGetApplicationInfoFailed(Device device) {
+    private void onGetApplicationInfoFailed() {
         ThreadUtils.runOnUIThread(() -> {
-            calculateScaleScreenInfo();
-            mIsGrabing = false;
+            mIsGrabbing = false;
             if (OnGetActivityInfoListener != null) {
                 String getViewFailedTip = "";
-                if (mApplication != null && mApplication.getActivity() == null) {
-                    getViewFailedTip = "当前SDK版本暂不支持抓取Release包, 请检查当前是否使用Release包";
-                } else {
-                    getViewFailedTip = getErrorTip(device);
+                if (mApplication == null || mApplication.getActivity() != null) {
+                    getViewFailedTip = getErrorTip();
                 }
                 final IllegalStateException emptyViewExc = new IllegalStateException(getViewFailedTip);
                 OnGetActivityInfoListener.onGetActivityInfoFailed(emptyViewExc);
                 onClickViewChange(null);
                 if (mErrorCount++ >= 3) {
-                    Mob.uploadLog(mCodeLocatorWindow);
+                    Mob.uploadUserLog(mCodeLocatorWindow);
                     mErrorCount = 0;
                 }
             }
         });
     }
 
-    private String getErrorTip(Device device) {
+    private String getErrorTip() {
         try {
-            final ExecResult result = ShellHelper.execCommand(new AdbCommand(device, "shell dumpsys activity activities | grep mResumedActivity").toString());
-            if (result.getResultCode() == 0) {
-                String resumeInfo = new String(result.getResultBytes(), FileUtils.CHARSET_NAME).trim();
-                final String[] splitInfo = resumeInfo.split(" ");
-                if (splitInfo.length >= 4) {
-                    final String currentPkgInfo = splitInfo[3];
-                    final int indexOfSplit = currentPkgInfo.indexOf("/");
-                    if (indexOfSplit > -1) {
-                        final String pkgName = currentPkgInfo.substring(0, indexOfSplit);
-                        final ExecResult providerResult = ShellHelper.execCommand(new AdbCommand(device, "shell content query --uri content://" + pkgName + ".CodeLocatorProvider").toString());
-                        if (providerResult.getResultCode() == 0) {
-                            final String providerStr = new String(providerResult.getResultBytes(), FileUtils.CHARSET_NAME);
-                            if (!providerStr.contains("CodeLocatorVersion")) {
-                                return "当前应用 " + pkgName + " 未集成 CodeLocator SDK\n如需集成请参考CodeLocator集成文档\n如果Debug下可用, 请检查当前是否Release包";
-                            } else {
-                                return "未获取到View信息, 请点击小飞机反馈问题";
-                            }
-                        }
-                    }
-                }
-            } else {
-                return "当前设备未解锁, 请先解锁后再抓取";
-            }
         } catch (Throwable t) {
             Log.e("获取失败信息错误", t);
         }
-        return "未获取到View信息, 请检查应用是否正在运行并且在前台";
+        return ResUtils.getString("no_info_tip");
     }
 
     private void calculateScaleScreenInfo() {
@@ -653,66 +672,124 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             mIsLandScape = true;
             panelHeight = CoordinateUtils.SCALE_TO_LAND_HEIGHT;
             panelWidth = panelHeight * imageWidth / imageHeight;
-            mScaledScreenImage = mScreenCapImage.getScaledInstance(panelWidth, panelHeight, Image.SCALE_SMOOTH);
         } else {
             mIsLandScape = false;
             panelHeight = CoordinateUtils.SCALE_TO_HEIGHT;
             panelWidth = panelHeight * imageWidth / imageHeight;
-            mScaledScreenImage = mScreenCapImage.getScaledInstance(panelWidth, panelHeight, Image.SCALE_SMOOTH);
         }
         mDrawWidth = panelWidth;
         mDrawHeight = panelHeight;
+        if (SwingUtilities.isEventDispatchThread()) {
+            callOnGrabSuccess();
+        } else {
+            ThreadUtils.runOnUIThread(() -> callOnGrabSuccess());
+        }
+    }
 
-        if (mApplication != null) {
-            mApplication.setPanelWidth(panelWidth);
-            mApplication.setPanelHeight(panelHeight);
+    private void callOnGrabSuccess() {
+        if (mOnGrabScreenListener != null) {
+            mOnGrabScreenListener.onGrabScreenSuccess(mDrawWidth, mDrawHeight);
+        }
+    }
 
-            if (!mApplication.isLandScape() && mIsLandScape) {
-                mApplication.setOrientation(WApplication.Orientation.ORIENTATION_LANDSCAPE);
+    private void onGetApplicationInfoSuccess(WView lastClickView) {
+        mErrorCount = 0;
+
+        if (OnGetActivityInfoListener != null) {
+            OnGetActivityInfoListener.onGetActivityInfoSuccess(mActivity);
+            if (lastClickView != null) {
+                if (!mActivity.hasView()) {
+                    lastClickView = null;
+                } else {
+                    lastClickView = mActivity.findSameView(lastClickView);
+                }
             }
+            onClickViewChange(lastClickView);
+        }
+        if (!mCodeLocatorWindow.isWindowMode()) {
+            ThreadUtils.submit(() -> ShowGrabHistoryAction.saveCodeLocatorHistory(new CodeLocatorInfo(mApplication, mScreenCapImage)));
+        }
+        notifyByApplication(project, mCodeLocatorWindow, mApplicationResponse, mApplication);
+    }
+
+    private static HashMap<String, Long> sShowTipMaps = new HashMap<>();
+
+    private static void notifyByApplication(Project project, CodeLocatorWindow codeLocatorWindow, ApplicationResponse applicationResponse, WApplication application) {
+        if (application == null) {
+            return;
+        }
+        String tips = "";
+        String pkgName = application.getPackageName();
+        if (!application.isFromSdk()) {
+            if (application.isHasSDK()) {
+                if (applicationResponse != null && applicationResponse.getMsg() != null) {
+                    if (ERROR_WITH_STACK_TRACE.equals(applicationResponse.getMsg()) && applicationResponse.getObj() != null) {
+                        tips = ResUtils.getString("sdk_error_use_dump_tip_format", applicationResponse.getObj());
+                        Log.e("grab internal error, stackTrace: " + applicationResponse.getObj());
+                    } else if (FILE_NOT_EXIST.equals(applicationResponse.getMsg()) && applicationResponse.getObj() != null) {
+                        tips = ResUtils.getString("sdk_error_use_dump_tip_format", ResUtils.getString("file_not_exist_format", applicationResponse.getObj()));
+                        Log.e("grab internal error, errorInfo: " + ResUtils.getString("file_not_exist_format", applicationResponse.getObj()));
+                    } else {
+                        tips = ResUtils.getString("has_sdk_dump_tip_format", pkgName);
+                    }
+                } else {
+                    tips = ResUtils.getString("has_sdk_dump_tip_format", pkgName);
+                }
+            } else {
+                tips = ResUtils.getString("no_sdk_dump_tip_format", pkgName);
+            }
+        } else if (!application.isIsDebug()) {
+            tips = ResUtils.getString("release_mode_tip");
+        }
+        if (tips.isEmpty()) {
+            return;
+        }
+        final Long lastNotifyTime = sShowTipMaps.get(pkgName + tips);
+        if (lastNotifyTime == null || ((System.currentTimeMillis() - lastNotifyTime) >= 24 * 60 * 60 * 1000L)) {
+            String finalTips = tips;
+            ThreadUtils.runOnUIThread(() -> Messages.showMessageDialog(codeLocatorWindow, finalTips, "CodeLocator", Messages.getInformationIcon()));
+        } else {
+            NotificationUtils.showNotifyInfoShort(project, tips, 6000);
+        }
+        try {
+            final Set<String> keys = sShowTipMaps.keySet();
+            for (String key : keys) {
+                final Long notifyTime = sShowTipMaps.get(key);
+                if (notifyTime != null && ((System.currentTimeMillis() - notifyTime) >= 24 * 60 * 60 * 1000L)) {
+                    sShowTipMaps.remove(key);
+                }
+            }
+        } catch (Throwable t) {
+            Log.e("remove tips key error", t);
+        }
+        sShowTipMaps.put(pkgName + tips, System.currentTimeMillis());
+    }
+
+    @NotNull
+    private WActivity caclulateActivityInfo() {
+        mApplication.setPanelWidth(mDrawWidth);
+        mApplication.setPanelHeight(mDrawHeight);
+        if (!mApplication.isLandScape() && mIsLandScape) {
+            mApplication.setOrientation(WApplication.Orientation.ORIENTATION_LANDSCAPE);
         }
         if (mIsLandScape && !isWindowMode && mApplication != null) {
             final int overrideScreenWidth = mApplication.getOverrideScreenWidth();
             mApplication.setOverrideScreenWidth(mApplication.getOverrideScreenHeight());
             mApplication.setOverrideScreenHeight(overrideScreenWidth);
         }
-        if (mOnGrabScreenListener != null) {
-            int finalPanelWidth = panelWidth;
-            int finalPanelHeight = panelHeight;
-            mOnGrabScreenListener.onGrabScreenSuccess(finalPanelWidth, finalPanelHeight);
-        }
-    }
-
-    private String lastNotifyApplicationName;
-
-    private void onGetApplicationInfoSuccess(Device device, WView lastClickView) {
-        mErrorCount = 0;
-        calculateScaleScreenInfo();
-        if (!mApplication.isIsDebug()) {
-            if (lastNotifyApplicationName != null && lastNotifyApplicationName.equals(mApplication.getPackageName())) {
-                NotificationUtils.showNotification(mCodeLocatorWindow.getProject(), "当前应用非Debug版本, CodeLocator部分功能不可用", 5000);
-            } else {
-                lastNotifyApplicationName = mApplication.getPackageName();
-                ThreadUtils.runOnUIThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Messages.showMessageDialog(mCodeLocatorWindow, "当前应用非Debug版本, CodeLocator部分功能不可用", "CodeLocator", Messages.getInformationIcon());
-                    }
-                });
-            }
-        }
-
         mActivity = mApplication.getActivity();
         WActivity activity = mActivity;
-        final int width = activity.getDecorView().getWidth();
-        final int height = activity.getDecorView().getHeight();
+        final int width = activity.getDecorViews().get(0).getWidth();
+        final int height = activity.getDecorViews().get(0).getHeight();
         if (mIsLandScape) {
-            if (width == mApplication.getOverrideScreenHeight() && height == mApplication.getOverrideScreenWidth()) {
-                mApplication.setOverrideScreenWidth(width);
-                mApplication.setOverrideScreenHeight(height);
-            } else if (width != mApplication.getOverrideScreenWidth() && height != mApplication.getOverrideScreenHeight()
-                    && width != mApplication.getOverrideScreenHeight() && height != mApplication.getOverrideScreenWidth()) {
+            if (width != mApplication.getOverrideScreenWidth() && height != mApplication.getOverrideScreenHeight()
+                && width != mApplication.getOverrideScreenHeight() && height != mApplication.getOverrideScreenWidth()) {
                 if (width * mApplication.getOverrideScreenHeight() == height * mApplication.getOverrideScreenWidth()) {
+                    mApplication.setOverrideScreenWidth(width);
+                    mApplication.setOverrideScreenHeight(height);
+                }
+            } else if (width != mApplication.getOverrideScreenWidth() && height != mApplication.getOverrideScreenHeight()) {
+                if (width * mApplication.getOverrideScreenWidth() == height * mApplication.getOverrideScreenHeight()) {
                     mApplication.setOverrideScreenWidth(width);
                     mApplication.setOverrideScreenHeight(height);
                 }
@@ -723,23 +800,18 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                 final int widthDelta = Math.abs(mApplication.getOverrideScreenWidth() - width);
                 Log.d("widthDelta: " + widthDelta + ", sH: " + mApplication.getStatusBarHeight() + ", nH: " + mApplication.getNavigationBarHeight());
                 if (Math.abs(widthDelta - mApplication.getStatusBarHeight()) <= 1) {
-                    activity.getDecorView().setLeftOffset(mApplication.getOverrideScreenWidth() - width);
-                }
-                for (int i = 0; i < activity.getDecorView().getChildCount(); i++) {
-                    final String viewClassName = activity.getDecorView().getChildAt(i).getClassName();
-                    if (viewClassName.endsWith(".DecorView")
-                            || viewClassName.endsWith("PopupDecorView")) {
-                        activity.getDecorView().getChildAt(i).setLeftOffset(width - mApplication.getOverrideScreenWidth());
-                    }
+                    activity.setLeftOffset(mApplication.getOverrideScreenWidth() - width);
                 }
             }
         } else {
-            if (width == mApplication.getOverrideScreenHeight() && height == mApplication.getOverrideScreenWidth()) {
-                mApplication.setOverrideScreenWidth(width);
-                mApplication.setOverrideScreenHeight(height);
-            } else if (width != mApplication.getOverrideScreenWidth() && height != mApplication.getOverrideScreenHeight()
-                    && width != mApplication.getOverrideScreenHeight() && height != mApplication.getOverrideScreenWidth()) {
+            if (width != mApplication.getOverrideScreenWidth() && height != mApplication.getOverrideScreenHeight()
+                && width != mApplication.getOverrideScreenHeight() && height != mApplication.getOverrideScreenWidth()) {
                 if (width * mApplication.getOverrideScreenHeight() == height * mApplication.getOverrideScreenWidth()) {
+                    mApplication.setOverrideScreenWidth(width);
+                    mApplication.setOverrideScreenHeight(height);
+                }
+            } else if (width != mApplication.getOverrideScreenWidth() && height != mApplication.getOverrideScreenHeight()) {
+                if (width * mApplication.getOverrideScreenWidth() == height * mApplication.getOverrideScreenHeight()) {
                     mApplication.setOverrideScreenWidth(width);
                     mApplication.setOverrideScreenHeight(height);
                 }
@@ -750,35 +822,25 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                 final int heightDelta = mApplication.getOverrideScreenHeight() - height;
                 Log.d("heightDelta: " + heightDelta + ", sH: " + mApplication.getStatusBarHeight() + ", nH: " + mApplication.getNavigationBarHeight());
                 if (Math.abs(heightDelta - mApplication.getStatusBarHeight()) <= 1) {
-                    activity.getDecorView().setTopOffset(mApplication.getOverrideScreenHeight() - height);
-                }
-                for (int i = 0; i < activity.getDecorView().getChildCount(); i++) {
-                    final String viewClassName = activity.getDecorView().getChildAt(i).getClassName();
-                    if (viewClassName.endsWith(".DecorView")
-                            || viewClassName.endsWith("PopupDecorView")) {
-                        activity.getDecorView().getChildAt(i).setTopOffset(height - mApplication.getOverrideScreenHeight());
-                    }
+                    activity.setTopOffset(mApplication.getOverrideScreenHeight() - height);
                 }
             }
         }
-
-        mActivity.getDecorView().calculateAllViewDrawInfo();
-
-        if (OnGetActivityInfoListener != null) {
-            OnGetActivityInfoListener.onGetActivityInfoSuccess(activity);
-            if (lastClickView != null) {
-                if (activity.getDecorView() == null) {
-                    lastClickView = null;
-                } else {
-                    lastClickView = activity.getDecorView().findSameView(lastClickView);
-                }
+        mActivity.calculateAllViewDrawInfo();
+        if (Math.abs((1.0f * width / height) - 1) < 0.25f && rotateDegree == 0) {
+            if ((System.currentTimeMillis() - lastRotateTipTime) > 8 * 60 * 60 * 1000) {
+                NotificationUtils.showNotifyInfoShort(
+                    project,
+                    ResUtils.getString("fold_screen_rotate_tip"),
+                    15000L
+                );
+                lastRotateTipTime = System.currentTimeMillis();
             }
-            onClickViewChange(lastClickView);
         }
-        if (!mCodeLocatorWindow.isWindowMode()) {
-            ThreadUtils.submit(() -> ShowGrabHistoryAction.saveCodeLocatorHistory(new CodeLocatorInfo(mApplication, mScreenCapImage)));
-        }
+        return activity;
     }
+
+    private static long lastRotateTipTime = 0;
 
     public boolean isLandScape() {
         return mIsLandScape;
@@ -787,20 +849,31 @@ public class ScreenPanel extends JPanel implements ImageObserver {
     @Override
     public void paint(Graphics g) {
         super.paint(g);
+        g.setFont(mTextFont);
         Graphics2D graphics2D = (Graphics2D) g;
+        if (mDumpModeWidth == 0) {
+            mDumpModeWidth = graphics2D.getFontMetrics().stringWidth("Dump Mode");
+        }
 
         graphics2D.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        if (mCureentMode == SearchableJTree.MODE_CONTROL && !mCurrentViewList.isEmpty()) {
+        if (mCurrentMode == SearchableJTree.MODE_CONTROL && !mCurrentViewList.isEmpty()) {
             paintControlView(graphics2D);
-        } else if (mCureentMode == SearchableJTree.MODE_SHIFT && !mCurrentViewList.isEmpty()) {
+        } else if (mCurrentMode == SearchableJTree.MODE_SHIFT && !mCurrentViewList.isEmpty()) {
             paintShiftView(graphics2D);
             if (mRepaintByClick) {
                 mRepaintByClick = false;
             }
         } else {
             paintClickView(graphics2D);
+        }
+
+        if (mApplication != null && !mApplication.isFromSdk()) {
+            graphics2D.setColor(mCheckViewTextBgColor);
+            graphics2D.fillRect(getWidth() - mDumpModeWidth - 2 * HALF_DRAW_TEXT_PADDING, 0, mDumpModeWidth + 2 * HALF_DRAW_TEXT_PADDING, 20);
+            graphics2D.setColor(mNormalTextColor);
+            graphics2D.drawString("Dump Mode", getWidth() - mDumpModeWidth - HALF_DRAW_TEXT_PADDING, 15);
         }
     }
 
@@ -811,20 +884,47 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         }
         drawScreenImage(graphics2D);
         drawClickView(graphics2D, mClickedView, 0);
+        if (mCurrentMode != SearchableJTree.MODE_SHIFT && mCurrentMouseX > -1 && mCurrentMouseY > -1) {
+            if (mScaleRatio > 1) {
+                graphics2D.translate(-mTransX, -mTransY);
+            }
+            graphics2D.scale(1 / mScaleRatio, 1 / mScaleRatio);
+            int phoneX = Math.max(CoordinateUtils.convertPanelXToPhoneX(mApplication, mCurrentMouseX, mScaleRatio, mTransX), 0);
+            int phoneY = Math.max(CoordinateUtils.convertPanelYToPhoneY(mApplication, mCurrentMouseY, mScaleRatio, mTransY), 0);
+            String paintText = "X: " + phoneX + ", Y: " + phoneY;
+            final int width = graphics2D.getFontMetrics().stringWidth(paintText) + 12;
+            graphics2D.setColor(mTextBgColor);
+            graphics2D.fillRect(0, 0, width, 20);
+            graphics2D.setColor(mNormalTextColor);
+            graphics2D.drawString(paintText, 6, 15);
+        }
+    }
+
+    public static Image rotateImage(Image image, int degree) {
+        if (!(image instanceof BufferedImage)) {
+            return image;
+        }
+        BufferedImage bufferedImage = (BufferedImage) image;
+        int w = bufferedImage.getWidth();
+        int h = bufferedImage.getHeight();
+        int type = bufferedImage.getColorModel().getTransparency();
+        BufferedImage img = new BufferedImage(w, h, type);
+        Graphics2D graphics2d = img.createGraphics();
+        graphics2d.rotate(Math.toRadians(degree), w / 2, h / 2);
+        graphics2d.drawImage(bufferedImage, 0, 0, null);
+        graphics2d.dispose();
+        return img;
+    }
+
+    public void rotateImage() {
+        rotateDegree = (rotateDegree == 180 ? 0 : 180);
+        mScreenCapImage = rotateImage(mScreenCapImage, 180);
+        repaint();
     }
 
     private void drawScreenImage(Graphics2D graphics2D) {
-        if (ShellHelper.isWindows()) {
-            if (mScreenCapImage != null) {
-                graphics2D.drawImage(mScreenCapImage.getScaledInstance(mDrawWidth, mDrawHeight, Image.SCALE_SMOOTH), 0, 0, this);
-            }
-        } else {
-            if (mScaledScreenImage != null) {
-                graphics2D.drawImage(mScaledScreenImage, 0, 0, this);
-            }
-            if (mScreenCapImage != null) {
-                graphics2D.drawImage(mScreenCapImage, 0, 0, mDrawWidth, mDrawHeight, this);
-            }
+        if (mScreenCapImage != null) {
+            graphics2D.drawImage(mScreenCapImage, 0, 0, mDrawWidth, mDrawHeight, this);
         }
     }
 
@@ -840,7 +940,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         if (mCurrentViewList.size() > 1) {
             paintViewDistance(graphics2D, mCurrentViewList.get(mCurrentViewList.size() - 1), mCurrentViewList.get(mCurrentViewList.size() - 2));
         } else if (mCurrentViewList.size() == 1) {
-            paintViewDistance(graphics2D, mCurrentViewList.get(mCurrentViewList.size() - 1), mActivity.getDecorView());
+            paintViewDistance(graphics2D, mCurrentViewList.get(mCurrentViewList.size() - 1), mActivity.getDecorViews().get(0));
         }
     }
 
@@ -863,8 +963,8 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         final int v2Top = v2.getDrawTop();
         final int v2Bottom = v2.getDrawBottom();
 
-        final int v1Width = v1.getWidth();
-        final int v1Height = v1.getHeight();
+        final int v1Width = v1.getRealWidth();
+        final int v1Height = v1.getRealHeight();
 
         int startX, startY, endX, endY;
 
@@ -1061,7 +1161,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             graphics2D.drawString(drawText, rectangle.x + HALF_DRAW_TEXT_PADDING + drawScreenOffsetX, rectangle.y + HALF_DRAW_TEXT_PADDING + 2 * textCenter + drawScreenOffsetY);
         } else {
             final Color drawRectColor = getDrawRectColor(rectangle.x, rectangle.y, rectangle.width, rectangle.height, sTextBgColors);
-            graphics2D.setColor(new Color(drawRectColor.getRed(), drawRectColor.getGreen(), drawRectColor.getBlue(), 80));
+            graphics2D.setColor(new Color(drawRectColor.getRed(), drawRectColor.getGreen(), drawRectColor.getBlue(), 144));
             if (mRepaintByClick) {
                 mCurrentDrawRect.add(rectangle);
             }
@@ -1096,8 +1196,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         final Rectangle bounds = graphics2D.getClip().getBounds();
         if (bounds.y > 0) {
             repaint();
-        }
-        if (bounds.height < getHeight()) {
+        } else if (bounds.height < getHeight()) {
             if (mDrawMode == 0) {
                 mDrawMode = 1;
                 repaint();
@@ -1120,19 +1219,19 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             if (top + height == getRealHeight()) {
                 height -= 1;
             }
-            if (view.equals(mClickedView) && mCureentMode == SearchableJTree.MODE_CONTROL && !mCurrentViewList.isEmpty()) {
+            if (view.equals(mClickedView) && mCurrentMode == SearchableJTree.MODE_CONTROL && !mCurrentViewList.isEmpty()) {
                 graphics2D.setColor(mSelectViewBgColor);
                 graphics2D.fillRect(left, top, width, height);
                 graphics2D.setColor(Color.RED);
                 graphics2D.drawString("Z: " + index + ", " + StringUtils.getSimpleName(view.getClassName()), left + 2, top + height - 4);
                 graphics2D.setColor(Color.GREEN);
                 graphics2D.drawRect(left, top, width, height);
-            } else if (mCureentMode == SearchableJTree.MODE_SHIFT && !mCurrentViewList.isEmpty()) {
+            } else if (mCurrentMode == SearchableJTree.MODE_SHIFT && !mCurrentViewList.isEmpty()) {
                 if (view.equals(mClickedView)) {
                     graphics2D.setColor(Color.cyan);
                     graphics2D.drawRect(left, top, width, height);
                 } else if ((mCurrentViewList.size() > 1 && view.equals(mCurrentViewList.get(mCurrentViewList.size() - 2)))
-                        || (mCurrentViewList.size() > 0 && view.equals(mCurrentViewList.get(mCurrentViewList.size() - 1)))) {
+                    || (mCurrentViewList.size() > 0 && view.equals(mCurrentViewList.get(mCurrentViewList.size() - 1)))) {
                     graphics2D.setColor(Color.GREEN);
                     graphics2D.drawRect(left, top, width, height);
                 } else {
@@ -1144,6 +1243,10 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                 graphics2D.drawRect(left, top, width, height);
             }
 
+            if (mCurrentMode != SearchableJTree.MODE_SHIFT && CodeLocatorUserConfig.loadConfig().isDrawViewSize()) {
+                drawViewSizeText(graphics2D, view, left, top, width, height);
+            }
+
             if (!mDrawPaddingMargin || !view.equals(mClickedView)) {
                 return;
             }
@@ -1152,17 +1255,101 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         }
     }
 
+    final HashMap<String, String> attrsMap = new HashMap<>();
+
+    final List<String> drawStrings = new LinkedList<>();
+
+    private void drawViewSizeText(Graphics2D graphics2D, WView view, int left, int top, int width, int height) {
+        drawStrings.clear();
+        final String dpStr = "" + UIUtils.px2dip(mApplication.getDensity(), view.getRealWidth())
+            + "x" + UIUtils.px2dip(mApplication.getDensity(), view.getRealHeight());
+        drawStrings.add(dpStr);
+        final List<String> drawAttrs = CodeLocatorUserConfig.loadConfig().getDrawAttrs();
+        if (drawAttrs != null && !drawAttrs.isEmpty()) {
+            attrsMap.clear();
+            ViewInfoTablePanel.buildViewMap(view, mApplication, attrsMap, null);
+            for (String drawAttr : drawAttrs) {
+                String drawValue = attrsMap.get(drawAttr);
+                if ("text".equals(drawAttr) && !view.isTextView()) {
+                    continue;
+                }
+                if ("image".equals(drawAttr) && view.getType() != WView.Type.TYPE_IMAGE) {
+                    continue;
+                }
+                if ("class".equals(drawAttr)) {
+                    if (drawValue.contains(".")) {
+                        drawValue = drawValue.substring(drawValue.lastIndexOf(".") + 1);
+                    }
+                } else if ("image".equals(drawAttr)) {
+                    if (drawValue.startsWith("http")) {
+                        drawValue = "http" + "..." + drawValue.substring(drawValue.length() - 4);
+                    } else if (drawValue.contains("/")) {
+                        drawValue = drawValue.substring(drawValue.lastIndexOf("/") + 1);
+                    }
+                } else if ("position".equals(drawAttr)) {
+                    final int parent = drawValue.indexOf("Parent");
+                    drawStrings.add(drawValue.substring(0, parent).trim());
+                    drawValue = drawValue.substring(parent);
+                } else if ("memAddr".equals(drawAttr)) {
+                    final int indexOfSplit = drawValue.indexOf("(");
+                    drawValue = indexOfSplit >= 0 ? drawValue.substring(0, indexOfSplit - 1) : drawValue;
+                } else if ("text".equals(drawAttr)) {
+                    drawValue = drawValue.length() > 8 ? (drawValue.substring(0, 3) + "..." + drawValue.substring(drawValue.length() - 3)) : drawValue;
+                } else if (drawValue.contains("(")) {
+                    drawValue = drawValue.substring(drawValue.indexOf("(") + 1, drawValue.indexOf(")"));
+                } else if (drawValue.contains(":")) {
+                    drawValue = drawValue.substring(drawValue.lastIndexOf(":"));
+                } else if (drawValue == null || drawValue.isEmpty()) {
+                    continue;
+                }
+                drawStrings.add(drawAttr + ": " + drawValue);
+            }
+        }
+        int strWidth = graphics2D.getFontMetrics().stringWidth(drawStrings.get(0));
+        for (int i = 1; i < drawStrings.size(); i++) {
+            strWidth = Math.max(strWidth, graphics2D.getFontMetrics().stringWidth(drawStrings.get(i)));
+        }
+        strWidth += 2 * HALF_DRAW_TEXT_PADDING;
+        final FontMetrics fontMetrics = graphics2D.getFontMetrics();
+        final int lineHeight = fontMetrics.getHeight();
+        final int rectHeight = (lineHeight * (drawStrings.size()));
+        graphics2D.setColor(mCheckViewTextBgColor);
+        if (top - rectHeight > 0) {
+            top = top - rectHeight;
+        } else if (top + height + rectHeight < getHeight()) {
+            top = top + height;
+        }
+        if (left + width - strWidth < 0) {
+            left = 0;
+        } else {
+            left = left + width - strWidth;
+        }
+        Rectangle rectangle = new Rectangle(left, top, strWidth, rectHeight);
+        if (mApplication != null && !mApplication.isFromSdk()) {
+            final Rectangle dumpRect = new Rectangle(getWidth() - mDumpModeWidth - 2 * HALF_DRAW_TEXT_PADDING, 0, mDumpModeWidth + 2 * HALF_DRAW_TEXT_PADDING, 20);
+            if (isRectOverlap(rectangle, dumpRect)) {
+                rectangle.x -= (mDumpModeWidth + 1);
+            }
+        }
+        graphics2D.fillRect(rectangle.x, rectangle.y, rectangle.width, rectangle.height);
+        graphics2D.setColor(Color.WHITE);
+        for (int i = 0; i < drawStrings.size(); i++) {
+            graphics2D.drawString(drawStrings.get(i), rectangle.x - HALF_DRAW_TEXT_PADDING + rectangle.width - fontMetrics.stringWidth(drawStrings.get(i)), top + fontMetrics.getAscent() + i * lineHeight);
+        }
+    }
+
+    private boolean isRectOverlap(Rectangle r1, Rectangle r2) {
+        return !((r1.x + r1.width < r2.x) || (r1.y + r1.height < r2.y) || (r2.x + r2.width < r1.x) || (r2.y + r2.height < r1.y));
+    }
+
     private Color getDrawRectColor(int left, int top, int width, int height, Color[] colors) {
         Image image = null;
-        if (mScaledScreenImage instanceof BufferedImage) {
-            image = mScaledScreenImage;
+        if (mScreenCapImage instanceof BufferedImage) {
+            image = mScreenCapImage;
         } else {
             try {
-                if (getBufferedImage == null) {
-                    getBufferedImage = mScaledScreenImage.getClass().getMethod("getBufferedImage");
-                    getBufferedImage.setAccessible(true);
-                }
-                image = (Image) getBufferedImage.invoke(mScaledScreenImage);
+                final Method getBufferedImage = ReflectUtils.getClassMethod(mScreenCapImage.getClass(), "getBufferedImage");
+                image = (Image) getBufferedImage.invoke(mScreenCapImage);
             } catch (Throwable t) {
                 Log.e("反射获取getBufferedImage失败", t);
             }
@@ -1170,6 +1357,10 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         if (!(image instanceof BufferedImage) || width <= 0 || height <= 0) {
             return colors[0];
         }
+        left = CoordinateUtils.convertPanelXToPhoneX(mApplication, left, 1, 0);
+        top = CoordinateUtils.convertPanelYToPhoneY(mApplication, top, 1, 0);
+        width = CoordinateUtils.convertPanelDistanceToPhoneDistance(mApplication, width);
+        height = CoordinateUtils.convertPanelDistanceToPhoneDistance(mApplication, height);
         int index = 0;
         for (index = 0; index < colors.length; index++) {
             if (!isColorTooSimilar((BufferedImage) image, left, top, width, height, colors[index])) {
@@ -1189,12 +1380,12 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         int similarPointCount = 0;
         int totalPointCount = 0;
         for (int j = startY; j < endY; j++) {
-            int pixelColor = getImageRGB(image, startX, j); // 下面三行代码将一个数字转换为RGB数字
+            int pixelColor = getImageRGB(image, startX, j);
             if (ColorUtils.calculateColorDistance(new Color(pixelColor), setColor) < MIN_COLOR_DISTANCE) {
                 similarPointCount++;
             }
             totalPointCount++;
-            pixelColor = getImageRGB(image, endX, j); // 下面三行代码将一个数字转换为RGB数字
+            pixelColor = getImageRGB(image, endX, j);
             if (ColorUtils.calculateColorDistance(new Color(pixelColor), setColor) < MIN_COLOR_DISTANCE) {
                 similarPointCount++;
             }
@@ -1206,12 +1397,12 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         similarPointCount = 0;
         totalPointCount = 0;
         for (int j = startX; j < endX; j++) {
-            int pixelColor = getImageRGB(image, j, startY); // 下面三行代码将一个数字转换为RGB数字
+            int pixelColor = getImageRGB(image, j, startY);
             if (ColorUtils.calculateColorDistance(new Color(pixelColor), setColor) < MIN_COLOR_DISTANCE) {
                 similarPointCount++;
             }
             totalPointCount++;
-            pixelColor = getImageRGB(image, j, endY); // 下面三行代码将一个数字转换为RGB数字
+            pixelColor = getImageRGB(image, j, endY);
             if (ColorUtils.calculateColorDistance(new Color(pixelColor), setColor) < MIN_COLOR_DISTANCE) {
                 similarPointCount++;
             }
@@ -1227,24 +1418,24 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         similarPointCount = 0;
         totalPointCount = 0;
         for (int j = startY; j < endY; j++) {
-            int pixelColor = getImageRGB(image, startX, j); // 下面三行代码将一个数字转换为RGB数字
+            int pixelColor = getImageRGB(image, startX, j);
             if (ColorUtils.calculateColorDistance(new Color(pixelColor), setColor) < MIN_COLOR_DISTANCE) {
                 similarPointCount++;
             }
             totalPointCount++;
-            pixelColor = getImageRGB(image, endX, j); // 下面三行代码将一个数字转换为RGB数字
+            pixelColor = getImageRGB(image, endX, j);
             if (ColorUtils.calculateColorDistance(new Color(pixelColor), setColor) < MIN_COLOR_DISTANCE) {
                 similarPointCount++;
             }
             totalPointCount++;
         }
         for (int j = startX; j < endX; j++) {
-            int pixelColor = getImageRGB(image, j, startY); // 下面三行代码将一个数字转换为RGB数字
+            int pixelColor = getImageRGB(image, j, startY);
             if (ColorUtils.calculateColorDistance(new Color(pixelColor), setColor) < MIN_COLOR_DISTANCE) {
                 similarPointCount++;
             }
             totalPointCount++;
-            pixelColor = getImageRGB(image, j, endY); // 下面三行代码将一个数字转换为RGB数字
+            pixelColor = getImageRGB(image, j, endY);
             if (ColorUtils.calculateColorDistance(new Color(pixelColor), setColor) < MIN_COLOR_DISTANCE) {
                 similarPointCount++;
             }
@@ -1270,7 +1461,8 @@ public class ScreenPanel extends JPanel implements ImageObserver {
     }
 
     private void drawViewMargin(Graphics2D graphics2D, WView view, int left, int top, int width, int height) {
-        graphics2D.setColor(Color.decode("#F9CC9E"));
+        final Color decode = Color.decode("#F9CC9E");
+        graphics2D.setColor(new Color(decode.getRed(), decode.getGreen(), decode.getBlue(), 168));
         int marginLeft = CoordinateUtils.convertPhoneDistanceToPanelDistance(mApplication, view.getMarginLeft());
         int marginTop = CoordinateUtils.convertPhoneDistanceToPanelDistance(mApplication, view.getMarginTop());
         int marginRight = CoordinateUtils.convertPhoneDistanceToPanelDistance(mApplication, view.getMarginRight());
@@ -1290,7 +1482,8 @@ public class ScreenPanel extends JPanel implements ImageObserver {
     }
 
     private void drawViewPadding(Graphics2D graphics2D, WView view, int left, int top, int width, int height) {
-        graphics2D.setColor(Color.decode("#C1DCB6"));
+        final Color decode = Color.decode("#C1DCB6");
+        graphics2D.setColor(new Color(decode.getRed(), decode.getGreen(), decode.getBlue(), 168));
         int paddingLeft = CoordinateUtils.convertPhoneDistanceToPanelDistance(mApplication, view.getPaddingLeft());
         int paddingTop = CoordinateUtils.convertPhoneDistanceToPanelDistance(mApplication, view.getPaddingTop());
         int paddingRight = CoordinateUtils.convertPhoneDistanceToPanelDistance(mApplication, view.getPaddingRight());
@@ -1321,27 +1514,29 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         try {
             grab(lastSelectView, stopAnim);
         } catch (Exception exception) {
-            mIsGrabing = false;
+            mIsGrabbing = false;
             Log.e("Grab失败", exception);
         }
     }
 
-    public void notifyGetCodeLocatorInfo(CodeLocatorInfo codeLocatorInfo) {
-        WApplication application = codeLocatorInfo.getWApplication();
-        Image image = codeLocatorInfo.getImage();
+    public void notifyGetCodeLocatorInfo(CodeLocatorInfo codelocatorInfo) {
+        WApplication application = codelocatorInfo.getWApplication();
+        Image image = codelocatorInfo.getImage();
         isWindowMode = true;
         mScreenCapImage = image;
+        calculateScaleScreenInfo();
         mApplication = application;
-        onGetApplicationInfoSuccess(null, null);
+        caclulateActivityInfo();
+        onGetApplicationInfoSuccess(null);
         ThreadUtils.submit(() -> FileUtils.saveScreenCap(mScreenCapImage));
     }
 
     public void grab(WView lastSelectView, boolean stopAnim) {
-        if (mIsGrabing) {
-            Log.d("isGrabing, skip grab");
+        if (mIsGrabbing) {
+            Log.d("isGrabbing, skip grab");
             return;
         }
-        mIsGrabing = true;
+        mIsGrabbing = true;
         if (!mCurrentViewList.isEmpty()) {
             onControlViewRelease();
         }
@@ -1351,72 +1546,51 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         }
 
         if (stopAnim) {
-            ThreadUtils.submit(new Runnable() {
-                @Override
-                public void run() {
-                    stopAnimAndGrabView(lastSelectView);
-                }
-            });
+            ThreadUtils.submit(() -> stopAnimAndGrabView(lastSelectView));
         } else {
             directGrabView(lastSelectView);
         }
     }
 
     private void stopAnimAndGrabView(WView lastSelectView) {
-        if (DeviceManager.getCurrentDevice() == null) {
-            checkDeviceInfoAndGrab(lastSelectView);
-            return;
-        }
         mGrapStepCount.getAndSet(0);
-        final Device device = DeviceManager.getCurrentDevice();
         try {
-            mCallGrabStartTime = System.currentTimeMillis();
-            final long lastGrabTime = mCallGrabStartTime;
-            TimeUtils.sTimer.schedule(new TimerTask() {
+            DeviceManager.executeCmd(project, new AdbCommand(
+                new DeleteFileAction(TMP_TRANS_DATA_FILE_PATH),
+                new DeleteFileAction(TMP_TRANS_IMAGE_FILE_PATH)
+            ), BaseResponse.class);
+            final AdbCommand adbCommand = new AdbCommand(
+                new BroadcastAction(ACTION_DEBUG_LAYOUT_INFO)
+                    .args(KEY_SAVE_TO_FILE, DeviceManager.isNeedSaveFile(project))
+                    .args(KEY_STOP_ALL_ANIM, GRAB_WAIT_TIME)
+                    .args(KEY_NEED_COLOR, mCodeLocatorWindow.getCodelocatorConfig().isPreviewColor())
+            );
+            mApplicationResponse = DeviceManager.executeCmd(project, adbCommand, ApplicationResponse.class, new Thread() {
                 @Override
                 public void run() {
-                    if (mCallGrabStartTime > 0 && lastGrabTime == mCallGrabStartTime) {
-                        ThreadUtils.runOnUIThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                Messages.showMessageDialog(mCodeLocatorWindow.getProject(), "断点时CodeLocator需等待断点放开后才可以获取到View信息, 本次抓取可能会有错位问题", "CodeLocator", Messages.getInformationIcon());
-                            }
-                        });
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e) {
                     }
-                }
-            }, 6000);
-            BroadcastBuilder execCommand = new BroadcastBuilder(CodeLocatorConstants.ACTION_DEBUG_LAYOUT_INFO);
-            if (device.getGrabMode() == Device.GRAD_MODE_FILE) {
-                execCommand.arg(CodeLocatorConstants.KEY_SAVE_TO_FILE, "true");
-                execCommand.arg(CodeLocatorConstants.KEY_STOP_ALL_ANIM, "" + GRAB_FILE_WAIT_TIME);
-            } else {
-                execCommand.arg(CodeLocatorConstants.KEY_STOP_ALL_ANIM, "" + GRAB_SHELL_WAIT_TIME);
-            }
-            final AdbCommand getAppInfo = new AdbCommand(device, execCommand);
-            final ExecResult bytes = ShellHelper.execCommand(getAppInfo.toString(), false, new Thread() {
-                @Override
-                public void run() {
-                    takeScreenShot(device);
+                    takeScreenShot();
                 }
             });
-            mCallGrabStartTime = 0;
-            if (bytes.getResultCode() != 0) {
-                checkStopGrabEnd(null);
+            if (mApplicationResponse == null) {
+                checkStopGrabEnd();
                 return;
             }
-            String viewInfoStr = new String(bytes.getResultBytes());
-            mApplication = Parser.parserViewInfo(device, viewInfoStr);
+            final Device device = DeviceManager.getCurrentDevice(project);
+            mApplication = mApplicationResponse.getData();
             if (mApplication != null) {
                 mApplication.setOverrideScreenWidth(device.getDeviceOverrideWidth());
                 mApplication.setOverrideScreenHeight(device.getDeviceOverrideHeight());
                 mApplication.setPhysicalWidth(device.getDeviceWidth());
                 mApplication.setPhysicalHeight(device.getDeviceHeight());
             }
-            checkStopGrabEnd(device);
+            checkStopGrabEnd();
         } catch (Throwable t) {
             Log.e("获取Activity信息失败: ", t);
-            mCallGrabStartTime = 0;
-            mIsGrabing = false;
+            mIsGrabbing = false;
             if (OnGetActivityInfoListener != null) {
                 ThreadUtils.runOnUIThread(() -> {
                     OnGetActivityInfoListener.onGetActivityInfoFailed(t);
@@ -1436,20 +1610,20 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         mCurrentDrawRect.clear();
         mCurrentViewList.clear();
         if (filterViewList == null || filterViewList.isEmpty()) {
-            mCureentMode = SearchableJTree.MODE_NORMAL;
-            mOnGetViewListListener.onGetViewList(mCureentMode, mCurrentViewList);
-            NotificationUtils.showNotification(mCodeLocatorWindow.getProject(), "当前View下未找到符合需求的View", 5000L);
+            mCurrentMode = SearchableJTree.MODE_NORMAL;
+            mOnGetViewListListener.onGetViewList(mCurrentMode, mCurrentViewList);
+            NotificationUtils.showNotifyInfoShort(project, ResUtils.getString("no_view_found_tip"), 5000L);
             return;
         }
         mCurrentViewList.addAll(filterViewList);
-        mCureentMode = SearchableJTree.MODE_CUSTOM_FLITER;
+        mCurrentMode = SearchableJTree.MODE_CUSTOM_FLITER;
         if (mOnGetViewListListener != null) {
             mOnGetViewListListener.onGetViewList(SearchableJTree.MODE_CUSTOM_FLITER, mCurrentViewList);
         }
     }
 
     public void getFileInfo(WApplication application, boolean reload) {
-        if (application == null) {
+        if (application == null || !application.isFromSdk()) {
             return;
         }
         if (application.getFile() != null) {
@@ -1460,268 +1634,252 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             mCodeLocatorWindow.getRootPanel().getMainPanel().getTabContainerPanel().updateFileState(null);
         }
 
-        if (!reload) {
-            NotificationUtils.showNotification(mCodeLocatorWindow.getProject(), "正在获取文件信息", 2000);
+        if (application.getAndroidVersion() >= CodeLocatorConstants.USE_TRANS_FILE_SDK_VERSION) {
+            DeviceManager.enqueueCmd(project, new AdbCommand(new DeleteFileAction(TMP_TRANS_DATA_FILE_PATH)), BaseResponse.class, null);
         }
-        DeviceManager.execCommand(mCodeLocatorWindow.getProject(),
-                new AdbCommand(new BroadcastBuilder(CodeLocatorConstants.ACTION_DEBUG_FILE_INFO).arg(CodeLocatorConstants.KEY_SAVE_TO_FILE, "true")),
-                new DeviceManager.OnExecutedListener() {
-                    @Override
-                    public void onExecSuccess(Device device, ExecResult result) {
-                        if (result.getResultCode() == 0) {
-                            String fileInfoRowDataStr = new String(result.getResultBytes());
-                            String fileInfoJsonStr = Parser.parserCommandResult(device, fileInfoRowDataStr, true);
-                            final WFile wFile = NetUtils.sGson.fromJson(fileInfoJsonStr, WFile.class);
-                            if (wFile != null) {
-                                DataUtils.restoreAllStructInfo(wFile);
-
-                                application.setFile(wFile);
-                                mCodeLocatorWindow.getRootPanel().getMainPanel().getTabContainerPanel().updateFileState(wFile);
-                            } else {
-                                ThreadUtils.runOnUIThread(() -> Messages.showMessageDialog(mCodeLocatorWindow.getProject(), "未获取到文件信息", "CodeLocator", Messages.getInformationIcon()));
-                            }
-                        }
+        if (!reload) {
+            NotificationUtils.showNotifyInfoShort(project, ResUtils.getString("get_file_info"), 2000);
+        }
+        DeviceManager.enqueueCmd(project,
+            new AdbCommand(new BroadcastAction(ACTION_DEBUG_FILE_INFO).args(KEY_SAVE_TO_FILE, true)),
+            FileResponse.class,
+            new DeviceManager.OnExecutedListener<FileResponse>() {
+                @Override
+                public void onExecSuccess(@NotNull Device device, @NotNull FileResponse response) {
+                    final WFile wFile = response.getData();
+                    if (wFile != null) {
+                        DataUtils.restoreAllFileStructInfo(wFile);
+                        application.setFile(wFile);
+                        mCodeLocatorWindow.getRootPanel().getMainPanel().getTabContainerPanel().updateFileState(wFile);
+                    } else {
+                        ThreadUtils.runOnUIThread(() -> Messages.showMessageDialog(project, ResUtils.getString("no_file_info"), "CodeLocator", Messages.getInformationIcon()));
                     }
+                }
 
-                    @Override
-                    public void onExecFailed(String failedReason) {
-                        Messages.showMessageDialog(mCodeLocatorWindow.getProject(), failedReason, "CodeLocator", Messages.getInformationIcon());
-                    }
-                });
+                @Override
+                public void onExecFailed(@NotNull Throwable throwable) {
+                    Messages.showMessageDialog(project, StringUtils.getErrorTip(throwable), "CodeLocator", Messages.getInformationIcon());
+                }
+            });
     }
 
-    private void checkStopGrabEnd(Device device) {
+    private void checkStopGrabEnd() {
         final int currentStep = mGrapStepCount.addAndGet(1);
         if (currentStep >= 2) {
-            onStopGrabEnd(device);
+            onStopGrabEnd();
         }
     }
 
-    private void takeScreenShot(Device device) {
-        if (device.getGrabMode() == Device.GRAD_MODE_FILE) {
-            final File imageFile = new File(FileUtils.codelocatorMainDir.getAbsolutePath(), "codelocator_cap.png");
+    private void takeScreenShot() {
+        if (DeviceManager.isNeedSaveFile(project)) {
+            final String pullImageFileName = TMP_IMAGE_FILE_NAME;
+            final File imageFile = new File(FileUtils.sCodeLocatorMainDirPath, pullImageFileName);
             if (imageFile.exists()) {
                 imageFile.delete();
             }
-            DeviceManager.execCommand(mCodeLocatorWindow.getProject(),
-                    new AdbCommand(device, "shell screencap -p /sdcard/codelocator_cap.png", "pull /sdcard/codelocator_cap.png " + FileUtils.codelocatorMainDir.getAbsolutePath()),
-                    new DeviceManager.OnExecutedListener() {
-                        @Override
-                        public void onExecSuccess(Device device, ExecResult execResult) {
-                            if (imageFile.exists() && imageFile.length() > 0) {
-                                try {
-                                    mScreenCapImage = ImageIO.read(new FileInputStream(imageFile));
-                                    mScreenCapImage.getWidth(null);
-                                    mScreenCapImage.getHeight(null);
-                                    final File saveImageFile = new File(FileUtils.codelocatorMainDir, FileUtils.SAVE_IMAGE_FILE_NAME);
-                                    if (saveImageFile.exists()) {
-                                        saveImageFile.delete();
-                                    }
-                                    imageFile.renameTo(saveImageFile);
-                                } catch (Throwable t) {
-                                    Log.e("解析图片文件失败", t);
-                                } finally {
-                                    checkStopGrabEnd(device);
-                                }
-                            }
-                        }
-
-                        @Override
-                        public void onExecFailed(String failedReason) {
-                            Messages.showMessageDialog(mCodeLocatorWindow.getProject(), failedReason, "CodeLocator", Messages.getInformationIcon());
-                            checkStopGrabEnd(device);
-                        }
-                    });
-        } else {
-            DeviceManager.execCommand(mCodeLocatorWindow.getProject(), new AdbCommand("shell screencap -p"), new DeviceManager.OnExecutedListener() {
-                @Override
-                public void onExecSuccess(Device device, ExecResult execResult) {
-                    final byte[] imageBytes = execResult.getResultBytes();
-                    try {
-                        mScreenCapImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
-                        mScreenCapImage.getWidth(null);
-                        mScreenCapImage.getHeight(null);
-                        ThreadUtils.submit(() -> FileUtils.saveScreenCap(imageBytes));
-                    } catch (Throwable t) {
-                        Log.e("ScreenCap 获取图片失败", t);
-                    }
-                    checkStopGrabEnd(device);
-                }
-
-                @Override
-                public void onExecFailed(String failedReason) {
-                    Messages.showMessageDialog(mCodeLocatorWindow.getProject(), failedReason, "CodeLocator", Messages.getInformationIcon());
-                    checkStopGrabEnd(device);
-                }
-            });
-        }
-    }
-
-    private void directGrabView(WView lastSelectView) {
-        if (DeviceManager.getCurrentDevice() == null
-                || DeviceManager.getCurrentDevice().getGrabMode() == Device.GRAD_MODE_SHELL) {
-            DeviceManager.execCommand(mCodeLocatorWindow.getProject(), new AdbCommand("shell screencap -p"), new DeviceManager.OnExecutedListener() {
-                @Override
-                public void onExecSuccess(Device device, ExecResult execResult) {
-                    final byte[] imageBytes = execResult.getResultBytes();
-                    try {
-                        mScreenCapImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
-                        mScreenCapImage.getWidth(null);
-                        mScreenCapImage.getHeight(null);
-                        ThreadUtils.submit(() -> FileUtils.saveScreenCap(imageBytes));
-                    } catch (Throwable t) {
-                        Log.e("ScreenCap 获取图片失败", t);
-                    }
-                    if (mScreenCapImage == null) {
-                        getScreenCapByFile(device, lastSelectView);
-                        return;
-                    }
-                    onGetScreenCapImage(device, lastSelectView);
-                }
-
-                @Override
-                public void onExecFailed(String failedReason) {
-                    Log.e("exec grab failed, reason: " + failedReason);
-                    mIsGrabing = false;
-                    if (failedReason != null && failedReason.contains("adb server version")) {
-                        String fixCmd = "adbPath=`which adb`;cp $adbPath '" + FileUtils.codelocatorPluginDir.getAbsolutePath() + "'";
-                        ClipboardUtils.copyContentToClipboard(mCodeLocatorWindow.getProject(), fixCmd);
-                        failedReason = "Adb版本不一致导致抓取失败\n命令行中执行" + fixCmd + "可修复此问题\n对应命令已复制到剪切板, Terminal中粘贴执行即可";
-                    }
-                    Messages.showMessageDialog(mCodeLocatorWindow.getProject(), failedReason, "CodeLocator", Messages.getInformationIcon());
-                }
-            });
-        } else {
-            getScreenCapByFile(DeviceManager.getCurrentDevice(), lastSelectView);
-        }
-    }
-
-    private void checkDeviceInfoAndGrab(WView lastSelectView) {
-        DeviceManager.execCommand(mCodeLocatorWindow.getProject(), new AdbCommand("shell screencap -p"), new DeviceManager.OnExecutedListener() {
-            @Override
-            public void onExecSuccess(Device device, ExecResult execResult) {
-                final byte[] imageBytes = execResult.getResultBytes();
-                try {
-                    Image image = ImageIO.read(new ByteArrayInputStream(imageBytes));
-                    image.getWidth(null);
-                    image.getHeight(null);
-                    mScreenCapImage = image;
-                } catch (Throwable t) {
-                    Log.e("ScreenCap 获取图片失败", t);
-                }
-                if (mScreenCapImage == null) {
-                    device.setGrabMode(Device.GRAD_MODE_FILE);
-                    stopAnimAndGrabView(lastSelectView);
-                } else {
-                    stopAnimAndGrabView(lastSelectView);
-                }
-            }
-
-            @Override
-            public void onExecFailed(String failedReason) {
-                mIsGrabing = false;
-                Messages.showMessageDialog(mCodeLocatorWindow.getProject(), failedReason, "CodeLocator", Messages.getInformationIcon());
-            }
-        });
-    }
-
-    private void onStopGrabEnd(Device device) {
-        mGrapStepCount.getAndSet(0);
-        mIsGrabing = false;
-        if (mScreenCapImage == null) {
-            ThreadUtils.runOnUIThread(() -> Messages.showMessageDialog(mCodeLocatorWindow.getProject(), "抓取图片失败, 请点击右上角小飞机反馈问题", "CodeLocator", Messages.getInformationIcon()));
-            return;
-        }
-        if (mApplication == null || mApplication.getActivity() == null) {
-            onGetApplicationInfoFailed(device);
-            return;
-        }
-        ThreadUtils.runOnUIThread(() -> onGetApplicationInfoSuccess(device, null));
-    }
-
-    private void getScreenCapByFile(Device device, WView lastSelectView) {
-        final File imageFile = new File(FileUtils.codelocatorMainDir.getAbsolutePath(), "codelocator_cap.png");
-        if (imageFile.exists()) {
-            imageFile.delete();
-        }
-        DeviceManager.execCommand(mCodeLocatorWindow.getProject(),
-                new AdbCommand(device, "shell screencap -p /sdcard/codelocator_cap.png", "pull /sdcard/codelocator_cap.png " + FileUtils.codelocatorMainDir.getAbsolutePath()),
+            String pullImagePath = "/sdcard/" + pullImageFileName;
+            DeviceManager.enqueueCmd(project,
+                new AdbCommand(
+                    new ScreencapAction("-p " + pullImagePath),
+                    new PullFileAction(pullImagePath, FileUtils.sCodeLocatorMainDirPath + File.separator + pullImageFileName)
+                ),
+                BaseResponse.class,
                 new DeviceManager.OnExecutedListener() {
                     @Override
-                    public void onExecSuccess(Device device, ExecResult execResult) {
+                    public void onExecSuccess(@NotNull Device device, @NotNull BaseResponse response) {
                         if (imageFile.exists() && imageFile.length() > 0) {
-                            device.setGrabMode(Device.GRAD_MODE_FILE);
                             try {
                                 mScreenCapImage = ImageIO.read(new FileInputStream(imageFile));
                                 mScreenCapImage.getWidth(null);
                                 mScreenCapImage.getHeight(null);
-                                final File saveImageFile = new File(FileUtils.codelocatorMainDir, FileUtils.SAVE_IMAGE_FILE_NAME);
+                                final File saveImageFile = new File(FileUtils.sCodeLocatorMainDirPath, FileUtils.SAVE_IMAGE_FILE_NAME);
                                 if (saveImageFile.exists()) {
                                     saveImageFile.delete();
                                 }
                                 imageFile.renameTo(saveImageFile);
-                                onGetScreenCapImage(device, lastSelectView);
+                                if (rotateDegree != 0) {
+                                    mScreenCapImage = rotateImage(mScreenCapImage, rotateDegree);
+                                }
+                                calculateScaleScreenInfo();
+                                repaint();
+                                checkStopGrabEnd();
                             } catch (Throwable t) {
                                 Log.e("解析图片文件失败", t);
+                                onExecFailed(t);
                             }
-                        } else {
-                            mIsGrabing = false;
-                            ThreadUtils.runOnUIThread(() -> Messages.showMessageDialog(mCodeLocatorWindow.getProject(), "获取图片失败", "CodeLocator", Messages.getInformationIcon()));
                         }
                     }
 
                     @Override
-                    public void onExecFailed(String failedReason) {
-                        Messages.showMessageDialog(mCodeLocatorWindow.getProject(), failedReason, "CodeLocator", Messages.getInformationIcon());
-                        mIsGrabing = false;
+                    public void onExecFailed(@NotNull Throwable throwable) {
+                        Messages.showMessageDialog(project, StringUtils.getErrorTip(throwable), "CodeLocator", Messages.getInformationIcon());
+                        checkStopGrabEnd();
                     }
                 });
+        } else {
+            DeviceManager.enqueueCmd(project, new AdbCommand(new ScreencapAction("-p")), ImageResponse.class,
+                new DeviceManager.OnExecutedListener<ImageResponse>() {
+                    @Override
+                    public void onExecSuccess(@NotNull Device device, @NotNull ImageResponse response) {
+                        mScreenCapImage = response.getData();
+                        mScreenCapImage.getWidth(null);
+                        mScreenCapImage.getHeight(null);
+                        if (rotateDegree != 0) {
+                            mScreenCapImage = rotateImage(mScreenCapImage, rotateDegree);
+                        }
+                        calculateScaleScreenInfo();
+                        repaint();
+                        checkStopGrabEnd();
+                        ThreadUtils.submit(() -> FileUtils.saveScreenCap(mScreenCapImage));
+                    }
+
+                    @Override
+                    public void onExecFailed(@NotNull Throwable throwable) {
+                        Messages.showMessageDialog(project, StringUtils.getErrorTip(throwable), "CodeLocator", Messages.getInformationIcon());
+                        checkStopGrabEnd();
+                    }
+                });
+        }
+    }
+
+    private void directGrabView(WView lastSelectView) {
+        if (!DeviceManager.isNeedSaveFile(project)) {
+            DeviceManager.enqueueCmd(project, new AdbCommand(new ScreencapAction("-p")),
+                ImageResponse.class,
+                new DeviceManager.OnExecutedListener<ImageResponse>() {
+                    @Override
+                    public void onExecSuccess(Device device, ImageResponse response) {
+                        mScreenCapImage = response.getData();
+                        if (rotateDegree != 0 && mScreenCapImage != null) {
+                            mScreenCapImage.getWidth(null);
+                            mScreenCapImage.getHeight(null);
+                            mScreenCapImage = rotateImage(mScreenCapImage, rotateDegree);
+                        }
+                        if (mScreenCapImage == null) {
+                            getScreenCapByFile(lastSelectView);
+                            return;
+                        }
+                        calculateScaleScreenInfo();
+                        mClickedView = lastSelectView;
+                        repaint();
+                        onGetScreenCapImage(device, lastSelectView);
+                        ThreadUtils.submit(() -> FileUtils.saveScreenCap(mScreenCapImage));
+                    }
+
+                    @Override
+                    public void onExecFailed(Throwable throwable) {
+                        Log.e("exec grab failed, reason: " + throwable.getMessage());
+                        mIsGrabbing = false;
+                        Messages.showMessageDialog(project, StringUtils.getErrorTip(throwable), "CodeLocator", Messages.getInformationIcon());
+                    }
+                });
+        } else {
+            getScreenCapByFile(lastSelectView);
+        }
+    }
+
+    private void onStopGrabEnd() {
+        Log.d("call onStopGrabEnd");
+        mGrapStepCount.getAndSet(0);
+        mIsGrabbing = false;
+        if (mScreenCapImage == null) {
+            ThreadUtils.runOnUIThread(() -> Messages.showMessageDialog(project, ResUtils.getString("grab_image_failed"), "CodeLocator", Messages.getInformationIcon()));
+            return;
+        }
+        if (mApplication == null || mApplication.getActivity() == null) {
+            onGetApplicationInfoFailed();
+            return;
+        }
+        caclulateActivityInfo();
+        ThreadUtils.runOnUIThread(() -> {
+            onGetApplicationInfoSuccess(null);
+        });
+    }
+
+    private void getScreenCapByFile(WView lastSelectView) {
+        final String pullImageFileName = TMP_IMAGE_FILE_NAME;
+        final File imageFile = new File(FileUtils.sCodeLocatorMainDirPath, pullImageFileName);
+        if (imageFile.exists()) {
+            imageFile.delete();
+        }
+        String pullImagePath = "/sdcard/" + pullImageFileName;
+        DeviceManager.enqueueCmd(project,
+            new AdbCommand(
+                new ScreencapAction("-p " + pullImagePath),
+                new PullFileAction(pullImagePath, FileUtils.sCodeLocatorMainDirPath + File.separator + pullImageFileName)
+            ),
+            BaseResponse.class,
+            new DeviceManager.OnExecutedListener<BaseResponse>() {
+                @Override
+                public void onExecSuccess(Device device, BaseResponse response) {
+                    if (imageFile.exists() && imageFile.length() > 0) {
+                        device.setGrabMode(Device.GRAD_MODE_FILE);
+                        try {
+                            mScreenCapImage = ImageIO.read(new FileInputStream(imageFile));
+                            mScreenCapImage.getWidth(null);
+                            mScreenCapImage.getHeight(null);
+                            final File saveImageFile = new File(FileUtils.sCodeLocatorMainDirPath, FileUtils.SAVE_IMAGE_FILE_NAME);
+                            if (saveImageFile.exists()) {
+                                saveImageFile.delete();
+                            }
+                            imageFile.renameTo(saveImageFile);
+                            if (rotateDegree != 0) {
+                                mScreenCapImage = rotateImage(mScreenCapImage, rotateDegree);
+                            }
+                            calculateScaleScreenInfo();
+                            repaint();
+                            onGetScreenCapImage(device, lastSelectView);
+                        } catch (Throwable t) {
+                            mIsGrabbing = false;
+                            Log.e("解析图片文件失败", t);
+                        }
+                    } else {
+                        mIsGrabbing = false;
+                        ThreadUtils.runOnUIThread(() -> Messages.showMessageDialog(project, ResUtils.getString("get_image_failed_msg"), "CodeLocator", Messages.getInformationIcon()));
+                    }
+                }
+
+                @Override
+                public void onExecFailed(Throwable throwable) {
+                    Messages.showMessageDialog(project, StringUtils.getErrorTip(throwable), "CodeLocator", Messages.getInformationIcon());
+                    mIsGrabbing = false;
+                }
+            });
     }
 
     private void onGetScreenCapImage(Device device, WView lastSelectView) {
         try {
-            mCallGrabStartTime = System.currentTimeMillis();
-            if (lastSelectView == null) {
-                final long lastGrabTime = mCallGrabStartTime;
-                TimeUtils.sTimer.schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        if (mCallGrabStartTime > 0 && lastGrabTime == mCallGrabStartTime) {
-                            ThreadUtils.runOnUIThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Messages.showMessageDialog(mCodeLocatorWindow.getProject(), "断点时CodeLocator需等待断点放开后才可以获取到View信息, 本次抓取可能会有错位问题", "CodeLocator", Messages.getInformationIcon());
-                                }
-                            });
-                        }
-                    }
-                }, 6000);
+            // call Debug check
+            if (device.getApiVersion() >= USE_TRANS_FILE_SDK_VERSION) {
+                DeviceManager.executeCmd(project, new AdbCommand(
+                    new DeleteFileAction(TMP_TRANS_DATA_FILE_PATH),
+                    new DeleteFileAction(TMP_TRANS_IMAGE_FILE_PATH)
+                ), StringResponse.class);
             }
-            BroadcastBuilder broadcastBuilder = new BroadcastBuilder(CodeLocatorConstants.ACTION_DEBUG_LAYOUT_INFO);
-            if (device.getGrabMode() == Device.GRAD_MODE_FILE) {
-                broadcastBuilder.arg(CodeLocatorConstants.KEY_SAVE_TO_FILE, "true");
-            }
-            final AdbCommand getAppInfo = new AdbCommand(device, broadcastBuilder);
-            final ExecResult bytes = ShellHelper.execCommand(getAppInfo.toString());
-            String viewInfoStr = new String(bytes.getResultBytes());
-            mCallGrabStartTime = 0;
-            mApplication = Parser.parserViewInfo(device, viewInfoStr);
+            final BroadcastAction broadcastAction = new BroadcastAction(ACTION_DEBUG_LAYOUT_INFO);
+            broadcastAction.args(KEY_SAVE_TO_FILE, DeviceManager.isNeedSaveFile(project));
+            broadcastAction.args(KEY_NEED_COLOR, mCodeLocatorWindow.getCodelocatorConfig().isPreviewColor());
+            mApplicationResponse = DeviceManager.executeCmd(project, new AdbCommand(broadcastAction), ApplicationResponse.class);
+            mApplication = mApplicationResponse.getData();
             if (mApplication == null || mApplication.getActivity() == null) {
-                onGetApplicationInfoFailed(device);
+                onGetApplicationInfoFailed();
                 return;
             }
             mApplication.setOverrideScreenWidth(device.getDeviceOverrideWidth());
             mApplication.setOverrideScreenHeight(device.getDeviceOverrideHeight());
             mApplication.setPhysicalWidth(device.getDeviceWidth());
             mApplication.setPhysicalHeight(device.getDeviceHeight());
-            mIsGrabing = false;
+            caclulateActivityInfo();
+            mIsGrabbing = false;
             ThreadUtils.runOnUIThread(() -> {
-                onGetApplicationInfoSuccess(device, lastSelectView);
+                onGetApplicationInfoSuccess(lastSelectView);
             });
         } catch (Throwable t) {
             Log.e("获取Activity信息失败: ", t);
+            mIsGrabbing = false;
+            mApplicationResponse = null;
+            mApplication = null;
             if (OnGetActivityInfoListener != null) {
-                mIsGrabing = false;
                 ThreadUtils.runOnUIThread(() -> {
                     OnGetActivityInfoListener.onGetActivityInfoFailed(t);
                     onClickViewChange(null);

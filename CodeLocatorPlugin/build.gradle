@@ -6,29 +6,51 @@ plugins {
 
 group 'com.bytedance.tools'
 
-version '1.2.3'
+version '2.0.0'
 
 runIde {
     jvmArgs '-Xmx10G'
 }
 
+boolean useSourceCode = false
+
+repositories {
+    mavenCentral()
+    google()
+    jcenter()
+    if (getProperties("customMarvenUrl") != null) {
+        maven { url getProperties("customMarvenUrl") }
+    }
+}
+
 allprojects {
     repositories {
+        mavenCentral()
         google()
         jcenter()
+        if (getProperties("customMarvenUrl") != null) {
+            maven { url getProperties("customMarvenUrl") }
+        }
     }
 }
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
     implementation "com.squareup.okhttp3:okhttp:3.8.1"
-    implementation project(':CodeLocatorModel')
-    compile fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "javazoom:jlayer:1.0.1"
+    if (useSourceCode) {
+        implementation project(':CodeLocatorModel')
+    } else {
+        implementation "com.bytedance.tools.codelocator:codelocator-model:2.0.0"
+    }
+    implementation "io.reactivex.rxjava3:rxjava:3.1.4"
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
 }
 
 intellij {
     updateSinceUntilBuild false
     version '191.6707.61'
+    plugins = ["org.jetbrains.kotlin", "org.jetbrains.android"]
 }
 
 boolean isFirst = true
@@ -37,25 +59,19 @@ boolean isWindows() {
     return System.getProperty("os.name").toLowerCase().indexOf("windows") != -1
 }
 
-boolean isMac() {
-    return System.getProperty("os.name").toLowerCase().indexOf("mac") != -1
-}
-
 gradle.taskGraph.beforeTask {
-    if (isFirst) {
+    if (isFirst && !isWindows()) {
         isFirst = false
         def tasks = gradle.taskGraph.allTasks
-        if (!isWindows()) {
-            def logFile = new File("src/main/java/com/bytedance/tools/codelocator/utils/Log.java")
-            if ("runIde".equals(tasks.get(tasks.size() - 1).name)) {
-                def commands = ["/bin/sh", "-c", "sed -i '' 's/DEBUG = false/DEBUG = true/g' " + logFile.getAbsolutePath()] as String[]
-                def exec = Runtime.getRuntime().exec(commands)
-                exec.waitFor()
-            } else {
-                def commands = ["/bin/sh", "-c", "sed -i '' 's/DEBUG = true/DEBUG = true/g' " + logFile.getAbsolutePath()] as String[]
-                def exec = Runtime.getRuntime().exec(commands)
-                exec.waitFor()
-            }
+        def logFile = new File("src/main/java/com/bytedance/tools/codelocator/utils/Log.java")
+        if ("runIde".equals(tasks.get(tasks.size() - 1).name)) {
+            def commands = ["/bin/sh", "-c", "sed -i '' 's/DEBUG = false/DEBUG = true/g' " + logFile.getAbsolutePath()] as String[]
+            def exec = Runtime.getRuntime().exec(commands)
+            exec.waitFor()
+        } else {
+            def commands = ["/bin/sh", "-c", "sed -i '' 's/DEBUG = true/DEBUG = false/g' " + logFile.getAbsolutePath()] as String[]
+            def exec = Runtime.getRuntime().exec(commands)
+            exec.waitFor()
         }
 
         def netFile = new File("src/main/java/com/bytedance/tools/codelocator/utils/NetUtils.java")
@@ -67,14 +83,34 @@ gradle.taskGraph.beforeTask {
     }
 
     if (it instanceof Zip && !it.toString().contains("CodeLocatorModel")) {
-        it.from({ file("adb") })
-        it.from({ file("adb.exe") })
-        it.from({ file("AdbWinApi.dll") })
-        it.from({ file("restartAndroidStudio") })
-        it.from({ file("AndroidModuleTemplate.zip") })
-        it.from({ file("JarModuleTemplate.zip") })
-        it.from({ file("unlockPhoneIfNeed") })
-        it.from({ file("src/main/resources/META-INF/version") })
+        it.from({
+            file("imgcopy.m")
+        })
+        it.from({
+            file("AndroidModuleTemplate.zip")
+        })
+        it.from({
+            file("JarModuleTemplate.zip")
+        })
+        it.from({
+            file("src${File.separator}main${File.separator}resources${File.separator}META-INF${File.separator}version")
+        })
+        it.from({
+            file("codelocatorhelper.apk")
+        })
+        it.from({
+            file("restartAndroidStudio")
+        })
+    }
+}
+
+gradle.taskGraph.afterTask {
+    if ("prepareSandbox".equals((it as Task).getName())) {
+        copyFile(new File("imgcopy.m"), new File("build${File.separator}idea-sandbox${File.separator}plugins${File.separator}CodeLocatorPlugin${File.separator}imgcopy.m"))
+        copyFile(new File("JarModuleTemplate.zip"), new File("build${File.separator}idea-sandbox${File.separator}plugins${File.separator}CodeLocatorPlugin${File.separator}JarModuleTemplate.zip"))
+        copyFile(new File("AndroidModuleTemplate.zip"), new File("build${File.separator}idea-sandbox${File.separator}plugins${File.separator}CodeLocatorPlugin${File.separator}AndroidModuleTemplate.zip"))
+        copyFile(new File("codelocatorhelper.apk"), new File("build${File.separator}idea-sandbox${File.separator}plugins${File.separator}CodeLocatorPlugin${File.separator}codelocatorhelper.apk"))
+        copyFile(new File("restartAndroidStudio"), new File("build${File.separator}idea-sandbox${File.separator}plugins${File.separator}CodeLocatorPlugin${File.separator}restartAndroidStudio"))
     }
 }
 
@@ -115,18 +151,6 @@ private void replaceUrl(File file, String property, String variable) {
     }
 }
 
-gradle.taskGraph.afterTask {
-    if ("prepareSandbox".equals((it as Task).getName())) {
-        copyFile(new File("adb"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/adb"))
-        copyFile(new File("adb.exe"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/adb.exe"))
-        copyFile(new File("AdbWinApi.dll"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/AdbWinApi.dll"))
-        copyFile(new File("restartAndroidStudio"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/restartAndroidStudio"))
-        copyFile(new File("unlockPhoneIfNeed"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/unlockPhoneIfNeed"))
-        copyFile(new File("JarModuleTemplate.zip"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/JarModuleTemplate.zip"))
-        copyFile(new File("AndroidModuleTemplate.zip"), new File("build/idea-sandbox/plugins/CodeLocatorPlugin/AndroidModuleTemplate.zip"))
-    }
-}
-
 String getProperties(String key) {
     def properties = new Properties()
     if (!project.rootProject.file('local.properties').exists()) {
@@ -137,9 +161,11 @@ String getProperties(String key) {
 }
 
 static void copyFile(File sourceFile, File targetFile) {
+    InputStream inputStream = null
+    OutputStream outputStream = null
     try {
-        InputStream inputStream = new FileInputStream(sourceFile)
-        OutputStream outputStream = new FileOutputStream(targetFile)
+        inputStream = new FileInputStream(sourceFile)
+        outputStream = new FileOutputStream(targetFile)
         byte[] buffer = new byte[8192]
         int len
         while ((len = inputStream.read(buffer)) > 0) {

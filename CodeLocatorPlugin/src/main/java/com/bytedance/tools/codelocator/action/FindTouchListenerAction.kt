@@ -4,7 +4,9 @@ import com.bytedance.tools.codelocator.listener.OnActionListener
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.model.JumpInfo
 import com.bytedance.tools.codelocator.utils.IdeaUtils
+import com.bytedance.tools.codelocator.utils.ImageUtils
 import com.bytedance.tools.codelocator.utils.Mob
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.Project
@@ -12,14 +14,15 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.awt.RelativePoint
 import java.awt.Component
 import java.awt.Point
-import javax.swing.Icon
 
 class FindTouchListenerAction(
-    project: Project,
-    codeLocatorWindow: CodeLocatorWindow,
-    text: String?,
-    icon: Icon?
-) : BaseAction(project, codeLocatorWindow, text, text, icon) {
+    val project: Project,
+    val codeLocatorWindow: CodeLocatorWindow
+) : BaseAction(
+    ResUtils.getString("jump_touchListener"),
+    ResUtils.getString("jump_touchListener"),
+    ImageUtils.loadIcon("touch")
+) {
 
     var mShowPopX = -1
 
@@ -28,27 +31,21 @@ class FindTouchListenerAction(
     var mShowComponet: Component? = null
 
     override fun actionPerformed(e: AnActionEvent) {
-        if (!enable) return
-
-        Mob.mob(Mob.Action.CLICK, Mob.Button.TOUCH)
-
         if (codeLocatorWindow.currentSelectView!!.touchJumpInfo.size > 1) {
             showChooseList(e)
         } else {
             jumpSingleInfo(codeLocatorWindow.currentSelectView!!.touchJumpInfo[0])
         }
+        Mob.mob(Mob.Action.CLICK, Mob.Button.TOUCH)
     }
 
-    override fun update(e: AnActionEvent) {
-        super.update(e)
-        enable = !codeLocatorWindow.currentSelectView?.touchJumpInfo.isNullOrEmpty()
-        updateView(e, "touch_disable", "touch_enable")
+    override fun isEnable(e: AnActionEvent): Boolean {
+        return !codeLocatorWindow.currentSelectView?.touchJumpInfo.isNullOrEmpty()
     }
-
 
     private fun showChooseList(e: AnActionEvent) {
         val actionGroup: DefaultActionGroup =
-                DefaultActionGroup("listGroup", true)
+            DefaultActionGroup("listGroup", true)
         for (info in codeLocatorWindow.currentSelectView!!.touchJumpInfo) {
             val text = if (info.needJumpById()) {
                 info.simpleFileName
@@ -64,11 +61,11 @@ class FindTouchListenerAction(
 
         val factory = JBPopupFactory.getInstance()
         val pop = factory.createActionGroupPopup(
-                "",
-                actionGroup,
-                e.dataContext,
-                JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
-                false
+            "",
+            actionGroup,
+            e.dataContext,
+            JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
+            false
         )
         if (e.inputEvent == null) {
             val point = Point(mShowPopX, mShowPopY)
@@ -83,17 +80,15 @@ class FindTouchListenerAction(
         }
     }
 
-
     private fun jumpSingleInfo(jumpInfo: JumpInfo) {
         if (jumpInfo.needJumpById()) {
             IdeaUtils.navigateByJumpInfo(
-                    codeLocatorWindow, project, jumpInfo,
-                    true, "@OnTouch(", jumpInfo.id, true
+                codeLocatorWindow, project, jumpInfo,
+                true, "@OnTouch(", jumpInfo.id, true
             )
         } else {
             IdeaUtils.navigateByJumpInfo(codeLocatorWindow, project, jumpInfo, false, "", "", true)
         }
-
         codeLocatorWindow.notifyCallJump(jumpInfo, null, Mob.Button.TOUCH)
     }
 

@@ -43,13 +43,13 @@ class ShowViewClassInfoDialog(
     }
 
     private fun initContentPanel() {
-        title = "Field信息"
+        title = ResUtils.getString("field_info")
         mDialogContentPanel = JPanel()
         mDialogContentPanel.border = BorderFactory.createEmptyBorder(
-                CoordinateUtils.DEFAULT_BORDER,
-                CoordinateUtils.DEFAULT_BORDER,
-                CoordinateUtils.DEFAULT_BORDER,
-                CoordinateUtils.DEFAULT_BORDER
+            CoordinateUtils.DEFAULT_BORDER,
+            CoordinateUtils.DEFAULT_BORDER,
+            CoordinateUtils.DEFAULT_BORDER,
+            CoordinateUtils.DEFAULT_BORDER
         )
         mDialogContentPanel.layout = BoxLayout(mDialogContentPanel, BoxLayout.Y_AXIS)
         mDialogContentPanel.minimumSize = Dimension(DIALOG_WIDTH, DIALOG_HEIGHT)

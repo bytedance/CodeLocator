@@ -1,13 +1,13 @@
 package com.bytedance.tools.codelocator.model;
 
 import com.bytedance.tools.codelocator.utils.FileUtils;
-import com.bytedance.tools.codelocator.utils.NetUtils;
 import com.bytedance.tools.codelocator.utils.ThreadUtils;
+import com.bytedance.tools.codelocator.utils.GsonUtils;
 import com.google.gson.annotations.SerializedName;
-
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -19,6 +19,9 @@ public class SchemaHistory {
 
     @SerializedName("mHistorySchema")
     public List<SchemaInfo> mHistorySchema;
+
+    @SerializedName("mHistoryFile")
+    public List<String> mHistoryFile;
 
     public List<SchemaInfo> getHistorySchema() {
         return mHistorySchema;
@@ -42,15 +45,30 @@ public class SchemaHistory {
         updateHistory(this);
     }
 
-    public static @NotNull SchemaHistory loadHistory() {
+    public void updateFile(List<String> files) {
+        if (files == null) {
+            return;
+        }
+        if (mHistoryFile == null) {
+            mHistoryFile = new ArrayList<String>();
+        } else {
+            mHistoryFile.clear();
+        }
+        mHistoryFile.addAll(files);
+        updateHistory(this);
+    }
+
+
+    public static @NotNull
+    SchemaHistory loadHistory() {
         if (sSchemaHistory != null) {
             return sSchemaHistory;
         }
-        final File configFile = new File(FileUtils.codelocatorMainDir, FileUtils.SCHEMA_FILE_NAME);
+        final File configFile = new File(FileUtils.sCodeLocatorMainDirPath, FileUtils.SCHEMA_FILE_NAME);
         final String fileContent = FileUtils.getFileContent(configFile);
         try {
             if (!fileContent.isEmpty()) {
-                final SchemaHistory codelocatorConfig = NetUtils.sGson.fromJson(fileContent, SchemaHistory.class);
+                final SchemaHistory codelocatorConfig = GsonUtils.sGson.fromJson(fileContent, SchemaHistory.class);
                 if (codelocatorConfig == null) {
                     configFile.delete();
                 } else {
@@ -70,8 +88,8 @@ public class SchemaHistory {
     public static void updateHistory(SchemaHistory history) {
         sSchemaHistory = history;
         ThreadUtils.submit(() -> {
-            final File configFile = new File(FileUtils.codelocatorMainDir, FileUtils.SCHEMA_FILE_NAME);
-            FileUtils.saveContentToFile(configFile, NetUtils.sGson.toJson(sSchemaHistory));
+            final File configFile = new File(FileUtils.sCodeLocatorMainDirPath, FileUtils.SCHEMA_FILE_NAME);
+            FileUtils.saveContentToFile(configFile, GsonUtils.sGson.toJson(sSchemaHistory));
         });
     }
 

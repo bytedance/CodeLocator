@@ -1,16 +1,17 @@
 package com.bytedance.tools.codelocator.processer;
 
 import android.content.Context;
-import android.content.Intent;
 import android.view.View;
 
 import androidx.annotation.Keep;
 import androidx.annotation.Nullable;
 
+import com.bytedance.tools.codelocator.model.SmartArgs;
 import com.bytedance.tools.codelocator.model.WActivity;
 import com.bytedance.tools.codelocator.model.WApplication;
 import com.bytedance.tools.codelocator.model.WFile;
 import com.bytedance.tools.codelocator.model.WView;
+import com.bytedance.tools.codelocator.response.BaseResponse;
 
 import java.io.File;
 import java.util.List;
@@ -22,7 +23,7 @@ public interface ICodeLocatorProcessor {
     List<String> providerRegisterAction();
 
     @Nullable
-    String processIntentAction(Context context, Intent intent, String action);
+    BaseResponse processIntentAction(Context context, SmartArgs args, String action);
 
     void processFile(WFile wFile, File file);
 

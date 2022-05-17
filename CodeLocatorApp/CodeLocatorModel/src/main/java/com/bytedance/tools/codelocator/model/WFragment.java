@@ -14,31 +14,31 @@ public class WFragment implements Serializable {
 
     private transient WView mView;
 
-    @SerializedName("mChildren")
+    @SerializedName("a")
     private List<WFragment> mChildren;
 
-    @SerializedName("mViewMemAddr")
+    @SerializedName("cb")
     private String mViewMemAddr;
 
-    @SerializedName("mClassName")
+    @SerializedName("ag")
     private String mClassName;
 
-    @SerializedName("mTag")
+    @SerializedName("cc")
     private String mTag;
 
-    @SerializedName("mId")
+    @SerializedName("ad")
     private int mId;
 
-    @SerializedName("mMemAddr")
+    @SerializedName("af")
     private String mMemAddr;
 
-    @SerializedName("mIsVisible")
+    @SerializedName("cd")
     private boolean mIsVisible;
 
-    @SerializedName("mIsAdded")
+    @SerializedName("ce")
     private boolean mIsAdded;
 
-    @SerializedName("mUserVisibleHint")
+    @SerializedName("cf")
     private boolean mUserVisibleHint;
 
     public WActivity getActivity() {
@@ -85,8 +85,8 @@ public class WFragment implements Serializable {
         return mViewMemAddr;
     }
 
-    public void setViewMemAddr(String mViewMemAddr) {
-        this.mViewMemAddr = mViewMemAddr;
+    public void setViewMemAddr(String viewMemAddr) {
+        mViewMemAddr = CodeLocatorUtils.formatHexStr(viewMemAddr);
     }
 
     public String getClassName() {

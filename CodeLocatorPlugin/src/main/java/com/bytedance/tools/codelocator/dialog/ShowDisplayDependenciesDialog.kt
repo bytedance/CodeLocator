@@ -61,18 +61,18 @@ class ShowDisplayDependenciesDialog(
     }
 
     private fun initContentPanel() {
-        title = "查看依赖树"
+        title = ResUtils.getString("dep_tree")
         mDialogContentPanel = JPanel()
         mDialogContentPanel.border = BorderFactory.createEmptyBorder(
-                CoordinateUtils.DEFAULT_BORDER,
-                CoordinateUtils.DEFAULT_BORDER,
-                CoordinateUtils.DEFAULT_BORDER,
-                CoordinateUtils.DEFAULT_BORDER
+            CoordinateUtils.DEFAULT_BORDER,
+            CoordinateUtils.DEFAULT_BORDER,
+            CoordinateUtils.DEFAULT_BORDER,
+            CoordinateUtils.DEFAULT_BORDER
         )
         mDialogContentPanel.layout = BoxLayout(mDialogContentPanel, BoxLayout.Y_AXIS)
         mDialogContentPanel.minimumSize = Dimension(DIALOG_WIDTH, DIALOG_HEIGHT)
 
-        val flavorLabel = JLabel("选择Flavor")
+        val flavorLabel = JLabel(ResUtils.getString("choose_flavor"))
         val chooseBox = JComboBox<String>()
         dependenciesMap.keys.forEach {
             chooseBox.addItem(it)
@@ -89,21 +89,21 @@ class ShowDisplayDependenciesDialog(
 
         mSearchableJTree = SearchableJTree(mTreeModel)
         mSearchableJTree.minimumSize = Dimension(
-                DIALOG_WIDTH - CoordinateUtils.DEFAULT_BORDER * 2,
-                DIALOG_HEIGHT - CoordinateUtils.DEFAULT_BORDER * 3 - 30
+            DIALOG_WIDTH - CoordinateUtils.DEFAULT_BORDER * 2,
+            DIALOG_HEIGHT - CoordinateUtils.DEFAULT_BORDER * 3 - 30
         )
-        mSearchableJTree.cellRenderer = MyTreeCellRenderer(codeLocatorWindow)
+        mSearchableJTree.cellRenderer = MyTreeCellRenderer(codeLocatorWindow, MyTreeCellRenderer.TYPE_DEP)
         mSearchableJTree.setOnSearchKeyListener(this)
         mSearchableJTree.addTreeSelectionListener {
             val selectNode = mSearchableJTree.lastSelectedPathComponent as? DefaultMutableTreeNode
-                    ?: return@addTreeSelectionListener
+                ?: return@addTreeSelectionListener
 
             Mob.mob(Mob.Action.CLICK, Mob.Button.DEPENDENCIES_TREE)
 
             var selectDependencies = selectNode.userObject as DisplayDependencies
 
             if (!currentDependenciesStack.isEmpty() && (!currentDependenciesStack.contains(selectDependencies)
-                            && selectDependencies != currentDependenciesStack.peek().parent)
+                    && selectDependencies != currentDependenciesStack.peek().parent)
             ) {
                 currentDependenciesStack.clear()
             }
@@ -120,66 +120,66 @@ class ShowDisplayDependenciesDialog(
                     mSearchableJTree.selectionPath = path
                 }
                 val displayDependencies =
-                        (mSearchableJTree.selectionPath.lastPathComponent as? DefaultMutableTreeNode)?.userObject as? DisplayDependencies
-                                ?: return
+                    (mSearchableJTree.selectionPath.lastPathComponent as? DefaultMutableTreeNode)?.userObject as? DisplayDependencies
+                        ?: return
                 val displayLine = displayDependencies.displayLine
                 val split = displayLine.split("->")
                 val actionGroup = DefaultActionGroup("listGroup", true)
                 if (split.size > 1 && !displayLine.contains("{strictly ")) {
                     actionGroup.add(
-                            SimpleAction(
-                                    "复制 " + split[0].trim(),
-                                    ImageUtils.loadIcon("copy_enable"),
-                                    object : OnActionListener {
-                                        override fun actionPerformed(e: AnActionEvent) {
-                                            ClipboardUtils.copyContentToClipboard(project, split[0].trim())
-                                        }
-                                    }
-                            )
+                        SimpleAction(
+                            ResUtils.getString("copy_format", split[0].trim()),
+                            ImageUtils.loadIcon("copy"),
+                            object : OnActionListener {
+                                override fun actionPerformed(e: AnActionEvent) {
+                                    ClipboardUtils.copyContentToClipboard(project, split[0].trim())
+                                }
+                            }
+                        )
                     )
                     actionGroup.add(
-                            SimpleAction(
-                                    "复制 " + split[1].replace("(*)", "").trim(),
-                                    ImageUtils.loadIcon("copy_enable"),
-                                    object : OnActionListener {
-                                        override fun actionPerformed(e: AnActionEvent) {
-                                            ClipboardUtils.copyContentToClipboard(project, split[1].replace("(*)", "").trim())
-                                        }
-                                    }
-                            )
+                        SimpleAction(
+                            ResUtils.getString("copy_format", split[1].replace("(*)", "").trim()),
+                            ImageUtils.loadIcon("copy"),
+                            object : OnActionListener {
+                                override fun actionPerformed(e: AnActionEvent) {
+                                    ClipboardUtils.copyContentToClipboard(project, split[1].replace("(*)", "").trim())
+                                }
+                            }
+                        )
                     )
                     actionGroup.add(
-                            SimpleAction(
-                                    "跳转对应版本引入位置",
-                                    ImageUtils.loadIcon("jump_enable"),
-                                    object : OnActionListener {
-                                        override fun actionPerformed(e: AnActionEvent) {
-                                            findAndJumpToDependencies(displayLine)
-                                        }
-                                    }
-                            )
+                        SimpleAction(
+                            ResUtils.getString("jump_import_location"),
+                            ImageUtils.loadIcon("jump"),
+                            object : OnActionListener {
+                                override fun actionPerformed(e: AnActionEvent) {
+                                    findAndJumpToDependencies(displayLine)
+                                }
+                            }
+                        )
                     )
                 } else if (split.isNotEmpty()) {
                     actionGroup.add(
-                            SimpleAction("复制 " + split[0].trim(),
-                                    ImageUtils.loadIcon("copy_enable"),
-                                    object : OnActionListener {
-                                        override fun actionPerformed(e: AnActionEvent) {
-                                            ClipboardUtils.copyContentToClipboard(project, split[0].trim())
-                                        }
-                                    }
-                            )
+                        SimpleAction(ResUtils.getString("copy_format", split[0].trim()),
+                            ImageUtils.loadIcon("copy"),
+                            object : OnActionListener {
+                                override fun actionPerformed(e: AnActionEvent) {
+                                    ClipboardUtils.copyContentToClipboard(project, split[0].trim())
+                                }
+                            }
+                        )
                     )
                 } else {
                     return
                 }
 
                 val pop = JBPopupFactory.getInstance().createActionGroupPopup(
-                        "",
-                        actionGroup,
-                        DataManager.getInstance().dataContext,
-                        JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
-                        true
+                    "",
+                    actionGroup,
+                    DataManager.getInstance().dataContext,
+                    JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
+                    true
                 )
                 pop.show(RelativePoint(mSearchableJTree, Point(e.x, e.y)))
             }
@@ -190,15 +190,15 @@ class ShowDisplayDependenciesDialog(
         horizontalBox.add(scrollPane)
         scrollPane.verticalScrollBar.addAdjustmentListener {
             mSearchableJTree.onScroll(
-                    scrollPane.horizontalScrollBar?.model?.value
-                            ?: 0, scrollPane.verticalScrollBar?.model?.value ?: 0
+                scrollPane.horizontalScrollBar?.model?.value
+                    ?: 0, scrollPane.verticalScrollBar?.model?.value ?: 0
             )
             mSearchableJTree.repaint()
         }
         scrollPane.horizontalScrollBar.addAdjustmentListener {
             mSearchableJTree.onScroll(
-                    scrollPane.horizontalScrollBar?.model?.value
-                            ?: 0, scrollPane.verticalScrollBar?.model?.value ?: 0
+                scrollPane.horizontalScrollBar?.model?.value
+                    ?: 0, scrollPane.verticalScrollBar?.model?.value ?: 0
             )
             mSearchableJTree.repaint()
         }
@@ -258,10 +258,10 @@ class ShowDisplayDependenciesDialog(
     }
 
     private fun findSameDependencies(
-            list: MutableList<DisplayDependencies>,
-            displayDependencies: DisplayDependencies?,
-            matchPreStr: String,
-            matchEndStr: String
+        list: MutableList<DisplayDependencies>,
+        displayDependencies: DisplayDependencies?,
+        matchPreStr: String,
+        matchEndStr: String
     ) {
         if (displayDependencies == null) {
             return
@@ -273,8 +273,9 @@ class ShowDisplayDependenciesDialog(
             displayDependencies.displayLine.trim()
         }
         if (searchLine.contains(matchPreStr) && (searchLine.endsWith(matchEndStr)
-                        || searchLine.endsWith("$matchEndStr}")
-                        || searchLine.endsWith("$matchEndStr (c)"))) {
+                || searchLine.endsWith("$matchEndStr}")
+                || searchLine.endsWith("$matchEndStr (c)"))
+        ) {
             list.add(displayDependencies)
         }
         for (i in 0 until displayDependencies.childCount) {
@@ -374,7 +375,7 @@ class ShowDisplayDependenciesDialog(
     override fun createActions(): Array<Action> = emptyArray()
 
     private fun getLabelText(btnTxt: String) =
-            "<html><span style='text-align:left;font-size:12px;'>$btnTxt</span></html>"
+        "<html><span style='text-align:left;font-size:12px;'>$btnTxt</span></html>"
 
     override fun onSearchKeyChange(jTree: JTree, keyWord: String): Int {
         currentDependenciesList.clear()

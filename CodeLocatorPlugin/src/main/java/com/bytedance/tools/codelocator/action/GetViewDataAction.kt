@@ -1,123 +1,120 @@
 package com.bytedance.tools.codelocator.action
 
-import com.bytedance.tools.codelocator.constants.CodeLocatorConstants
+import com.bytedance.tools.codelocator.device.Device
+import com.bytedance.tools.codelocator.device.DeviceManager
+import com.bytedance.tools.codelocator.device.action.AdbCommand
+import com.bytedance.tools.codelocator.device.action.BroadcastAction
+import com.bytedance.tools.codelocator.device.action.CatFileAction
+import com.bytedance.tools.codelocator.device.action.PullFileAction
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
-import com.bytedance.tools.codelocator.parser.Parser
-import com.bytedance.tools.codelocator.dialog.EditViewDialog
+import com.bytedance.tools.codelocator.model.WView
+import com.bytedance.tools.codelocator.dialog.ShowViewDataDialog
+import com.bytedance.tools.codelocator.exception.ExecuteException
 import com.bytedance.tools.codelocator.model.*
 import com.bytedance.tools.codelocator.utils.*
+import com.bytedance.tools.codelocator.response.BaseResponse
+import com.bytedance.tools.codelocator.response.OperateResponse
+import com.bytedance.tools.codelocator.response.StringResponse
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.*
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.vfs.LocalFileSystem
 import java.io.File
-import javax.swing.Icon
 
 class GetViewDataAction(
-    project: Project,
-    codeLocatorWindow: CodeLocatorWindow,
-    text: String,
-    icon: Icon?
-) : BaseAction(project, codeLocatorWindow, text, text, icon) {
+    val project: Project,
+    val codeLocatorWindow: CodeLocatorWindow
+) : BaseAction(
+    ResUtils.getString("get_view_data"),
+    ResUtils.getString("get_view_data"),
+    ImageUtils.loadIcon("data")
+) {
 
     override fun actionPerformed(e: AnActionEvent) {
-        if (!enable) return
-
         Mob.mob(Mob.Action.CLICK, Mob.Button.GET_VIEW_DATA)
 
-        ThreadUtils.submit {
-            getViewData(codeLocatorWindow.currentSelectView!!)
-        }
+        getViewData(codeLocatorWindow.currentSelectView!!)
     }
-
 
     private fun getViewData(view: WView) {
         val builderEditCommand = EditViewBuilder(view).edit(GetDataModel()).builderEditCommand()
-        try {
-            val execCommand = ShellHelper.execCommand(
-                "${String.format(
-                    EditViewDialog.SET_VIEW_INFO_COMMAND,
-                    DeviceManager.getCurrentDevice()
-                )}'${builderEditCommand}'"
-            )
-            val resultData = String(execCommand.resultBytes)
-            val parserCommandResult = Parser.parserCommandResult(DeviceManager.getCurrentDevice(), resultData, false)
-            if (parserCommandResult == null) {
-                notifyGetDataError()
-                return
-            }
-            val splitLines = parserCommandResult.split(CodeLocatorConstants.SEPARATOR)
-            var pkgName: String? = null
-            var filePath: String? = null
-            var typeInfo: String? = null
-            for (line in splitLines) {
-                if (line.startsWith("PN:")) {
-                    pkgName = line.substring("PN:".length).trim()
-                } else if (line.startsWith("FP:")) {
-                    filePath = line.substring("FP:".length).trim()
-                } else if (line.startsWith("TP:")) {
-                    typeInfo = line.substring("TP:".length).trim()
+        DeviceManager.enqueueCmd(
+            project,
+            AdbCommand(
+                BroadcastAction(
+                    ACTION_CHANGE_VIEW_INFO
+                ).args(KEY_CHANGE_VIEW, builderEditCommand)
+            ),
+            OperateResponse::class.java,
+            object : DeviceManager.OnExecutedListener<OperateResponse> {
+                override fun onExecSuccess(device: Device, response: OperateResponse) {
+                    try {
+                        val result = response.data
+                        var data: String? = null
+                        val errorMsg = result.getResult(ResultKey.ERROR)
+                        if (errorMsg != null) {
+                            throw ExecuteException(errorMsg, result.getResult(ResultKey.STACK_TRACE))
+                        }
+                        val filePath = result.getResult(ResultKey.FILE_PATH)
+                        val typeInfo = result.getResult(ResultKey.TARGET_CLASS)
+                        if (filePath.isNullOrEmpty()) {
+                            Log.e("获取View数据失败, 无数据")
+                            throw ExecuteException(ResUtils.getString("get_view_data_empty_tip"))
+                        }
+                        if (DeviceManager.isNeedSaveFile(project)) {
+                            val dataFile = File(FileUtils.sCodeLocatorMainDirPath, FileUtils.VIEW_DATA_FILE_NAME)
+                            dataFile.delete()
+                            DeviceManager.executeCmd(
+                                project,
+                                AdbCommand(
+                                    PullFileAction(
+                                        filePath,
+                                        dataFile.absolutePath
+                                    )
+                                ),
+                                BaseResponse::class.java
+                            )
+                            if (dataFile.exists()) {
+                                data = FileUtils.getFileContent(dataFile)
+                                dataFile.delete()
+                            }
+                        } else {
+                            val response = DeviceManager.executeCmd(
+                                project,
+                                AdbCommand(
+                                    CatFileAction(
+                                        filePath
+                                    )
+                                ),
+                                StringResponse::class.java
+                            )
+                            data = response.data
+                        }
+                        if (data != null && !data.isEmpty()) {
+                            ShowViewDataDialog.showViewDataDialog(project, codeLocatorWindow, data, typeInfo)
+                        } else {
+                            Log.e("获取View数据失败, path: $filePath")
+                            throw ExecuteException(ResUtils.getString("get_view_data_error_tip"))
+                        }
+                    } catch (t: Throwable) {
+                        throw ExecuteException(t.message)
+                    }
                 }
-            }
-            if (pkgName == null || filePath == null) {
-                Log.e("获取View数据失败, name: $pkgName, path: $filePath")
-                notifyGetDataError()
-                return
-            }
-            val pullFileContentCommand = String.format(
-                "adb -s %s shell cat %s",
-                DeviceManager.getCurrentDevice(), filePath
-            )
-            val contentBytes = ShellHelper.execCommand(pullFileContentCommand)
-            val data = String(contentBytes.resultBytes)
-            if (data != null && !data.isEmpty()) {
-                var mainFilePath = System.getProperty("user.home")
-                val desktopFile = File(mainFilePath, "Desktop")
-                if (desktopFile.exists()) {
-                    mainFilePath = desktopFile.absolutePath
-                }
-                mainFilePath = File(mainFilePath, "codelocator_view_data.txt").absolutePath
-                if (typeInfo == null || typeInfo.isEmpty()) {
-                    FileUtils.saveContentToFile(mainFilePath, StringUtils.formatJson(data))
-                } else {
-                    FileUtils.saveContentToFile(mainFilePath, typeInfo + "\n" + StringUtils.formatJson(data))
-                }
-                val virtualFile = LocalFileSystem.getInstance().refreshAndFindFileByPath(mainFilePath)!!
-                virtualFile.refresh(false, false)
-                val openFileDescriptor =
-                    OpenFileDescriptor(
+
+                override fun onExecFailed(t: Throwable) {
+                    Messages.showMessageDialog(
                         project,
-                        virtualFile,
-                        0,
-                        0
+                        StringUtils.getErrorTip(t),
+                        "CodeLocator",
+                        Messages.getInformationIcon()
                     )
-                ThreadUtils.runOnUIThread {
-                    FileEditorManager.getInstance(project).openTextEditor(openFileDescriptor, true)
-                    NotificationUtils.showNotification(project, "已用编辑器打开, 保存至 $mainFilePath", 10000L)
                 }
-            } else {
-                Log.e("获取View数据失败, name: $pkgName, path: $filePath")
-                notifyGetDataError()
-                return
             }
-        } catch (t: Throwable) {
-            Log.e("获取View数据失败")
-            notifyGetDataError()
-        }
+        )
     }
 
-    private fun notifyGetDataError() {
-        ApplicationManager.getApplication().invokeLater {
-            Messages.showMessageDialog(project, "获取View数据失败", "CodeLocator", Messages.getInformationIcon())
-        }
+    override fun isEnable(e: AnActionEvent): Boolean {
+        return (DeviceManager.hasAndroidDevice() && codeLocatorWindow.currentSelectView?.hasData() == true)
     }
 
-    override fun update(e: AnActionEvent) {
-        super.update(e)
-        enable = (codeLocatorWindow.currentSelectView?.hasData() == true)
-        updateView(e, "data_disable", "data_enable")
-    }
 }

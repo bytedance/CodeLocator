@@ -8,26 +8,29 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.bytedance.tools.codelocator.constants.CodeLocatorConstants;
+import com.bytedance.tools.codelocator.model.ColorInfo;
 import com.bytedance.tools.codelocator.model.ExtraInfo;
 import com.bytedance.tools.codelocator.model.SchemaInfo;
 import com.bytedance.tools.codelocator.model.WView;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 
 public interface AppInfoProvider {
 
-    // 以下的Key都是被CodeLocator使用了 接入方请不要使用
-    String CODELOCATOR_KEY_APP_VERSION_NAME = CodeLocatorConstants.CODELOCATOR_KEY_APP_VERSION_NAME;
+    // 以下的Key都是被Codelocator使用了 接入方请不要使用
+    String CODELOCATOR_KEY_APP_VERSION_NAME = "VersionName";
 
-    String CODELOCATOR_KEY_APP_VERSION_CODE = CodeLocatorConstants.CODELOCATOR_KEY_APP_VERSION_CODE;
+    String CODELOCATOR_KEY_APP_VERSION_CODE = "VersionCode";
 
-    String CODELOCATOR_KEY_DPI = CodeLocatorConstants.CODELOCATOR_KEY_DPI;
+    String CODELOCATOR_KEY_DPI = "Dpi";
 
-    String CODELOCATOR_KEY_DENSITY = CodeLocatorConstants.CODELOCATOR_KEY_DENSITY;
+    String CODELOCATOR_KEY_DENSITY = "Density";
 
-    String CODELOCATOR_KEY_PKG_NAME = CodeLocatorConstants.CODELOCATOR_KEY_PKG_NAME;
+    String CODELOCATOR_KEY_PKG_NAME = "PkgName";
+
+    String CODELOCATOR_KEY_DEBUGGABLE = "Debuggable";
 
     /**
      * 提供额外的App运行时信息, 此处返回的内容将在AppInfo面板中展示
@@ -49,12 +52,12 @@ public interface AppInfoProvider {
     /**
      * 返回对应View的显示数据
      *
-     * @param dataView   注册时 canProviderData 返回true的view
-     * @param selectView 选中的View, 是dataView或者dataView的子View
+     * @param viewParent
+     * @param view
      * @return
      */
     @Nullable
-    Object getViewData(View dataView, @NonNull View selectView);
+    Object getViewData(View viewParent, @NonNull View view);
 
     /**
      * 转换Android的View为WView, 接入方可以对特殊view进行处理, 返回WView即可
@@ -92,5 +95,8 @@ public interface AppInfoProvider {
      * @return
      */
     boolean processSchema(String schema);
+
+    @Nullable
+    List<ColorInfo> providerColorInfo(@NonNull Context context);
 
 }

@@ -14,10 +14,10 @@ public class InvokeInfo implements Serializable {
         this.mInvokeField = invokeField;
     }
 
-    @SerializedName("mInvokeMethod")
+    @SerializedName("d9")
     private MethodInfo mInvokeMethod;
 
-    @SerializedName("mInvokeField")
+    @SerializedName("da")
     private FieldInfo mInvokeField;
 
     public MethodInfo getInvokeMethod() {

@@ -19,83 +19,133 @@ public class WApplication implements Serializable {
         int ORIENTATION_LANDSCAPE = 2;
     }
 
-    @SerializedName("mActivity")
+    @SerializedName("b5")
+    private boolean mIsMainThread;
+
+    @SerializedName("b6")
+    private String mHClassName;
+
+    @SerializedName("b7")
     private WActivity mActivity;
 
-    @SerializedName("mFile")
+    @SerializedName("b8")
     private WFile mFile;
 
-    @SerializedName("mShowInfos")
+    @SerializedName("b9")
     private List<ShowInfo> mShowInfos;
 
-    @SerializedName("mAppInfo")
+    @SerializedName("ba")
+    private List<ColorInfo> mColorInfo;
+
+    @SerializedName("bb")
     private HashMap<String, String> mAppInfo;
 
-    @SerializedName("mSchemaInfos")
+    @SerializedName("bc")
     private List<SchemaInfo> mSchemaInfos;
 
-    @SerializedName("mPackageName")
+    @SerializedName("bd")
     private String mPackageName;
 
-    @SerializedName("mProjectName")
+    @SerializedName("be")
     private String mProjectName;
 
-    @SerializedName("mIsDebug")
+    @SerializedName("bf")
     private boolean mIsDebug = true;
 
-    @SerializedName("mGrabTime")
+    @SerializedName("bg")
+    private boolean mFromSdk = true;
+    
+    @SerializedName("bh")
+    private boolean mHasSDK = true;
+
+    @SerializedName("bi")
     private long mGrabTime;
 
-    @SerializedName("mDensity")
+    @SerializedName("bj")
     private float mDensity;
 
-    @SerializedName("mDensityDpi")
+    @SerializedName("bk")
     private int mDensityDpi;
 
-    @SerializedName("mStatusBarHeight")
+    @SerializedName("bl")
     private int mStatusBarHeight;
 
-    @SerializedName("mNavigationBarHeight")
+    @SerializedName("bm")
     private int mNavigationBarHeight;
 
-    @SerializedName("mOrientation")
+    @SerializedName("bn")
     private int mOrientation;
 
-    @SerializedName("mSdkVersion")
+    @SerializedName("bo")
     private String mSdkVersion;
 
-    @SerializedName("mMinPluginVersion")
+    @SerializedName("bp")
     private String mMinPluginVersion;
 
-    @SerializedName("mScreenWidth")
+    @SerializedName("bq")
     private int mScreenWidth;
 
-    @SerializedName("mScreenHeight")
+    @SerializedName("br")
     private int mScreenHeight;
 
-    @SerializedName("mRealWidth")
+    @SerializedName("bs")
     private int mRealWidth;
 
-    @SerializedName("mRealHeight")
+    @SerializedName("bt")
     private int mRealHeight;
 
-    @SerializedName("mOverrideScreenWidth")
+    @SerializedName("bu")
     private int mOverrideScreenWidth;
 
-    @SerializedName("mOverrideScreenHeight")
+    @SerializedName("bv")
     private int mOverrideScreenHeight;
 
-    @SerializedName("mPhysicalWidth")
+    @SerializedName("bw")
     private int mPhysicalWidth;
 
-    @SerializedName("mPhysicalHeight")
+    @SerializedName("bx")
     private int mPhysicalHeight;
 
-    @SerializedName("mAndroidVersion")
+    @SerializedName("by")
     private int mAndroidVersion;
 
-    @SerializedName("mDeviceInfo")
+    @SerializedName("bz")
     private String mDeviceInfo;
+
+    @SerializedName("c0")
+    private String mFetchUrl;
+
+    public boolean isIsMainThread() {
+        return mIsMainThread;
+    }
+
+    public void setIsMainThread(boolean mIsMainThread) {
+        this.mIsMainThread = mIsMainThread;
+    }
+
+    public boolean isHasSDK() {
+        return mHasSDK;
+    }
+
+    public void setHasSDK(boolean hasSDK) {
+        this.mHasSDK = hasSDK;
+    }
+
+    public String getFetchUrl() {
+        return mFetchUrl;
+    }
+
+    public void setFetchUrl(String mFetchUrl) {
+        this.mFetchUrl = mFetchUrl;
+    }
+
+    public List<ColorInfo> getColorInfo() {
+        return mColorInfo;
+    }
+
+    public void setColorInfo(List<ColorInfo> mColorInfo) {
+        this.mColorInfo = mColorInfo;
+    }
 
     public String getDeviceInfo() {
         return mDeviceInfo;
@@ -129,12 +179,28 @@ public class WApplication implements Serializable {
         this.mExtraMap = extraMap;
     }
 
+    public String getHClassName() {
+        return mHClassName;
+    }
+
+    public void setHClassName(String mHClassName) {
+        this.mHClassName = mHClassName;
+    }
+
     public boolean isIsDebug() {
         return mIsDebug;
     }
 
     public void setIsDebug(boolean mIsDebug) {
         this.mIsDebug = mIsDebug;
+    }
+
+    public boolean isFromSdk() {
+        return mFromSdk;
+    }
+
+    public void setFromSdk(boolean mFromSdk) {
+        this.mFromSdk = mFromSdk;
     }
 
     public List<SchemaInfo> getSchemaInfos() {
@@ -298,6 +364,9 @@ public class WApplication implements Serializable {
     }
 
     public float getDensity() {
+        if (mDensity <= 0) {
+            return 1;
+        }
         return mDensity;
     }
 
@@ -356,7 +425,7 @@ public class WApplication implements Serializable {
 
         mActivity.setApplication(this);
 
-        restoreAllViewStructInfo(mActivity.getDecorView());
+        restoreAllViewStructInfo(mActivity.getDecorViews());
         restoreAllFileStructInfo(mFile);
 
         final List<WFragment> fragments = mActivity.getFragments();
@@ -365,17 +434,19 @@ public class WApplication implements Serializable {
                 restoreAllFragmentStructInfo(fragments.get(i));
             }
         }
-        restoreAllViewExtraInfo(mActivity.getDecorView());
+        restoreAllViewExtraInfo(mActivity.getDecorViews());
     }
 
-    private void restoreAllViewExtraInfo(WView wView) {
-        if (wView == null) {
+    private void restoreAllViewExtraInfo(List<WView> wViews) {
+        if (wViews == null || wViews.isEmpty()) {
             return;
         }
-        restoreAllViewExtraInfo(wView, null);
+        for (WView view : wViews) {
+            restoreViewExtraInfo(view, null);
+        }
     }
 
-    private void restoreAllViewExtraInfo(WView wView, HashMap<String, ExtraInfo> currentMap) {
+    private void restoreViewExtraInfo(WView wView, HashMap<String, ExtraInfo> currentMap) {
         if (wView == null) {
             return;
         }
@@ -418,7 +489,7 @@ public class WApplication implements Serializable {
             }
         }
         for (int i = 0; i < wView.getChildCount(); i++) {
-            restoreAllViewExtraInfo(wView.getChildAt(i), currentMap);
+            restoreViewExtraInfo(wView.getChildAt(i), currentMap);
         }
     }
 
@@ -429,17 +500,26 @@ public class WApplication implements Serializable {
         file.restoreAllFileStructInfo();
     }
 
-    private void restoreAllViewStructInfo(WView view) {
+    private void restoreAllViewStructInfo(List<WView> views) {
+        if (views == null || views.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < views.size(); i++) {
+            views.get(i).setZIndex(WView.formatZIndex(i));
+            restoreViewStructInfo(views.get(i));
+        }
+    }
+
+    private void restoreViewStructInfo(WView view) {
         if (view == null) {
             return;
         }
-
         view.setActivity(mActivity);
 
         for (int i = 0; i < view.getChildCount(); i++) {
             final WView childView = view.getChildAt(i);
             childView.setParentView(view, i);
-            restoreAllViewStructInfo(childView);
+            restoreViewStructInfo(childView);
         }
     }
 
@@ -449,11 +529,14 @@ public class WApplication implements Serializable {
         }
 
         wFragment.setActivity(mActivity);
-        final WView fragmentView = mActivity.getDecorView().findSameView(wFragment.getViewMemAddr());
+        final WView fragmentView = mActivity.findSameView(wFragment.getViewMemAddr());
         wFragment.setView(fragmentView);
 
         if (fragmentView != null) {
             fragmentView.setFragment(wFragment);
+            wFragment.setVisible(wFragment.isVisible() && (fragmentView.getVisibility() == 'V'));
+        } else {
+            wFragment.setVisible(false);
         }
 
         for (int i = 0; i < wFragment.getFragmentCount(); i++) {

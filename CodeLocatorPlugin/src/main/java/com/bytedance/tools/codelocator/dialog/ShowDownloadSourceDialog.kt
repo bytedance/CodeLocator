@@ -1,4 +1,3 @@
-@file:Suppress("JAVA_MODULE_DOES_NOT_EXPORT_PACKAGE")
 package com.bytedance.tools.codelocator.dialog
 
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
@@ -20,7 +19,8 @@ import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
 
-class ShowDownloadSourceDialog(val codeLocatorWindow: CodeLocatorWindow, val project: Project) : DialogWrapper(codeLocatorWindow, true) {
+class ShowDownloadSourceDialog(val codeLocatorWindow: CodeLocatorWindow, val project: Project) :
+    DialogWrapper(codeLocatorWindow, true) {
 
     companion object {
 
@@ -29,37 +29,40 @@ class ShowDownloadSourceDialog(val codeLocatorWindow: CodeLocatorWindow, val pro
         const val DIALOG_WIDTH = 480
 
         fun downloadSourceBg(project: Project) {
-            ProgressManager.getInstance().run(object : Task.Backgroundable(project, "正在下载项目所有依赖源码(耗时较长)", true) {
-                override fun run(indicator: ProgressIndicator) {
-                    try {
-                        val projectPath = project.basePath!!
-                        val commands = arrayListOf(
-                                "cd ${projectPath.replace(" ", "\\ ")}",
-                                "./gradlew :JustForCodeIndexModuleRelease:ideaModule"
-                        ).joinToString(separator = ";", postfix = "", prefix = "")
-                        val execCommand = ShellHelper.execCommand(commands)
-                        if (execCommand.resultCode == 0) {
-                            ThreadUtils.runOnUIThread {
-                                NotificationUtils.showNotification(project, "源码下载完成")
-                            }
-                        } else {
-                            ThreadUtils.runOnUIThread {
-                                NotificationUtils.showNotification(
+            ProgressManager.getInstance()
+                .run(object : Task.Backgroundable(project, ResUtils.getString("dep_source_code_download_tip"), true) {
+                    override fun run(indicator: ProgressIndicator) {
+                        try {
+                            val projectPath = FileUtils.getProjectFilePath(project)
+                            val execCommand = OSHelper.instance.downloadDependenciesSource(projectPath)
+                            if (execCommand.resultCode == 0) {
+                                ThreadUtils.runOnUIThread {
+                                    NotificationUtils.showNotifyInfoShort(
                                         project,
-                                        "源码下载出现错误, " + String(execCommand.errorBytes)
-                                )
+                                        ResUtils.getString("dep_source_code_download_success")
+                                    )
+                                }
+                            } else {
+                                ThreadUtils.runOnUIThread {
+                                    NotificationUtils.showNotifyInfoShort(
+                                        project,
+                                        ResUtils.getString(
+                                            "dep_source_code_download_failed_format",
+                                            execCommand.errorMsg!!
+                                        )
+                                    )
+                                }
                             }
+                        } catch (t: Throwable) {
+                            Log.e("Create Module Error", t)
                         }
-                    } catch (t: Throwable) {
-                        Log.e("Create Module Error", t)
                     }
-                }
-            })
+                })
         }
     }
 
     lateinit var dialogContentPanel: JPanel
-    lateinit var confirmButton : JButton
+    lateinit var confirmButton: JButton
 
     init {
         initContentPanel()
@@ -69,12 +72,13 @@ class ShowDownloadSourceDialog(val codeLocatorWindow: CodeLocatorWindow, val pro
         title = "CodeLocator"
         dialogContentPanel = JPanel()
         dialogContentPanel.border = BorderFactory.createEmptyBorder(
-                CoordinateUtils.DEFAULT_BORDER * 2,
-                CoordinateUtils.DEFAULT_BORDER * 2,
-                CoordinateUtils.DEFAULT_BORDER * 2,
-                CoordinateUtils.DEFAULT_BORDER * 2
+            CoordinateUtils.DEFAULT_BORDER * 2,
+            CoordinateUtils.DEFAULT_BORDER * 2,
+            CoordinateUtils.DEFAULT_BORDER * 2,
+            CoordinateUtils.DEFAULT_BORDER * 2
         )
-        JComponentUtils.setSize(dialogContentPanel,
+        JComponentUtils.setSize(
+            dialogContentPanel,
             DIALOG_WIDTH,
             DIALOG_HEIGHT
         )
@@ -91,8 +95,8 @@ class ShowDownloadSourceDialog(val codeLocatorWindow: CodeLocatorWindow, val pro
     override fun createActions(): Array<Action> = emptyArray()
 
     private fun addOpenButton() {
-        var createLabel: JLabel = createLabel("是否后台下载所有aar源码? (耗时较长)")
-        val btnText = getBtnText("下载源码")
+        var createLabel: JLabel = createLabel(ResUtils.getString("dep_source_code_download_question"))
+        val btnText = getBtnText(ResUtils.getString("dep_source_code_download_accept"))
         confirmButton = JButton(btnText)
         confirmButton.addActionListener {
             Mob.mob(Mob.Action.CLICK, Mob.Button.DOWNLOAD_SOURCE)
@@ -105,8 +109,8 @@ class ShowDownloadSourceDialog(val codeLocatorWindow: CodeLocatorWindow, val pro
         } catch (t: Throwable) {
             Log.e("getfont width error", t)
         }
-        val cancelText = "暂不下载"
-        val dontShowText = getBtnText(cancelText!!)
+        val cancelText = ResUtils.getString("dep_source_code_download_reject")
+        val dontShowText = getBtnText(cancelText)
         val dontShowButton = JButton(dontShowText)
         dontShowButton.addActionListener {
             Mob.mob(Mob.Action.CLICK, Mob.Button.CLOSE_DIALOG)
@@ -156,12 +160,15 @@ class ShowDownloadSourceDialog(val codeLocatorWindow: CodeLocatorWindow, val pro
     }
 
     private fun getBtnText(btnTxt: String) =
-            "<html><body style='text-align:center;font-size:12px; padding-left: 12px;padding-right: 12px;padding-top: 8px;padding-bottom: 8px;'>$btnTxt</body></html>"
+        "<html><body style='text-align:center;font-size:12px; padding-left: 12px;padding-right: 12px;padding-top: 8px;padding-bottom: 8px;'>$btnTxt</body></html>"
 
     private fun createLabel(text: String): JLabel {
         val jLabel = JLabel("<html><body style='text-align:center;font-size:13px;'>$text</body></html>")
         jLabel.maximumSize = Dimension(DIALOG_WIDTH - CoordinateUtils.DEFAULT_BORDER * 4, 10086)
-        jLabel.minimumSize = Dimension(DIALOG_WIDTH - CoordinateUtils.DEFAULT_BORDER * 4, DIALOG_HEIGHT - CoordinateUtils.DEFAULT_BORDER * 4 - 48)
+        jLabel.minimumSize = Dimension(
+            DIALOG_WIDTH - CoordinateUtils.DEFAULT_BORDER * 4,
+            DIALOG_HEIGHT - CoordinateUtils.DEFAULT_BORDER * 4 - 48
+        )
         return jLabel
     }
 }

@@ -12,19 +12,19 @@ public class WActivity implements Serializable {
 
     private transient JumpInfo mOpenActivityJumpInfo;
 
-    @SerializedName("mDecorView")
-    private WView mDecorView;
+    @SerializedName("cj")
+    private List<WView> mDecorViews;
 
-    @SerializedName("mFragments")
+    @SerializedName("ck")
     private List<WFragment> mFragments;
 
-    @SerializedName("mStartInfo")
+    @SerializedName("cl")
     private String mStartInfo;
 
-    @SerializedName("mMemAddr")
+    @SerializedName("af")
     private String mMemAddr;
 
-    @SerializedName("mClassName")
+    @SerializedName("ag")
     private String mClassName;
 
     public String getClassName() {
@@ -35,12 +35,12 @@ public class WActivity implements Serializable {
         this.mClassName = mClassName;
     }
 
-    public WView getDecorView() {
-        return mDecorView;
+    public List<WView> getDecorViews() {
+        return mDecorViews;
     }
 
-    public void setDecorView(WView mDecorView) {
-        this.mDecorView = mDecorView;
+    public void setDecorViews(List<WView> decorViews) {
+        this.mDecorViews = decorViews;
     }
 
     public int getFragmentCount() {
@@ -93,8 +93,10 @@ public class WActivity implements Serializable {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
+        if (this == obj)
+            return true;
+        if (obj == null || getClass() != obj.getClass())
+            return false;
         WActivity wActivity = (WActivity) obj;
         return CodeLocatorUtils.equals(mMemAddr, wActivity.mMemAddr);
     }
@@ -103,4 +105,81 @@ public class WActivity implements Serializable {
     public int hashCode() {
         return CodeLocatorUtils.hash(mMemAddr);
     }
+
+    public WView findSameView(String viewMemAddr) {
+        if (mDecorViews == null || mDecorViews.isEmpty()) {
+            return null;
+        }
+        for (WView view : mDecorViews) {
+            final WView sameView = view.findSameView(viewMemAddr);
+            if (sameView != null) {
+                return sameView;
+            }
+        }
+        return null;
+    }
+
+    public WView findViewById(String id) {
+        if (mDecorViews == null || mDecorViews.isEmpty()) {
+            return null;
+        }
+        for (WView view : mDecorViews) {
+            final WView sameView = view.findViewById(id);
+            if (sameView != null) {
+                return sameView;
+            }
+        }
+        return null;
+    }
+
+    public WView findViewByText(String text) {
+        if (mDecorViews == null || mDecorViews.isEmpty()) {
+            return null;
+        }
+        for (WView view : mDecorViews) {
+            final WView sameView = view.findViewByText(text);
+            if (sameView != null) {
+                return sameView;
+            }
+        }
+        return null;
+    }
+
+    public WView findSameView(WView view) {
+        if (view == null) {
+            return null;
+        }
+        return findSameView(view.getMemAddr());
+    }
+
+    public void setTopOffset(int topOffset) {
+        if (mDecorViews == null || mDecorViews.isEmpty()) {
+            return;
+        }
+        mDecorViews.get(0).setTopOffset(topOffset);
+    }
+
+    public void setLeftOffset(int leftOffset) {
+        if (mDecorViews == null || mDecorViews.isEmpty()) {
+            return;
+        }
+        mDecorViews.get(0).setLeftOffset(leftOffset);
+    }
+
+    public void calculateAllViewDrawInfo() {
+        if (mDecorViews == null || mDecorViews.isEmpty()) {
+            return;
+        }
+        for (WView view : mDecorViews) {
+            view.calculateAllViewDrawInfo();
+        }
+        for (WView view : mDecorViews) {
+            view.adjustForScale();
+        }
+    }
+
+    public boolean hasView() {
+        return mDecorViews != null && !mDecorViews.isEmpty();
+    }
+
 }

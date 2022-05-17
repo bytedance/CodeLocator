@@ -1,38 +1,35 @@
-@file:Suppress("JAVA_MODULE_DOES_NOT_EXPORT_PACKAGE")
 package com.bytedance.tools.codelocator.dialog
 
 import com.bytedance.tools.codelocator.action.ShowGrabHistoryAction
+import com.bytedance.tools.codelocator.listener.OnClickListener
 import com.bytedance.tools.codelocator.model.CodeLocatorInfo
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
-import com.bytedance.tools.codelocator.utils.CoordinateUtils
-import com.bytedance.tools.codelocator.utils.FileUtils
-import com.bytedance.tools.codelocator.utils.JComponentUtils
-import com.bytedance.tools.codelocator.utils.Log
-import com.bytedance.tools.codelocator.utils.UIUtils
+import com.bytedance.tools.codelocator.utils.*
+import com.intellij.codeInsight.hint.HintManager
+import com.intellij.codeInsight.hint.HintManagerImpl
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.util.SystemInfo
+import com.intellij.openapi.wm.ex.WindowManagerEx
+import com.intellij.ui.awt.RelativePoint
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.disposables.Disposable
 import sun.font.FontDesignMetrics
 import java.awt.Dimension
 import java.awt.Font
+import java.awt.Image
+import java.awt.Point
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.io.File
-import javax.swing.Action
-import javax.swing.BorderFactory
-import javax.swing.Box
-import javax.swing.BoxLayout
-import javax.swing.JButton
-import javax.swing.JComponent
-import javax.swing.JPanel
-import javax.swing.JScrollPane
+import java.util.concurrent.TimeUnit
+import javax.swing.*
+import javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
 
 class ShowHistoryDialog(
     val codeLocatorWindow: CodeLocatorWindow,
     val project: Project,
     val fileInfo: Array<File>
-) : DialogWrapper(codeLocatorWindow, true) {
+) : JDialog(WindowManagerEx.getInstance().getFrame(project), ModalityType.MODELESS) {
 
     companion object {
 
@@ -46,18 +43,22 @@ class ShowHistoryDialog(
 
     lateinit var dialogContentPanel: JPanel
 
+    private var selectFile: File? = null
+
+    private var disposable : Disposable? = null
+
     init {
         initContentPanel()
     }
 
     private fun initContentPanel() {
-        title = "CodeLocator抓取历史"
+        title = ResUtils.getString("show_history_title")
         dialogContentPanel = JPanel()
         dialogContentPanel.border = BorderFactory.createEmptyBorder(
-                CoordinateUtils.DEFAULT_BORDER * 2,
-                CoordinateUtils.DEFAULT_BORDER * 2,
-                CoordinateUtils.DEFAULT_BORDER * 2,
-                CoordinateUtils.DEFAULT_BORDER * 2
+            CoordinateUtils.DEFAULT_BORDER * 2,
+            CoordinateUtils.DEFAULT_BORDER * 2,
+            CoordinateUtils.DEFAULT_BORDER * 2,
+            CoordinateUtils.DEFAULT_BORDER * 2
         )
         dialogContentPanel.layout = BoxLayout(dialogContentPanel, BoxLayout.Y_AXIS)
         val scrollPane = JScrollPane(dialogContentPanel)
@@ -71,19 +72,24 @@ class ShowHistoryDialog(
         }
 
         JComponentUtils.setSize(
-                scrollPane, DIALOG_WIDTH + BAR_WIDTH,
-                DIALOG_HEIGHT
+            scrollPane, DIALOG_WIDTH + BAR_WIDTH,
+            DIALOG_HEIGHT
         )
-        contentPanel.add(JScrollPane(scrollPane))
+
+        scrollPane.horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_NEVER
+        contentPane = scrollPane
 
         addOpenButton()
-    }
 
-    override fun createCenterPanel(): JComponent? {
-        return dialogContentPanel
+        minimumSize = scrollPane.minimumSize
+        maximumSize = scrollPane.maximumSize
+        setLocationRelativeTo(WindowManagerEx.getInstance().getFrame(project))
+        JComponentUtils.supportCommandW(dialogContentPanel, object : OnClickListener {
+            override fun onClick() {
+                hide()
+            }
+        })
     }
-
-    override fun createActions(): Array<Action> = emptyArray()
 
     private fun addOpenButton() {
         for (file in fileInfo) {
@@ -94,7 +100,7 @@ class ShowHistoryDialog(
     }
 
     private fun getLabelText(btnTxt: String) =
-            "<html><span style='text-align:left;font-size:12px;'>$btnTxt</span></html>"
+        "<html><span style='text-align:left;font-size:12px;'>$btnTxt</span></html>"
 
     private fun createLabel(file: File): JButton {
         val buttonWidth = DIALOG_WIDTH - CoordinateUtils.DEFAULT_BORDER * 4
@@ -106,38 +112,83 @@ class ShowHistoryDialog(
         var grabTime = fileName.substring("codelocator_".length, fileName.length - ".codelocator".length)
         try {
             val parseDate = ShowGrabHistoryAction.sSimpleDateFormat.parse(grabTime)
-            grabTime = Log.sSimpleDateFormat.format(parseDate);
+            grabTime = Log.sSimpleDateFormat.format(parseDate)
         } catch (ignore: Exception) {
 
         }
         val showInfoText =
-                "&nbsp;" + UIUtils.getMatchWidthStr("抓取时间: $grabTime", fontMetrics, buttonWidth - 140)
+            "&nbsp;" + UIUtils.getMatchWidthStr(
+                ResUtils.getString("grab_title_format", "$grabTime"),
+                fontMetrics,
+                buttonWidth - 140
+            )
 
         jButton.text = getLabelText(showInfoText)
         jButton.preferredSize = Dimension(buttonWidth, 55)
         jButton.maximumSize = Dimension(buttonWidth, 55)
         jButton.addMouseListener(object : MouseAdapter() {
+
+            override fun mouseEntered(e: MouseEvent?) {
+                selectFile = file
+                super.mouseEntered(e)
+                disposable?.dispose()
+                disposable = Observable.timer(500, TimeUnit.MILLISECONDS).subscribe {
+                    if (selectFile != file) {
+                        return@subscribe
+                    }
+                    val fileContentBytes = FileUtils.getFileContentBytes(file)
+                    val codelocatorInfo = CodeLocatorInfo.fromCodeLocatorInfo(fileContentBytes)
+                    if (codelocatorInfo != null) {
+                        ThreadUtils.runOnUIThread {
+                            if (selectFile != file || !isVisible) {
+                                return@runOnUIThread
+                            }
+                            val imageWidth = codelocatorInfo.image.getWidth(null) / 5;
+                            HintManagerImpl.getInstanceImpl().hideAllHints()
+                            HintManagerImpl.getInstanceImpl()
+                                .showHint(
+                                    JLabel(
+                                        ImageIcon(
+                                            codelocatorInfo.image
+                                                .getScaledInstance(
+                                                    imageWidth,
+                                                    codelocatorInfo.image.getHeight(null) / 5,
+                                                    Image.SCALE_SMOOTH
+                                                )
+                                        )
+                                    ),
+                                    if (this@ShowHistoryDialog.x > imageWidth) {
+                                        RelativePoint(jButton, Point(-imageWidth, 0))
+                                    } else {
+                                        RelativePoint(jButton, Point(jButton.width, 0))
+                                    },
+                                    HintManager.HIDE_BY_MOUSEOVER, 3000
+                                )
+                        }
+                    }
+                }
+            }
+
             override fun mouseClicked(e: MouseEvent?) {
                 super.mouseClicked(e)
+                disposable?.dispose()
+                Mob.mob(Mob.Action.CLICK, "history_item")
                 val fileContentBytes = FileUtils.getFileContentBytes(file)
                 val codelocatorInfo = CodeLocatorInfo.fromCodeLocatorInfo(fileContentBytes)
                 if (codelocatorInfo == null) {
                     Messages.showMessageDialog(
-                            codeLocatorWindow,
-                            "所选文件不是一个有效的CodeLocator文件",
-                            "CodeLocator",
-                            Messages.getInformationIcon()
+                        codeLocatorWindow,
+                        ResUtils.getString("not_a_codelocator_file"),
+                        "CodeLocator",
+                        Messages.getInformationIcon()
                     )
                     return
                 }
                 CodeLocatorWindow.showCodeLocatorDialog(project, codeLocatorWindow, codelocatorInfo)
-                close(0)
+                hide()
             }
         })
         return jButton
     }
 
-    override fun getPreferredFocusedComponent(): JComponent? {
-        return if (SystemInfo.isMac) dialogContentPanel else null
-    }
 }

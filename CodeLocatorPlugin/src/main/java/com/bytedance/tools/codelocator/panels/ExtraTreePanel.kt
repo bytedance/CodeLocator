@@ -8,9 +8,9 @@ import com.bytedance.tools.codelocator.model.ExtraAction
 import com.bytedance.tools.codelocator.model.ExtraInfo
 import com.bytedance.tools.codelocator.model.WView
 import com.bytedance.tools.codelocator.utils.DataUtils
-import com.bytedance.tools.codelocator.utils.ImageUtils
 import com.bytedance.tools.codelocator.utils.Mob
 import com.bytedance.tools.codelocator.utils.StringUtils
+import com.bytedance.tools.codelocator.utils.ThreadUtils
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.ui.popup.JBPopupFactory
@@ -27,7 +27,8 @@ import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreePath
 import kotlin.Comparator
 
-class ExtraTreePanel(val codeLocatorWindow: CodeLocatorWindow, val extraInfo: ExtraInfo) : JPanel(), OnEventListener<JTree> {
+class ExtraTreePanel(val codeLocatorWindow: CodeLocatorWindow, val extraInfo: ExtraInfo) : JPanel(),
+    OnEventListener<JTree> {
 
     private var mTreeRoot: DefaultMutableTreeNode? = null
 
@@ -72,7 +73,7 @@ class ExtraTreePanel(val codeLocatorWindow: CodeLocatorWindow, val extraInfo: Ex
             mJTree!!.repaint()
         }
 
-        mJTree!!.setCellRenderer(MyTreeCellRenderer(codeLocatorWindow))
+        mJTree!!.setCellRenderer(MyTreeCellRenderer(codeLocatorWindow, MyTreeCellRenderer.TYPE_EXTRA_TREE))
         mJTree!!.setOnShiftClickListener(OnShiftClickListener { e ->
             if (e.isShiftDown && e?.button == MouseEvent.BUTTON1) {
                 val path: TreePath = mJTree!!.getPathForLocation(e.x, e.y) ?: return@OnShiftClickListener
@@ -88,12 +89,10 @@ class ExtraTreePanel(val codeLocatorWindow: CodeLocatorWindow, val extraInfo: Ex
             val selectNode = mJTree!!.lastSelectedPathComponent as? DefaultMutableTreeNode
                 ?: return@addTreeSelectionListener
 
-            Mob.mob(Mob.Action.CLICK, Mob.Button.EXTRA)
-
             var selectExtra = selectNode.userObject as ExtraInfo
 
             if (!currentExtraStack.isEmpty() && (!currentExtraStack.contains(selectExtra)
-                        && selectExtra != currentExtraStack.peek().parentExtraInfo)
+                    && selectExtra != currentExtraStack.peek().parentExtraInfo)
             ) {
                 currentExtraStack.clear()
             }
@@ -103,6 +102,7 @@ class ExtraTreePanel(val codeLocatorWindow: CodeLocatorWindow, val extraInfo: Ex
         mJTree!!.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
                 if (e.button != MouseEvent.BUTTON3) {
+                    Mob.mob(Mob.Action.CLICK, Mob.Button.EXTRA)
                     return
                 }
                 val path: TreePath = mJTree!!.getPathForLocation(e.x, e.y) ?: return
@@ -130,7 +130,6 @@ class ExtraTreePanel(val codeLocatorWindow: CodeLocatorWindow, val extraInfo: Ex
         actionGroup.add(
             CopyInfoAction(
                 codeLocatorWindow.project,
-                "复制",
                 extraInfo.extraAction.displayTitle
             )
         )
@@ -141,8 +140,6 @@ class ExtraTreePanel(val codeLocatorWindow: CodeLocatorWindow, val extraInfo: Ex
                 OpenClassAction(
                     codeLocatorWindow.project,
                     codeLocatorWindow,
-                    "跳转类文件",
-                    ImageUtils.loadIcon("jump_enable"),
                     extraInfo.extraAction.jumpInfo.fileName
                 )
             )
@@ -270,7 +267,7 @@ class ExtraTreePanel(val codeLocatorWindow: CodeLocatorWindow, val extraInfo: Ex
         }
         path ?: return
         mJTree!!.selectionPath = path
-        SwingUtilities.invokeLater {
+        ThreadUtils.runOnUIThread {
             mJTree!!.scrollPathToVisible(path)
         }
         repaint()

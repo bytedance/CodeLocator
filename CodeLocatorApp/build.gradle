@@ -2,6 +2,12 @@
 buildscript {
 
     ext.kotlin_version = "1.5.20"
+    ext.support_version = "26.1.0"
+    ext.androidx_version = "1.2.0"
+    ext.codelocator_version = project["VERSION_NAME"]
+
+    ext.useSourceCode = false
+    ext.useSupport = false
 
     repositories {
         mavenCentral()
@@ -13,6 +19,8 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
 
         classpath 'com.bytedance.tools.lancet:lancet-plugin-asm6:1.0.2'
+
+        classpath 'com.vanniktech:gradle-maven-publish-plugin:0.19.0'
     }
 }
 

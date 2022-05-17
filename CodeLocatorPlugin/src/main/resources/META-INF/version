@@ -1,2 +1,3 @@
-<min-support-sdk>1.0.4</min-support-sdk>
-<changelog>1. 图片面板支持滚轮放大</changelog>
+<version>2.0.0</version>
+<min-support-sdk>2.0.0</min-support-sdk>
+<changelog>1. 更快的抓取速度, 更高的抓取成功率\n2. 设备选择与Logcat面板选择设备联动\n3. adb使用AS自带, 减少兼容性问题\n4. SDK支持网络配置, 跳转错误可快速修复\n5. 修复同名文件跳转错误问题\n6. 跳转文件跟随Flavor\n7. View树按照Window展示, 支持标记不选择的View树\n8. 支持抓取未集成SDK的Apk(仅可浏览View树)\n9. 支持抓取异步广播Apk\n10. 安装项目内最新Apk支持快捷键, 默认 Shift + Option + I\n11. 支持查看Background的对应资源\n12. 支持抓取浮窗\n13. 支持ViewStub\n14. 支持Windows系统\n15. View支持Scale, Pivot属性\n16. 支持添加View选中绘制属性\n17. 支持英语\n18. 支持操作设备剪切板</changelog>

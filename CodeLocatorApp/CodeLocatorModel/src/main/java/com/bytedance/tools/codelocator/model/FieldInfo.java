@@ -10,19 +10,19 @@ public class FieldInfo implements Serializable {
 
     private transient Field mField;
 
-    @SerializedName("mName")
+    @SerializedName("c6")
     private String mName;
 
-    @SerializedName("mType")
+    @SerializedName("aa")
     private String mType;
 
-    @SerializedName("mValue")
+    @SerializedName("cg")
     private String mValue;
 
-    @SerializedName("mIsMethod")
+    @SerializedName("ch")
     private boolean mIsMethod;
 
-    @SerializedName("mIsEditable")
+    @SerializedName("ci")
     private boolean mIsEditable;
 
     public Field getField() {

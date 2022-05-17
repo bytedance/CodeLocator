@@ -4,10 +4,6 @@ import com.bytedance.tools.codelocator.model.WApplication;
 
 public class CoordinateUtils {
 
-    public static final int TABLE_RIGHT_MARGIN = 5;
-
-    public static final int DEFAULT_BORDER = 10;
-
     public static final int SCALE_TO_HEIGHT = 700;
 
     public static final int SCALE_TO_LAND_PANEL_HEIGHT = 540;
@@ -16,9 +12,11 @@ public class CoordinateUtils {
 
     public static final int PANEL_WIDTH = 420;
 
-    public static final int MOUSE_CLICK_OFFSET = 2; // 光标点击位置和实际点击Y有视觉偏移量, 减掉
-
     public static int TREE_PANEL_HEIGHT = 370;
+
+    public static int TABLE_RIGHT_MARGIN = 5;
+
+    public static int DEFAULT_BORDER = 10;
 
     public static int convertPanelXToPhoneX(WApplication application, int panelX, float scale, int transX) {
         if (application == null) {
@@ -42,7 +40,7 @@ public class CoordinateUtils {
         if (application == null) {
             return 0;
         }
-        int y = panelY - MOUSE_CLICK_OFFSET;
+        int y = panelY;
         if (y < 0 || y > application.getPanelHeight()) {
             return -1;
         }

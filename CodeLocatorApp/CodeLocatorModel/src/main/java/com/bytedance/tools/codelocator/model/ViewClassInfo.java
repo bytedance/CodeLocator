@@ -7,10 +7,10 @@ import java.util.List;
 
 public class ViewClassInfo implements Serializable {
 
-    @SerializedName("mMethodInfoList")
+    @SerializedName("dd")
     private List<MethodInfo> mMethodInfoList;
 
-    @SerializedName("mFieldInfoList")
+    @SerializedName("de")
     private List<FieldInfo> mFieldInfoList;
 
     public List<MethodInfo> getMethodInfoList() {
@@ -28,5 +28,4 @@ public class ViewClassInfo implements Serializable {
     public void setFieldInfoList(List<FieldInfo> fieldInfoList) {
         this.mFieldInfoList = fieldInfoList;
     }
-
 }

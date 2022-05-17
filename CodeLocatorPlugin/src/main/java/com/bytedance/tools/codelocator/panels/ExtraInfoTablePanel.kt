@@ -109,16 +109,15 @@ class ExtraInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow, tag: String)
         val actionGroup: DefaultActionGroup =
             DefaultActionGroup("listGroup", true)
 
-        actionGroup.add(CopyInfoAction(codeLocatorWindow.project, "复制", copyInfo))
+        actionGroup.add(CopyInfoAction(codeLocatorWindow.project, copyInfo))
 
         if (((extraAction.actionType and (ExtraAction.ActionType.JUMP_FILE or ExtraAction.ActionType.DOUBLE_CLICK_JUMP)) != 0)
-            && !extraAction.jumpInfo?.fileName.isNullOrEmpty()) {
+            && !extraAction.jumpInfo?.fileName.isNullOrEmpty()
+        ) {
             actionGroup.add(
                 OpenClassAction(
                     codeLocatorWindow.project,
                     codeLocatorWindow,
-                    "跳转类文件",
-                    ImageUtils.loadIcon("jump_enable"),
                     extraAction.jumpInfo?.fileName
                 )
             )

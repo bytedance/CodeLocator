@@ -1,22 +1,19 @@
 package com.bytedance.tools.codelocator.action
 
 import com.bytedance.tools.codelocator.utils.IdeaUtils
+import com.bytedance.tools.codelocator.utils.ImageUtils
 import com.bytedance.tools.codelocator.utils.Mob
 import com.bytedance.tools.codelocator.utils.NetUtils
-import com.intellij.openapi.actionSystem.AnAction
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.project.Project
-import javax.swing.Icon
 
-class OpenDocAction(
-        var project: Project,
-        text: String?,
-        icon: Icon?
-) : AnAction(text, text, icon) {
+class OpenDocAction :
+    BaseAction(ResUtils.getString("open_doc"), ResUtils.getString("open_doc"), ImageUtils.loadIcon("open_doc")) {
 
-    override fun actionPerformed(p0: AnActionEvent) {
-        Mob.mob(Mob.Action.CLICK, Mob.Button.DOC)
+    override fun isEnable(e: AnActionEvent) = true
 
+    override fun actionPerformed(e: AnActionEvent) {
         IdeaUtils.openBrowser(NetUtils.DOC_URL)
+        Mob.mob(Mob.Action.CLICK, Mob.Button.DOC)
     }
 }

@@ -1,9 +1,12 @@
 package com.bytedance.tools.codelocator.dialog
 
+import com.bytedance.tools.codelocator.listener.OnClickListener
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.utils.CoordinateUtils
 import com.bytedance.tools.codelocator.utils.ImageUtils
+import com.bytedance.tools.codelocator.utils.JComponentUtils
 import com.bytedance.tools.codelocator.utils.Mob
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.bytedance.tools.codelocator.utils.UIUtils
 import com.bytedance.tools.codelocator.views.JTextHintField
 import com.intellij.openapi.project.Project
@@ -47,7 +50,7 @@ class UnitConvertDialog(
     }
 
     private fun initContentPanel() {
-        title = "单位转换"
+        title = ResUtils.getString("unit_convert")
         dialogContentPanel = JPanel()
         dialogContentPanel.border = BorderFactory.createEmptyBorder(
             CoordinateUtils.DEFAULT_BORDER,
@@ -59,6 +62,11 @@ class UnitConvertDialog(
         setLocationRelativeTo(WindowManagerEx.getInstance().getFrame(project))
         dialogContentPanel.layout = BoxLayout(dialogContentPanel, BoxLayout.Y_AXIS)
         contentPane = dialogContentPanel
+        JComponentUtils.supportCommandW(dialogContentPanel, object : OnClickListener {
+            override fun onClick() {
+                hide()
+            }
+        })
 
         addAllTextField()
 
@@ -74,19 +82,19 @@ class UnitConvertDialog(
 
     private fun addAllTextField() {
         dpTextField = JTextHintField("")
-        dpTextField.setHint("请输入dp")
+        dpTextField.setHint(ResUtils.getString("input_dp"))
         pxTextField = JTextHintField("")
-        pxTextField.setHint("请输入px")
+        pxTextField.setHint(ResUtils.getString("input_px"))
         densityTextField = JTextHintField("")
-        densityTextField.setHint("请输入density")
+        densityTextField.setHint(ResUtils.getString("input_density"))
 
         val horizontalBox = Box.createHorizontalBox()
 
-        val toPxLabel = JButton("转换成Px", ImageUtils.loadIcon("search_next"))
-        toPxLabel.toolTipText = "转换成Px"
+        val toPxLabel = JButton(ResUtils.getString("to_px"), ImageUtils.loadIcon("search_next"))
+        toPxLabel.toolTipText = ResUtils.getString("to_px")
 
-        val toDpLable = JButton("转换为Dp", ImageUtils.loadIcon("search_pre"))
-        toDpLable.toolTipText = "转换为Dp"
+        val toDpLable = JButton(ResUtils.getString("to_dp"), ImageUtils.loadIcon("search_pre"))
+        toDpLable.toolTipText = ResUtils.getString("to_dp")
 
         val pxLabel = JLabel("px:")
         val dpLabel = JLabel("dp:")
@@ -142,10 +150,10 @@ class UnitConvertDialog(
         try {
             density = densityTextField.text.trim().toFloat()
             if (density < 0) {
-                showErrorMsg("Density 内容不合法, 请检查输入")
+                showErrorMsg(ResUtils.getString("illegal_density"))
             }
         } catch (t: Throwable) {
-            showErrorMsg("Density 内容不合法, 请检查输入")
+            showErrorMsg(ResUtils.getString("illegal_density"))
             return
         }
         if (dpToPx) {
@@ -154,7 +162,7 @@ class UnitConvertDialog(
                 pxTextField.text = "" + UIUtils.dip2Px(density, dpValue)
                 Mob.mob(Mob.Action.CLICK, Mob.Button.CONVERT_TO_PX)
             } catch (t: Throwable) {
-                showErrorMsg("DP 内容不合法, 请检查输入")
+                showErrorMsg(ResUtils.getString("illegal_dp"))
                 return
             }
         } else {
@@ -163,7 +171,7 @@ class UnitConvertDialog(
                 dpTextField.text = "" + UIUtils.px2dipFloat(density, pxValue)
                 Mob.mob(Mob.Action.CLICK, Mob.Button.CONVERT_TO_DP)
             } catch (t: Throwable) {
-                showErrorMsg("PX 内容不合法, 请检查输入")
+                showErrorMsg(ResUtils.getString("illegal_px"))
                 return
             }
         }

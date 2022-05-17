@@ -24,7 +24,7 @@ public class PopupLancet {
             String keyword = ViewUtils.getKeyword(view);
             CodeLocator.notifyShowPopup(Thread.currentThread().getStackTrace(), keyword);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "getToast info Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "getToast info Error " + Log.getStackTraceString(t));
         }
         Origin.callVoid();
     }
@@ -38,7 +38,7 @@ public class PopupLancet {
             String keyword = ViewUtils.getKeyword(view);
             CodeLocator.notifyShowPopup(Thread.currentThread().getStackTrace(), keyword);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "getToast info Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "getToast info Error " + Log.getStackTraceString(t));
         }
         Origin.callVoid();
     }
@@ -52,7 +52,7 @@ public class PopupLancet {
             String keyword = ViewUtils.getKeyword(view);
             CodeLocator.notifyShowPopup(Thread.currentThread().getStackTrace(), keyword);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "getToast info Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "getToast info Error " + Log.getStackTraceString(t));
         }
         Origin.callVoid();
     }
@@ -66,7 +66,7 @@ public class PopupLancet {
             String keyword = ViewUtils.getKeyword(view);
             CodeLocator.notifyShowPopup(Thread.currentThread().getStackTrace(), keyword);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "getToast info Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "getToast info Error " + Log.getStackTraceString(t));
         }
         Origin.callVoid();
     }
@@ -80,7 +80,7 @@ public class PopupLancet {
             String keyword = ViewUtils.getKeyword(view);
             CodeLocator.notifyShowPopup(Thread.currentThread().getStackTrace(), keyword);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "getToast info Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "getToast info Error " + Log.getStackTraceString(t));
         }
         Origin.callVoid();
     }
@@ -94,7 +94,7 @@ public class PopupLancet {
             String keyword = ViewUtils.getKeyword(view);
             CodeLocator.notifyShowPopup(Thread.currentThread().getStackTrace(), keyword);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "getToast info Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "getToast info Error " + Log.getStackTraceString(t));
         }
         Origin.callVoid();
     }

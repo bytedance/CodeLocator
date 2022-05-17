@@ -4,12 +4,16 @@ import com.bytedance.tools.codelocator.action.FileOperateAction
 import com.bytedance.tools.codelocator.listener.OnSelectFileListener
 import com.bytedance.tools.codelocator.listener.OnShiftClickListener
 import com.bytedance.tools.codelocator.model.WFile
+import com.bytedance.tools.codelocator.model.SchemaHistory
 import com.bytedance.tools.codelocator.utils.DataUtils
 import com.bytedance.tools.codelocator.utils.Mob
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.bytedance.tools.codelocator.utils.StringUtils
+import com.bytedance.tools.codelocator.utils.ThreadUtils
 import java.awt.Checkbox
 import java.awt.CheckboxGroup
 import java.awt.Dimension
+import java.awt.event.ItemEvent
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -20,6 +24,7 @@ import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreePath
 import kotlin.Comparator
+import javax.swing.DefaultComboBoxModel as DefaultComboBoxModel
 
 class FileTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEventListener<JTree> {
 
@@ -55,20 +60,44 @@ class FileTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
 
     private var mSortFileByName = true
 
+    private var list = mutableListOf<String>()
+
+    private var historyComboBoxModel = object : DefaultComboBoxModel<String>() {
+
+    }
+
     init {
         setLayout(BoxLayout(this, BoxLayout.Y_AXIS))
         border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
         mJTree = SearchableJTree(mTreeModel)
 
-        mJTree!!.toolTipText = "Item支持右键, 在File Tab上右键可刷新列表, 可搜索"
-        val orderBySize = Checkbox("大小", orderGroup, false)
-        val orderByName = Checkbox("文件名", orderGroup, true)
+        mJTree!!.toolTipText = ResUtils.getString("file_tree_tip")
+        val historyBox = JComboBox<String>(historyComboBoxModel)
+        historyComboBoxModel.addElement("")
+        val loadHistory = SchemaHistory.loadHistory()
+        if (loadHistory != null && loadHistory.mHistoryFile != null) {
+            loadHistory.mHistoryFile.forEach { historyComboBoxModel.addElement(it) }
+        }
+        val orderBySize = Checkbox(ResUtils.getString("order_by_size"), orderGroup, false)
+        val orderByName = Checkbox(ResUtils.getString("order_by_name"), orderGroup, true)
         val createHorizontalBox = Box.createHorizontalBox()
         createHorizontalBox.add(Box.createHorizontalGlue())
         orderByName.maximumSize = Dimension(CHECK_WIDTH, CHECK_HEIGHT)
         orderBySize.maximumSize = Dimension(CHECK_WIDTH, CHECK_HEIGHT)
+        createHorizontalBox.add(historyBox)
         createHorizontalBox.add(orderByName)
         createHorizontalBox.add(orderBySize)
+        historyBox.addItemListener {
+            mJTree?.run {
+                if (it.stateChange == ItemEvent.SELECTED && !"".equals(it.item)) {
+                    mSearchSb.clear()
+                    mSearchSb.append(it.item as String)
+                    onSearchKeyChange(this, it.item as String)
+                    historyBox.selectedIndex = 0
+                    Mob.mob(Mob.Action.CLICK, "file_item")
+                }
+            }
+        }
         createHorizontalBox.maximumSize = Dimension(10086, CHECK_HEIGHT)
         add(createHorizontalBox)
 
@@ -99,7 +128,7 @@ class FileTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
             mJTree!!.repaint()
         }
 
-        mJTree!!.setCellRenderer(MyTreeCellRenderer(codeLocatorWindow))
+        mJTree!!.setCellRenderer(MyTreeCellRenderer(codeLocatorWindow, MyTreeCellRenderer.TYPE_FILE_TREE))
         mJTree!!.setOnShiftClickListener(OnShiftClickListener { e ->
             if (e.isShiftDown && e?.button == MouseEvent.BUTTON1) {
                 val path: TreePath = mJTree!!.getPathForLocation(e.x, e.y) ?: return@OnShiftClickListener
@@ -140,6 +169,29 @@ class FileTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
                 Mob.mob(Mob.Action.RIGHT_CLICK, Mob.Button.FILE)
                 val wFile = (mJTree!!.lastSelectedPathComponent as? DefaultMutableTreeNode)?.userObject as? WFile
                     ?: return
+                val name = wFile.name
+                var needInsert = true
+                for (i in (historyComboBoxModel.size - 1) downTo 1) {
+                    if (name.equals(historyComboBoxModel.getElementAt(i))) {
+                        if (i == 1) {
+                            needInsert = false
+                            break
+                        } else {
+                            historyComboBoxModel.removeElementAt(i)
+                        }
+                    } else if (i >= 31) {
+                        historyComboBoxModel.removeElementAt(i)
+                    }
+                }
+                if (needInsert) {
+                    historyComboBoxModel.insertElementAt(name, 1)
+                    list.clear()
+                    for (i in 1 until historyComboBoxModel.size) {
+                        list.add(historyComboBoxModel.getElementAt(i))
+                    }
+                    SchemaHistory.loadHistory().updateFile(list)
+                    SchemaHistory.updateHistory(SchemaHistory.loadHistory())
+                }
                 if (!wFile.isExists) {
                     return
                 }
@@ -259,7 +311,7 @@ class FileTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
         }
         path ?: return
         mJTree!!.selectionPath = path
-        SwingUtilities.invokeLater {
+        ThreadUtils.runOnUIThread {
             mJTree!!.scrollPathToVisible(path)
         }
         repaint()

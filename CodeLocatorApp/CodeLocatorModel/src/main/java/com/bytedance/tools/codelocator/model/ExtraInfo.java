@@ -32,20 +32,20 @@ public class ExtraInfo implements Serializable {
         mShowType = showType;
     }
 
-    @SerializedName("mExtraAction")
+    @SerializedName("cr")
     private ExtraAction mExtraAction;
 
     /**
      * see {@link ShowType}
      */
-    @SerializedName("mShowType")
+    @SerializedName("cm")
     private int mShowType;
 
     // 当前ExtraInfo的类型, 显示类型为 EXTRA_TREE 或者 EXTRA_BOTH 时, 相同的mTag会被聚合成一个树状结构
-    @SerializedName("mTag")
+    @SerializedName("cc")
     private String mTag;
 
-    @SerializedName("mExtraList")
+    @SerializedName("cs")
     private List<ExtraAction> mExtraList;
 
     // 以下属性接入方无需关心
@@ -55,7 +55,7 @@ public class ExtraInfo implements Serializable {
 
     private transient WView mView;
 
-    @SerializedName("mChildren")
+    @SerializedName("a")
     private List<ExtraInfo> mChildren;
 
     public WView getView() {

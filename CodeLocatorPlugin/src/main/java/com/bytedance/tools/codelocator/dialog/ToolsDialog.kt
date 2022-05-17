@@ -1,13 +1,17 @@
 package com.bytedance.tools.codelocator.dialog
 
+import com.bytedance.tools.codelocator.device.DeviceManager
+import com.bytedance.tools.codelocator.device.action.AdbAction
+import com.bytedance.tools.codelocator.device.action.AdbCommand
+import com.bytedance.tools.codelocator.device.action.AdbCommand.ACTION
+import com.bytedance.tools.codelocator.device.Device
+import com.bytedance.tools.codelocator.listener.OnClickListener
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.tools.*
-import com.bytedance.tools.codelocator.utils.CoordinateUtils
-import com.bytedance.tools.codelocator.utils.ImageUtils
-import com.bytedance.tools.codelocator.utils.JComponentUtils
+import com.bytedance.tools.codelocator.utils.*
+import com.bytedance.tools.codelocator.response.StringResponse
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.DialogWrapper
-import com.intellij.openapi.util.SystemInfo
+import com.intellij.openapi.wm.ex.WindowManagerEx
 import java.awt.Dimension
 import java.awt.Font
 import java.awt.event.MouseAdapter
@@ -15,20 +19,13 @@ import java.awt.event.MouseEvent
 import javax.swing.*
 
 class ToolsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: Project) :
-        DialogWrapper(codeLocatorWindow, true) {
+    JDialog(WindowManagerEx.getInstance().getFrame(project), ModalityType.MODELESS) {
 
     companion object {
 
-        const val DIALOG_WIDTH = 518
+        const val DIALOG_WIDTH = 550
 
         const val ITEM_HEIGHT = 44
-
-        @JvmStatic
-        fun showToolsDialog(codeLocatorWindow: CodeLocatorWindow, project: Project) {
-            val showDialog = ToolsDialog(codeLocatorWindow, project)
-            showDialog.window.isAlwaysOnTop = true
-            showDialog.showAndGet()
-        }
 
     }
 
@@ -39,19 +36,24 @@ class ToolsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: Project
     }
 
     private fun initContentPanel() {
-        title = "CodeLocator工具合集"
+        title = ResUtils.getString("codeLocator_tool_box")
         dialogContentPanel = JPanel()
         dialogContentPanel.border = BorderFactory.createEmptyBorder(
-                CoordinateUtils.DEFAULT_BORDER,
-                CoordinateUtils.DEFAULT_BORDER,
-                CoordinateUtils.DEFAULT_BORDER,
-                CoordinateUtils.DEFAULT_BORDER
+            CoordinateUtils.DEFAULT_BORDER,
+            CoordinateUtils.DEFAULT_BORDER,
+            CoordinateUtils.DEFAULT_BORDER,
+            CoordinateUtils.DEFAULT_BORDER
         )
-
         dialogContentPanel.layout = BoxLayout(dialogContentPanel, BoxLayout.Y_AXIS)
-        contentPanel.add(dialogContentPanel)
+        contentPane = dialogContentPanel
 
         addToolsButton()
+        setLocationRelativeTo(WindowManagerEx.getInstance().getFrame(project))
+        JComponentUtils.supportCommandW(dialogContentPanel, object : OnClickListener {
+            override fun onClick() {
+                hide()
+            }
+        })
     }
 
     private fun addButton(tool: BaseTool) {
@@ -61,40 +63,60 @@ class ToolsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: Project
         jButton.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent?) {
                 super.mouseClicked(e)
-
                 tool.onClick()
-
-                this@ToolsDialog.close(0)
+                this@ToolsDialog.hide()
             }
         })
+        tool.jButton = jButton
         dialogContentPanel.add(jButton)
         dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
     }
 
     private fun addToolsButton() {
-        val childCount = 7
         addButton(ProxyTool(codeLocatorWindow, project))
+        addButton(ClipboardTool(codeLocatorWindow, project))
         addButton(LayoutTool(project))
         addButton(OverdrawTool(project))
-        addButton(ShowTouchTools(project))
-        addButton(ShowCoordinateTools(project))
+        val showTouchTools = ShowTouchTools(project)
+        addButton(showTouchTools)
+        val showCoordinateTools = ShowCoordinateTools(project)
+        addButton(showCoordinateTools)
         addButton(SendSchemaTools(codeLocatorWindow, project))
         addButton(UnitConvertTools(codeLocatorWindow, project))
 
+        DeviceManager.enqueueCmd(
+            project,
+            AdbCommand(
+                AdbAction(
+                    ACTION.CONTENT,
+                    "query --uri content://settings/system"
+                )
+            ),
+            StringResponse::class.java,
+            object : DeviceManager.OnExecutedListener<StringResponse> {
+                override fun onExecSuccess(device: Device, response: StringResponse) {
+                    if (response.data != null) {
+                        ThreadUtils.runOnUIThread {
+                            showTouchTools.onGetSystemInfo(response.data)
+                            showCoordinateTools.onGetSystemInfo(response.data)
+                        }
+                    }
+                }
+
+                override fun onExecFailed(t: Throwable) {
+                    Log.e("获取system失败", t)
+                }
+            })
+
         dialogContentPanel.minimumSize =
-                Dimension(DIALOG_WIDTH, (CoordinateUtils.DEFAULT_BORDER + ITEM_HEIGHT) * childCount + CoordinateUtils.DEFAULT_BORDER)
-        dialogContentPanel.preferredSize =
-                Dimension(DIALOG_WIDTH, (CoordinateUtils.DEFAULT_BORDER + ITEM_HEIGHT) * childCount + CoordinateUtils.DEFAULT_BORDER)
+            Dimension(DIALOG_WIDTH, (CoordinateUtils.DEFAULT_BORDER + ITEM_HEIGHT) * 8 + CoordinateUtils.DEFAULT_BORDER)
+        dialogContentPanel.preferredSize = dialogContentPanel.minimumSize
+        minimumSize = dialogContentPanel.minimumSize
+        setLocationRelativeTo(WindowManagerEx.getInstance().getFrame(project))
     }
 
-
-    override fun createCenterPanel(): JComponent? {
-        return dialogContentPanel
-    }
-
-    override fun createActions(): Array<Action> = emptyArray()
-
-    override fun getPreferredFocusedComponent(): JComponent? {
-        return if (SystemInfo.isMac) dialogContentPanel else null
+    override fun show() {
+        super.show()
+        OSHelper.instance.adjustDialog(this, project)
     }
 }

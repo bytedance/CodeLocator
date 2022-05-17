@@ -11,9 +11,9 @@ android {
         minSdkVersion MIN_SDK_VERSION
         targetSdkVersion TARGET_SDK_VERSION
         versionCode 1
-        versionName project["POM_VERSION_NAME"]
+        versionName codelocator_version
 
-        applicationId "com.bytedance.tools.CodeLocator"
+        applicationId "com.bytedance.tools.codelocator.demo"
     }
 
     compileOptions {
@@ -31,24 +31,42 @@ android {
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation 'androidx.core:core-ktx:1.3.2'
-    implementation 'androidx.appcompat:appcompat:1.2.0'
-    implementation 'androidx.recyclerview:recyclerview:1.2.0'
 
-    implementation 'com.bytedance.tools.codelocator:codelocator-core:1.0.0'
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-activity:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-view:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-toast:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-popup:1.0.0"
-//    implementation project(path: ':CodeLocatorLancetXml')
-//    implementation project(path: ':CodeLocatorCore')
-//    implementation project(path: ':CodeLocatorLancetActivity')
-//    implementation project(path: ':CodeLocatorLancetToast')
-//    implementation project(path: ':CodeLocatorLancetPopup')
-//    implementation project(path: ':CodeLocatorLancetView')
-//    implementation project(path: ':CodeLocatorLancetDialog')
+    if (useSupport) {
+        implementation "com.android.support:appcompat-v7:$support_version"
+        implementation "com.android.support:recyclerview-v7:$support_version"
+    } else {
+        implementation "androidx.core:core-ktx:1.3.2"
+        implementation "androidx.appcompat:appcompat:$androidx_version"
+        implementation "androidx.recyclerview:recyclerview:$androidx_version"
+    }
 
+    if (useSourceCode) {
+        implementation project(path: ':CodeLocatorCore')
+        implementation project(path: ':CodeLocatorLancetXml')
+        implementation project(path: ':CodeLocatorLancetActivity')
+        implementation project(path: ':CodeLocatorLancetToast')
+        implementation project(path: ':CodeLocatorLancetPopup')
+        implementation project(path: ':CodeLocatorLancetView')
+        implementation project(path: ':CodeLocatorLancetDialog')
+    } else {
+        if (useSupport) {
+            implementation "com.bytedance.tools.codelocator:codelocator-core-support:$codelocator_version"
+            debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml-support:$codelocator_version"
+            debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-activity-support:$codelocator_version"
+            debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-view-support:$codelocator_version"
+            debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-toast-support:$codelocator_version"
+            debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog-support:$codelocator_version"
+            debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-popup-support:$codelocator_version"
+        } else {
+            implementation "com.bytedance.tools.codelocator:codelocator-core:$codelocator_version"
+            debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml:$codelocator_version"
+            debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-activity:$codelocator_version"
+            debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-view:$codelocator_version"
+            debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-toast:$codelocator_version"
+            debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog:$codelocator_version"
+            debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-popup:$codelocator_version"
+        }
+    }
     compileOnly 'me.ele:lancet-base:1.0.6'
 }

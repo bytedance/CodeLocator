@@ -1,8 +1,8 @@
 package com.bytedance.tools.codelocator.panels
 
 import com.bytedance.tools.codelocator.action.SimpleAction
-import com.bytedance.tools.codelocator.listener.*
 import com.bytedance.tools.codelocator.model.*
+import com.bytedance.tools.codelocator.listener.*
 import com.bytedance.tools.codelocator.utils.*
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -28,10 +28,10 @@ class TabContainerPanel(val codeLocatorWindow: CodeLocatorWindow) : JTabbedPane(
 
         @JvmStatic
         val ALL_TABS = arrayOf(
-            "View",
-            "Activity",
-            "File",
-            "AppInfo"
+                "View",
+                "Activity",
+                "File",
+                "AppInfo"
         )
 
     }
@@ -54,6 +54,8 @@ class TabContainerPanel(val codeLocatorWindow: CodeLocatorWindow) : JTabbedPane(
 
     val extraListPanel = mutableListOf<ExtraSplitPane>()
 
+    val panelMap = mutableMapOf<String, JComponent>()
+
     private val onSelectViewListener: OnSelectViewListener = OnSelectViewListener { view, isShiftSelect ->
         outOnSelectViewListener?.onSelectView(view, isShiftSelect)
         viewInfoTablePanel.updateView(view)
@@ -61,12 +63,6 @@ class TabContainerPanel(val codeLocatorWindow: CodeLocatorWindow) : JTabbedPane(
 
     init {
         initTabPanel()
-    }
-
-    fun adjustForLandscape() {
-    }
-
-    fun adjustForPortrait() {
     }
 
     fun setOnSelectViewListener(onSelectViewListener: OnSelectViewListener) {
@@ -77,8 +73,13 @@ class TabContainerPanel(val codeLocatorWindow: CodeLocatorWindow) : JTabbedPane(
         viewTreePanel.setOnRightKeyClickListener(listener)
     }
 
+    fun resetTabView() {
+        viewTreePanel.reset()
+        viewInfoTablePanel.updateView(null)
+    }
+
     fun updateActivityState(activity: WActivity?) {
-        viewTreePanel.setView(activity?.decorView)
+        viewTreePanel.setActivity(activity)
         activityTreePanel.setActivity(activity)
         appInfoTablePanel.updateAppInfo(activity?.application?.appInfo)
         fileInfoTablePanel.updateFile(activity?.application?.file)
@@ -115,13 +116,47 @@ class TabContainerPanel(val codeLocatorWindow: CodeLocatorWindow) : JTabbedPane(
 
     fun updateSelectView(view: WView?, fromOutSide: Boolean = false) {
         val selectedIndex = selectedIndex
-        if (view != null && selectedIndex != 0 && !fromOutSide && codeLocatorWindow.codeLocatorConfig.isChangeTabWhenViewChange) {
+        if (view != null && selectedIndex != 0 && !fromOutSide && codeLocatorWindow.codelocatorConfig.isChangeTabWhenViewChange) {
             setSelectedIndex(0)
         }
         viewTreePanel.setCurrentSelectView(view)
         viewInfoTablePanel.updateView(view)
 
         extraListPanel.forEach { it.setCurrentSelectView(view) }
+    }
+
+    fun adjustForLandscape() {
+        val splitPane = panelMap["View"] as? JSplitPane ?: return
+        if (splitPane.height <= 0) {
+            splitPane.dividerLocation = 200
+        } else {
+            val paneHeight = height - splitPane.y
+            if (paneHeight - splitPane.dividerLocation > 20) {
+                return
+            }
+            if (paneHeight > 200) {
+                splitPane.dividerLocation = paneHeight - 100
+            } else {
+                splitPane.dividerLocation = paneHeight / 2
+            }
+        }
+    }
+
+    fun adjustForPortrait() {
+        val splitPane = panelMap["View"] as? JSplitPane ?: return
+        if (splitPane.height <= 0) {
+            splitPane.dividerLocation = CoordinateUtils.TREE_PANEL_HEIGHT
+        } else {
+            val paneHeight = height - splitPane.y
+            if (paneHeight - splitPane.dividerLocation > 20) {
+                return
+            }
+            if (paneHeight > 200) {
+                splitPane.dividerLocation = paneHeight - 100
+            } else {
+                splitPane.dividerLocation = paneHeight / 2
+            }
+        }
     }
 
     private fun createCommonTabPanel(): JSplitPane {
@@ -164,12 +199,17 @@ class TabContainerPanel(val codeLocatorWindow: CodeLocatorWindow) : JTabbedPane(
     private fun initTabPanel() {
         border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
 
+        panelMap["View"] = getViewTab()
+        panelMap["Activity"] = getActivityTab()
+        panelMap["File"] = getFileTab()
+        panelMap["AppInfo"] = getAppInfoTab()
+
         for (tab in ALL_TABS) {
             when (tab) {
-                TAB_View -> addTab("View", getViewTab())
-                TAB_Activity -> addTab("Activity", getActivityTab())
-                TAB_File -> addTab("File", getFileTab())
-                TAB_AppInfo -> addTab("AppInfo", getAppInfoTab())
+                TAB_View -> addTab("View", panelMap["View"])
+                TAB_Activity -> addTab("Activity", panelMap["Activity"])
+                TAB_File -> addTab("File", panelMap["File"])
+                TAB_AppInfo -> addTab("AppInfo", panelMap["AppInfo"])
                 else -> Log.d("Unknow Tab $tab")
             }
         }
@@ -181,14 +221,14 @@ class TabContainerPanel(val codeLocatorWindow: CodeLocatorWindow) : JTabbedPane(
                     return
                 }
                 val tabForCoordinate = (e.component as TabContainerPanel).getUI()
-                    .tabForCoordinate(e.component as TabContainerPanel, e.x, e.y)
+                        .tabForCoordinate(e.component as TabContainerPanel, e.x, e.y)
                 if (TAB_File != ALL_TABS[tabForCoordinate]) {
                     return
                 }
                 Mob.mob(Mob.Action.RIGHT_CLICK, Mob.Button.LOAD_APP_FILE)
                 codeLocatorWindow.currentApplication?.file ?: return
                 val actionGroup = DefaultActionGroup("listGroup", true)
-                actionGroup.add(SimpleAction("重新加载", object : OnActionListener {
+                actionGroup.add(SimpleAction(ResUtils.getString("reload_file"), object : OnActionListener {
                     override fun actionPerformed(e: AnActionEvent) {
                         Mob.mob(Mob.Action.CLICK, Mob.Button.LOAD_APP_FILE)
                         codeLocatorWindow.getScreenPanel()?.getFileInfo(codeLocatorWindow.currentApplication, true)
@@ -196,11 +236,11 @@ class TabContainerPanel(val codeLocatorWindow: CodeLocatorWindow) : JTabbedPane(
                 }))
                 val factory = JBPopupFactory.getInstance()
                 val pop = factory.createActionGroupPopup(
-                    "",
-                    actionGroup,
-                    DataManager.getInstance().getDataContext(),
-                    JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
-                    false
+                        "",
+                        actionGroup,
+                        DataManager.getInstance().getDataContext(),
+                        JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
+                        false
                 )
                 val point = Point(e.x, e.y + 10)
                 pop.show(RelativePoint(e.component, point))

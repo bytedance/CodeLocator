@@ -16,6 +16,7 @@ public class DialogInfoAnalyzer {
             StackTraceElement findElement = null;
             for (int i = config.getSkipSystemTraceCount(); i < stackTraceElements.length && i < config.getViewMaxLoopCount(); i++) {
                 final StackTraceElement stackTraceElement = stackTraceElements[i];
+                final String currentMethodName = stackTraceElement.getMethodName();
                 final String currentClassName = stackTraceElement.getClassName();
                 final String fileName = stackTraceElement.getFileName();
                 if (fileName == null || currentClassName == null || config.getDialogIgnoreByClazzs().contains(currentClassName)) {
@@ -25,7 +26,8 @@ public class DialogInfoAnalyzer {
                 } else {
                     boolean containsKeyword = false;
                     for (String keyword : config.getDialogIgnoreByKeyWords()) {
-                        if (currentClassName.contains(keyword)) {
+                        if (currentClassName.contains(keyword)
+                            || (currentMethodName != null && currentMethodName.contains(keyword))) {
                             containsKeyword = true;
                             break;
                         }
@@ -42,7 +44,7 @@ public class DialogInfoAnalyzer {
             }
             return getTagInfoByElement(findElement);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "analysisShowDialogInfo Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "analysisShowDialogInfo Error " + Log.getStackTraceString(t));
         }
         return null;
     }

@@ -12,6 +12,8 @@ import android.net.Uri;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.bytedance.tools.codelocator.async.AsyncBroadcastHelper;
+
 public class CodeLocatorProvider extends ContentProvider {
 
     @Override
@@ -28,8 +30,13 @@ public class CodeLocatorProvider extends ContentProvider {
     @Nullable
     @Override
     public Cursor query(@NonNull Uri uri, @Nullable String[] projection, @Nullable String selection, @Nullable String[] selectionArgs, @Nullable String sortOrder) {
-        MatrixCursor matrixCursor = new MatrixCursor(new String[]{"CodeLocatorVersion"});
-        matrixCursor.addRow(new String[]{BuildConfig.VERSION_NAME});
+        MatrixCursor matrixCursor = new MatrixCursor(new String[]{"CodeLocatorVersion", "AsyncBroadcast", "AsyncResult"});
+        final String result = AsyncBroadcastHelper.getAsyncResult();
+        if (result != null) {
+            matrixCursor.addRow(new String[]{BuildConfig.VERSION_NAME, "" + AsyncBroadcastHelper.isEnableAsyncBroadcast(getContext()), result});
+        } else {
+            matrixCursor.addRow(new String[]{BuildConfig.VERSION_NAME, "" + AsyncBroadcastHelper.isEnableAsyncBroadcast(getContext()), ""});
+        }
         return matrixCursor;
     }
 

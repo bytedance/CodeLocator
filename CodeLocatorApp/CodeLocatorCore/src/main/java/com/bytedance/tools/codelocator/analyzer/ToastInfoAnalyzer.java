@@ -17,15 +17,17 @@ public class ToastInfoAnalyzer {
             for (int i = config.getSkipSystemTraceCount(); i < stackTraceElements.length && i < config.getViewMaxLoopCount(); i++) {
                 final StackTraceElement stackTraceElement = stackTraceElements[i];
                 final String currentClassName = stackTraceElement.getClassName();
+                final String currentMethodName = stackTraceElement.getMethodName();
                 final String fileName = stackTraceElement.getFileName();
                 if (fileName == null
-                        || currentClassName == null
-                        || config.getToastIgnoreByClazzs().contains(currentClassName)) {
+                    || currentClassName == null
+                    || config.getToastIgnoreByClazzs().contains(currentClassName)) {
                     continue;
                 } else {
                     boolean containsKeyword = false;
                     for (String keyword : config.getToastIgnoreByKeyWords()) {
-                        if (currentClassName.contains(keyword)) {
+                        if (currentClassName.contains(keyword)
+                            || (currentMethodName != null && currentMethodName.contains(keyword))) {
                             containsKeyword = true;
                             break;
                         }
@@ -42,7 +44,7 @@ public class ToastInfoAnalyzer {
             }
             return getTagInfoByElement(findElement);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "analysisShowToastInfo Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "analysisShowToastInfo Error " + Log.getStackTraceString(t));
         }
         return null;
     }

@@ -38,190 +38,200 @@ public class WView implements Serializable {
 
     private transient Object mScaleImage;
 
-    private transient String mZIndex = "001";
-
-    @SerializedName("mChildren")
+    @SerializedName("a")
     private List<WView> mChildren;
 
-    @SerializedName("mTopOffset")
+    @SerializedName("b")
     private int mTopOffset;
 
-    @SerializedName("mLeftOffset")
+    @SerializedName("c")
     private int mLeftOffset;
 
-    @SerializedName("mLeft")
+    @SerializedName("d")
     private int mLeft;
-
-    @SerializedName("mRight")
+    @SerializedName("e")
     private int mRight;
-
-    @SerializedName("mTop")
+    @SerializedName("f")
     private int mTop;
-
-    @SerializedName("mBottom")
+    @SerializedName("g")
     private int mBottom;
 
-    @SerializedName("mScrollX")
+    @SerializedName("h")
     private int mScrollX;
-
-    @SerializedName("mScrollY")
+    @SerializedName("i")
     private int mScrollY;
-
-    @SerializedName("mScaleX")
+    @SerializedName("j")
     private float mScaleX;
-
-    @SerializedName("mScaleY")
+    @SerializedName("k")
     private float mScaleY;
 
-    @SerializedName("mTranslationX")
+    @SerializedName("l")
     private float mTranslationX;
-
-    @SerializedName("mTranslationY")
+    @SerializedName("m")
     private float mTranslationY;
 
-    @SerializedName("mDrawTop")
+    @SerializedName("n")
     private int mDrawTop;
-
-    @SerializedName("mDrawBottom")
+    @SerializedName("o")
     private int mDrawBottom;
-
-    @SerializedName("mDrawLeft")
+    @SerializedName("p")
     private int mDrawLeft;
-
-    @SerializedName("mDrawRight")
+    @SerializedName("q")
     private int mDrawRight;
 
-    @SerializedName("mPaddingTop")
+    @SerializedName("r")
     private int mPaddingTop;
-
-    @SerializedName("mPaddingBottom")
+    @SerializedName("s")
     private int mPaddingBottom;
-
-    @SerializedName("mPaddingLeft")
+    @SerializedName("t")
     private int mPaddingLeft;
-
-    @SerializedName("mPaddingRight")
+    @SerializedName("u")
     private int mPaddingRight;
 
-    @SerializedName("mMarginTop")
+    @SerializedName("v")
     private int mMarginTop;
-
-    @SerializedName("mMarginBottom")
+    @SerializedName("w")
     private int mMarginBottom;
-
-    @SerializedName("mMarginLeft")
+    @SerializedName("x")
     private int mMarginLeft;
-
-    @SerializedName("mMarginRight")
+    @SerializedName("y")
     private int mMarginRight;
 
-    @SerializedName("mLayoutWidth")
+    @SerializedName("z")
     private int mLayoutWidth;
 
-    @SerializedName("mLayoutHeight")
+    @SerializedName("a0")
     private int mLayoutHeight;
 
-    @SerializedName("mIsClickable")
+    @SerializedName("a1")
     private boolean mIsClickable;
 
-    @SerializedName("mIsLongClickable")
+    @SerializedName("a2")
     private boolean mIsLongClickable;
 
-    @SerializedName("mIsFocusable")
+    @SerializedName("a3")
     private boolean mIsFocusable;
 
-    @SerializedName("mIsPressed")
+    @SerializedName("a4")
     private boolean mIsPressed;
 
-    @SerializedName("mIsSelected")
+    @SerializedName("a5")
     private boolean mIsSelected;
 
-    @SerializedName("mIsFocused")
+    @SerializedName("a6")
     private boolean mIsFocused;
 
-    @SerializedName("mIsEnabled")
+    @SerializedName("a7")
     private boolean mIsEnabled;
 
-    @SerializedName("mCanProviderData")
+    @SerializedName("a8")
+    private int mFlags;
+
+    @SerializedName("a9")
     private boolean mCanProviderData;
 
-    @SerializedName("mType")
+    @SerializedName("aa")
     private int mType = Type.TYPE_NORMAL;
 
-    @SerializedName("mVisibility")
+    @SerializedName("ab")
     private char mVisibility;
 
-    @SerializedName("mIdStr")
+    @SerializedName("ac")
     private String mIdStr;
 
-    @SerializedName("mId")
+    @SerializedName("ad")
     private int mId;
 
-    @SerializedName("mAlpha")
+    @SerializedName("ae")
     private float mAlpha;
 
-    @SerializedName("mMemAddr")
+    @SerializedName("af")
     private String mMemAddr;
 
-    @SerializedName("mClassName")
+    @SerializedName("ag")
     private String mClassName;
 
-    @SerializedName("mClickTag")
+    @SerializedName("ah")
     private String mClickTag;
 
-    @SerializedName("mTouchTag")
+    @SerializedName("ai")
     private String mTouchTag;
 
-    @SerializedName("mFindViewByIdTag")
+    @SerializedName("aj")
     private String mFindViewByIdTag;
 
-    @SerializedName("mXmlTag")
+    @SerializedName("ak")
     private String mXmlTag;
 
-    @SerializedName("mDrawableTag")
+    @SerializedName("al")
     private String mDrawableTag;
 
-    @SerializedName("mScaleType")
+    @SerializedName("am")
     private int mScaleType;
 
-    @SerializedName("mViewHolderTag")
+    @SerializedName("an")
     private String mViewHolderTag;
 
-    @SerializedName("mAdapterTag")
+    @SerializedName("ao")
     private String mAdapterTag;
 
-    @SerializedName("mBackgroundColor")
+    @SerializedName("ap")
     private String mBackgroundColor;
 
-    @SerializedName("mBackgroundDrawable")
-    private String mBackgroundDrawable;
-
-    @SerializedName("mText")
+    @SerializedName("aq")
     private String mText;
 
-    @SerializedName("mTextColor")
+    @SerializedName("ar")
+    private String mSpan;
+
+    @SerializedName("as")
     private String mTextColor;
 
-    @SerializedName("mTextSize")
+    @SerializedName("at")
     private float mTextSize;
 
-    @SerializedName("mSpacingAdd")
+    @SerializedName("au")
     private float mSpacingAdd;
 
-    @SerializedName("mLineHeight")
+    @SerializedName("av")
     private int mLineHeight;
 
-    @SerializedName("mTextAlignment")
+    @SerializedName("aw")
     private int mTextAlignment;
 
-    @SerializedName("mXmlJumpInfo")
+    @SerializedName("ax")
+    private String mZIndex = "001";
+
+    @SerializedName("ay")
     private JumpInfo mXmlJumpInfo = null;
 
-    @SerializedName("mImagePath")
+    @SerializedName("az")
     private String mImagePath = null;
 
-    @SerializedName("mExtraInfos")
+    @SerializedName("b0")
     private List<ExtraInfo> mExtraInfos;
+
+    @SerializedName("b1")
+    private float mShadowDx = 0;
+
+    @SerializedName("b2")
+    private float mShadowDy = 0;
+
+    @SerializedName("b3")
+    private float mShadowRadius = 0;
+
+    @SerializedName("b4")
+    private String mShadowColor;
+
+    @SerializedName("df")
+    private float mPivotX;
+
+    @SerializedName("dg")
+    private float mPivotY;
+
+    private transient float mRealScaleX;
+
+    private transient float mRealScaleY;
 
     private transient ViewClassInfo mViewClassInfo;
 
@@ -233,12 +243,36 @@ public class WView implements Serializable {
 
     private transient List<JumpInfo> mTouchJumpInfo = Collections.EMPTY_LIST;
 
-    public String getBackgroundDrawable() {
-        return mBackgroundDrawable;
+    public float getRealScaleX() {
+        return mRealScaleX;
     }
 
-    public void setBackgroundDrawable(String backgroundDrawable) {
-        this.mBackgroundDrawable = backgroundDrawable;
+    public void setRealScaleX(float realScaleX) {
+        this.mRealScaleX = realScaleX;
+    }
+
+    public float getRealScaleY() {
+        return mRealScaleY;
+    }
+
+    public void setRealScaleY(float realScaleY) {
+        this.mRealScaleY = realScaleY;
+    }
+
+    public float getPivotX() {
+        return mPivotX;
+    }
+
+    public void setPivotX(float mPivotX) {
+        this.mPivotX = mPivotX;
+    }
+
+    public float getPivotY() {
+        return mPivotY;
+    }
+
+    public void setPivotY(float mPivotY) {
+        this.mPivotY = mPivotY;
     }
 
     public ViewClassInfo getViewClassInfo() {
@@ -247,6 +281,54 @@ public class WView implements Serializable {
 
     public void setViewClassInfo(ViewClassInfo mViewClassInfo) {
         this.mViewClassInfo = mViewClassInfo;
+    }
+
+    public String getSpan() {
+        return mSpan;
+    }
+
+    public void setSpan(String span) {
+        this.mSpan = span;
+    }
+
+    public float getShadowDx() {
+        return mShadowDx;
+    }
+
+    public void setShadowDx(float shadowDx) {
+        this.mShadowDx = shadowDx;
+    }
+
+    public float getShadowDy() {
+        return mShadowDy;
+    }
+
+    public void setShadowDy(float shadowDy) {
+        this.mShadowDy = shadowDy;
+    }
+
+    public float getShadowRadius() {
+        return mShadowRadius;
+    }
+
+    public void setShadowRadius(float shadowRadius) {
+        this.mShadowRadius = shadowRadius;
+    }
+
+    public String getShadowColor() {
+        return mShadowColor;
+    }
+
+    public void setShadowColor(String shadowColor) {
+        this.mShadowColor = shadowColor;
+    }
+
+    public int getFlags() {
+        return mFlags;
+    }
+
+    public void setFlags(int mFlags) {
+        this.mFlags = mFlags;
     }
 
     public String getImagePath() {
@@ -607,6 +689,16 @@ public class WView implements Serializable {
         this.mIsClickable = mIsClickable;
     }
 
+    public boolean isRealClickable() {
+        if (mIsClickable) {
+            return mIsClickable;
+        }
+        if (mParentView != null) {
+            return mParentView.isRealClickable();
+        }
+        return false;
+    }
+
     public boolean isEnabled() {
         return mIsEnabled;
     }
@@ -643,8 +735,8 @@ public class WView implements Serializable {
         return mMemAddr;
     }
 
-    public void setMemAddr(String mMemAddr) {
-        this.mMemAddr = mMemAddr;
+    public void setMemAddr(String memAddr) {
+        this.mMemAddr = CodeLocatorUtils.formatHexStr(memAddr);
     }
 
     public String getClassName() {
@@ -828,7 +920,7 @@ public class WView implements Serializable {
     }
 
     public int getArea() {
-        return Math.max(0, (mBottom - mTop) * (mRight - mLeft));
+        return Math.max(0, (getRealWidth() * getRealHeight()));
     }
 
     public WFragment getFragment() {
@@ -864,6 +956,38 @@ public class WView implements Serializable {
         return null;
     }
 
+    public WView findViewById(String viewId) {
+        if (viewId == null) {
+            return null;
+        }
+        if (this.getIdStr() != null && this.getIdStr().contains(viewId) && getRealVisiblity() == 'V') {
+            return this;
+        }
+        for (int i = 0; i < getChildCount(); i++) {
+            final WView sameView = getChildAt(i).findViewById(viewId);
+            if (sameView != null) {
+                return sameView;
+            }
+        }
+        return null;
+    }
+
+    public WView findViewByText(String text) {
+        if (text == null) {
+            return null;
+        }
+        if (text.equals(this.getText())) {
+            return this;
+        }
+        for (int i = 0; i < getChildCount(); i++) {
+            final WView sameView = getChildAt(i).findViewByText(text);
+            if (sameView != null) {
+                return sameView;
+            }
+        }
+        return null;
+    }
+
     public char getRealVisiblity() {
         if (mParentView == null) {
             return mVisibility;
@@ -885,11 +1009,13 @@ public class WView implements Serializable {
     }
 
     public void calculateAllViewDrawInfo() {
+        mRealScaleX = mScaleX;
+        mRealScaleY = mScaleY;
         if (mParentView != null) {
-            mDrawLeft = (int) (mParentView.getDrawLeft() + mLeft - mParentView.getScrollX() + mTranslationX + mLeftOffset);
-            mDrawTop = (int) (mParentView.getDrawTop() + mTop - mParentView.getScrollY() + mTranslationY + mTopOffset);
-            mDrawRight = mDrawLeft + mRight - mLeft;
-            mDrawBottom = mDrawTop + mBottom - mTop;
+            mDrawLeft = (int) ((mParentView.getDrawLeft() + mLeft - mParentView.getScrollX() + mTranslationX + mLeftOffset));
+            mDrawTop = (int) ((mParentView.getDrawTop() + mTop - mParentView.getScrollY() + mTranslationY + mTopOffset));
+            mDrawRight = (mDrawLeft + (mRight - mLeft));
+            mDrawBottom = (mDrawTop + (mBottom - mTop));
         } else {
             mDrawLeft = (int) (mLeftOffset + mLeft + mTranslationX);
             mDrawRight = (int) (mLeftOffset + mRight + mTranslationX);
@@ -901,12 +1027,39 @@ public class WView implements Serializable {
         }
     }
 
+    public void adjustForScale() {
+        for (int i = 0; i < getChildCount(); i++) {
+            final WView child = getChildAt(i);
+            child.setRealScaleX(mRealScaleX * child.getRealScaleX());
+            child.setRealScaleY(mRealScaleX * child.getRealScaleY());
+            child.adjustForScale();
+        }
+        WView view = this;
+        while (view != null && (view.getRealScaleX() != 1 || view.getRealScaleY() != 1)) {
+            int width = (int) ((mDrawRight - mDrawLeft) * view.getScaleX());
+            int height = (int) ((mDrawBottom - mDrawTop) * view.getScaleY());
+            mDrawLeft = (int) (view.getScaleX() * (mDrawLeft - view.getDrawLeft() - view.getPivotX()) + view.getDrawLeft() + view.getPivotX());
+            mDrawTop = (int) (view.getScaleY() * (mDrawTop - view.getDrawTop() - view.getPivotY()) + view.getDrawTop() + view.getPivotY());
+            mDrawRight = (mDrawLeft + width);
+            mDrawBottom = (mDrawTop + height);
+            view = view.getParentView();
+        }
+    }
+
     public int getWidth() {
         return getRight() - getLeft();
     }
 
     public int getHeight() {
         return getBottom() - getTop();
+    }
+
+    public int getRealWidth() {
+        return getDrawRight() - getDrawLeft();
+    }
+
+    public int getRealHeight() {
+        return getDrawBottom() - getDrawTop();
     }
 
     public String getPadding() {
@@ -927,8 +1080,10 @@ public class WView implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         WView wView = (WView) o;
         return CodeLocatorUtils.equals(mMemAddr, wView.mMemAddr);
     }
@@ -940,11 +1095,11 @@ public class WView implements Serializable {
 
     public boolean hasData() {
         return isCanProviderData()
-                || (mParentView != null && mParentView.hasData());
+            || (mParentView != null && mParentView.hasData());
     }
 
-    private boolean isLinearView() {
-        return mType == Type.TYPE_LINEAR;
+    private boolean isStackView() {
+        return mType != Type.TYPE_LINEAR;
     }
 
     public void setParentView(WView parent, int indexInParent) {
@@ -953,11 +1108,15 @@ public class WView implements Serializable {
         if (mParentView == null) {
             return;
         }
-        if (mParentView.isLinearView()) {
-            mZIndex = mParentView.getZIndex() + "." + String.format("%03d", 0);
+        if (!mParentView.isStackView()) {
+            mZIndex = mParentView.getZIndex() + "." + formatZIndex(0);
             return;
         }
-        mZIndex = mParentView.getZIndex() + "." + String.format("%03d", indexInParent);
+        mZIndex = mParentView.getZIndex() + "." + formatZIndex(indexInParent);
+    }
+
+    public static String formatZIndex(int i) {
+        return String.format("%03d", i);
     }
 
 }
