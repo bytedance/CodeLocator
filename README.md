@@ -81,7 +81,7 @@ dependencies {
     debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-popup:2.0.0"
     
     // 如果未升级AndroidX, 可使用下方的依赖
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-support-all:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-all-support:2.0.0"
 
     debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml-support:2.0.0"
     debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-activity-support:2.0.0"
