@@ -7,21 +7,20 @@ import com.bytedance.tools.codelocator.listener.OnSelectViewListener
 import com.bytedance.tools.codelocator.listener.OnViewRightClickListener
 import com.bytedance.tools.codelocator.model.WActivity
 import com.bytedance.tools.codelocator.model.WView
-import com.bytedance.tools.codelocator.utils.UpdateUtils
+import com.bytedance.tools.codelocator.utils.AutoUpdateUtils
 import com.bytedance.tools.codelocator.utils.CoordinateUtils
 import com.bytedance.tools.codelocator.utils.JComponentUtils
 import com.bytedance.tools.codelocator.utils.Log
 import com.bytedance.tools.codelocator.utils.Mob
+import com.bytedance.tools.codelocator.utils.ResUtils
+import com.bytedance.tools.codelocator.utils.StringUtils
 import com.bytedance.tools.codelocator.utils.ThreadUtils
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ui.Messages
 import java.awt.Component
 import java.awt.Dimension
 import java.awt.event.HierarchyBoundsAdapter
 import java.awt.event.HierarchyEvent
-import javax.swing.BorderFactory
-import javax.swing.BoxLayout
-import javax.swing.JPanel
+import javax.swing.*
 
 class MainPanel(val codeLocatorWindow: CodeLocatorWindow, val rootPanel: RootPanel) : JPanel() {
 
@@ -39,15 +38,15 @@ class MainPanel(val codeLocatorWindow: CodeLocatorWindow, val rootPanel: RootPan
         isVisible = false
         layout = BoxLayout(this, BoxLayout.X_AXIS)
         border = BorderFactory.createEmptyBorder(
-                CoordinateUtils.DEFAULT_BORDER,
-                CoordinateUtils.DEFAULT_BORDER,
-                CoordinateUtils.DEFAULT_BORDER,
-                CoordinateUtils.DEFAULT_BORDER
+            CoordinateUtils.DEFAULT_BORDER,
+            CoordinateUtils.DEFAULT_BORDER,
+            CoordinateUtils.DEFAULT_BORDER,
+            CoordinateUtils.DEFAULT_BORDER
         )
         JComponentUtils.setMinimumSize(
-                this,
-                CoordinateUtils.PANEL_WIDTH * 2 + CoordinateUtils.DEFAULT_BORDER * 3,
-                CoordinateUtils.SCALE_TO_HEIGHT + CoordinateUtils.DEFAULT_BORDER * 2
+            this,
+            CoordinateUtils.PANEL_WIDTH * 2 + CoordinateUtils.DEFAULT_BORDER * 3,
+            CoordinateUtils.SCALE_TO_HEIGHT + CoordinateUtils.DEFAULT_BORDER * 2
         )
         addChild()
         initAction()
@@ -68,40 +67,61 @@ class MainPanel(val codeLocatorWindow: CodeLocatorWindow, val rootPanel: RootPan
                 } else {
                     adjustForPortrait(width, height)
                 }
-                tabContainerPanel.doLayout()
-            }
-
-            override fun onGrabScreenFailed(e: Exception?) {
-                Messages.showMessageDialog(codeLocatorWindow.project, "抓取失败, 请检测手机是否连接同时开启开发者模式", "CodeLocator", Messages.getInformationIcon())
+                tabContainerPanel.resetTabView()
+                repaint()
             }
         })
         screenPanel.setOnGetActivityInfoListener(object : OnGetActivityInfoListener {
             override fun onGetActivityInfoSuccess(activity: WActivity) {
-                tabContainerPanel.updateActivityState(activity)
                 codeLocatorWindow.updateActivityState(activity)
+                tabContainerPanel.updateActivityState(activity)
             }
 
-            override fun onGetActivityInfoFailed(e: Throwable?) {
+            override fun onGetActivityInfoFailed(t: Throwable?) {
                 tabContainerPanel.updateActivityState(null)
                 codeLocatorWindow.updateActivityState(null)
                 if (codeLocatorWindow.currentApplication != null) {
-                    val currentVersion = UpdateUtils.getCurrentVersion()
+                    val currentVersion = AutoUpdateUtils.getCurrentPluginVersion()
                     val minPluginVersion = codeLocatorWindow.currentApplication!!.minPluginVersion
-                    val minSupportSdkVersion = UpdateUtils.getMinSupportSdkVersion()
+                    val minSupportSdkVersion = AutoUpdateUtils.getMinSupportSdkVersion()
                     val sdkVersion = codeLocatorWindow.currentApplication!!.sdkVersion
-                    if (UpdateUtils.getVersionNum(minPluginVersion) > UpdateUtils.getVersionNum(currentVersion)) {
-                        Messages.showMessageDialog(codeLocatorWindow.project, "当前插件版本不支持此应用使用的SDK, SDK需要使用最低插件版本: $minPluginVersion, 当前插件版本 $currentVersion, 请升级插件版本", "CodeLocator", Messages.getInformationIcon())
-                        Log.e("当前插件版本不支持此应用使用的SDK, SDK需要使用最低插件版本: $minPluginVersion, 当前插件版本 $currentVersion", e)
-                    } else if (UpdateUtils.getVersionNum(minSupportSdkVersion) > UpdateUtils.getVersionNum(sdkVersion)) {
-                        Messages.showMessageDialog(codeLocatorWindow.project, "当前插件最低支持SDK的版本是 $minSupportSdkVersion, 应用使用的版本: $sdkVersion, 请升级SDK版本后再使用", "CodeLocator", Messages.getInformationIcon())
+                    if (AutoUpdateUtils.getVersionNum(minPluginVersion) > AutoUpdateUtils.getVersionNum(currentVersion)) {
+                        Messages.showMessageDialog(
+                            codeLocatorWindow.project,
+                            ResUtils.getString("plugin_version_too_low_format", minPluginVersion, currentVersion),
+                            "CodeLocator",
+                            Messages.getInformationIcon()
+                        )
+                        Log.e("当前插件版本不支持此应用使用的SDK, SDK需要使用最低插件版本: $minPluginVersion, 当前插件版本 $currentVersion", t)
+                    } else if (AutoUpdateUtils.getVersionNum(minSupportSdkVersion) > AutoUpdateUtils.getVersionNum(
+                            sdkVersion
+                        )
+                    ) {
+                        Messages.showMessageDialog(
+                            codeLocatorWindow.project,
+                            ResUtils.getString("sdk_too_low_format", minSupportSdkVersion, sdkVersion),
+                            "CodeLocator",
+                            Messages.getInformationIcon()
+                        )
                         Log.e("获取Activity信息失败 当前插件最低支持SDK的版本是 $minSupportSdkVersion, 应用使用的版本: $sdkVersion")
                     } else {
-                        Messages.showMessageDialog(codeLocatorWindow.project, e!!.message, "CodeLocator", Messages.getInformationIcon())
-                        Log.e("获取Activity信息失败", e)
+                        Messages.showMessageDialog(
+                            codeLocatorWindow.project,
+                            t!!.message,
+                            "CodeLocator",
+                            Messages.getInformationIcon()
+                        )
+                        Log.e("获取Activity信息失败", t)
                     }
                 } else {
-                    Messages.showMessageDialog(codeLocatorWindow.project, if (e!!.message.isNullOrEmpty()) e!!.toString() else e!!.message, "CodeLocator", Messages.getInformationIcon())
-                    Log.e("获取Activity信息失败 无平台信息", e)
+                    var msg = StringUtils.getErrorTip(t)
+                    Messages.showMessageDialog(
+                        codeLocatorWindow.project,
+                        msg,
+                        "CodeLocator",
+                        Messages.getInformationIcon()
+                    )
+                    Log.e("获取Activity信息失败 无平台信息", t)
                 }
             }
         })
@@ -133,27 +153,34 @@ class MainPanel(val codeLocatorWindow: CodeLocatorWindow, val rootPanel: RootPan
 
     private fun adjustForLandscape(width: Int, height: Int) {
         JComponentUtils.setSize(screenPanel, width, height)
-        JComponentUtils.setMinimumSize(tabContainerPanel, width, CoordinateUtils.SCALE_TO_LAND_PANEL_HEIGHT)
-        JComponentUtils.setMinimumSize(this, width + CoordinateUtils.DEFAULT_BORDER * 3,
-                height + CoordinateUtils.SCALE_TO_LAND_PANEL_HEIGHT + CoordinateUtils.DEFAULT_BORDER * 2
+        JComponentUtils.setMinimumSize(tabContainerPanel, width, Math.max(700 - height, parent.height - height))
+        JComponentUtils.setMinimumSize(
+            this, width + CoordinateUtils.DEFAULT_BORDER * 3,
+            height + CoordinateUtils.SCALE_TO_LAND_PANEL_HEIGHT + CoordinateUtils.DEFAULT_BORDER * 2
         )
         adjustTabPanelHeightIfNeed()
         if ((layout as? BoxLayout)?.axis != BoxLayout.Y_AXIS) {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             screenPanel.alignmentX = Component.LEFT_ALIGNMENT
             tabContainerPanel.alignmentX = Component.LEFT_ALIGNMENT
-            tabContainerPanel.adjustForLandscape()
             doLayout()
+            JComponentUtils.setSize(screenPanel, width, height)
+            ThreadUtils.runOnUIThread {
+                tabContainerPanel.adjustForLandscape()
+            }
             Mob.mob(Mob.Action.EXEC, Mob.Button.SWITCH_LAND_MODE)
         }
-        Log.d("设置Panel横屏尺寸 " + width + " x " + height + ", setHeight: "
-                + (height + CoordinateUtils.SCALE_TO_LAND_PANEL_HEIGHT + CoordinateUtils.DEFAULT_BORDER * 2))
-        if (screenPanel.width != width
-                || screenPanel.height != height) {
+        Log.d(
+            "设置Panel横屏尺寸 " + width + " x " + height + ", setHeight: "
+                + (height + CoordinateUtils.SCALE_TO_LAND_PANEL_HEIGHT + CoordinateUtils.DEFAULT_BORDER * 2)
+        )
+        if (screenPanel.width != width || screenPanel.height != height) {
             ThreadUtils.runOnUIThread {
                 val isSizeEqualsSetValue = (screenPanel.width == width && screenPanel.height == height)
-                Log.e("执行尺寸一致性检查 screenPanel: " + screenPanel.width + " " + screenPanel.height
-                        + ", setValue: " + width + " " + height + ", isEqual: " + isSizeEqualsSetValue)
+                Log.d(
+                    "执行尺寸一致性检查 screenPanel: " + screenPanel.width + " " + screenPanel.height
+                        + ", setValue: " + width + " " + height + ", isEqual: " + isSizeEqualsSetValue
+                )
                 if (!isSizeEqualsSetValue) {
                     screenPanel.tryFixWidthAndHeight(width, height)
                 }
@@ -164,26 +191,33 @@ class MainPanel(val codeLocatorWindow: CodeLocatorWindow, val rootPanel: RootPan
     private fun adjustForPortrait(width: Int, height: Int) {
         JComponentUtils.setSize(screenPanel, width, height)
         JComponentUtils.setMinimumSize(tabContainerPanel, width, height)
-        JComponentUtils.setMinimumSize(this,
-                width * 2 + CoordinateUtils.DEFAULT_BORDER * 3,
-                height + CoordinateUtils.DEFAULT_BORDER * 2
+        JComponentUtils.setMinimumSize(
+            this,
+            width * 2 + CoordinateUtils.DEFAULT_BORDER * 3,
+            height + CoordinateUtils.DEFAULT_BORDER * 2
         )
         adjustTabPanelHeightIfNeed()
         if ((layout as? BoxLayout)?.axis != BoxLayout.X_AXIS) {
             layout = BoxLayout(this, BoxLayout.X_AXIS)
             screenPanel.alignmentY = Component.TOP_ALIGNMENT
             tabContainerPanel.alignmentY = Component.TOP_ALIGNMENT
-            tabContainerPanel.adjustForPortrait()
             doLayout()
+            JComponentUtils.setSize(screenPanel, width, height)
+            ThreadUtils.runOnUIThread {
+                tabContainerPanel.adjustForPortrait()
+            }
             Mob.mob(Mob.Action.EXEC, Mob.Button.SWITCH_PORT_MODE)
         }
-        Log.d("设置Panel尺寸 " + width + " x " + height + ", 当前Panel尺寸: " + screenPanel.width + " x " + screenPanel.height)
+        if (width != screenPanel.width || height != screenPanel.height) {
+            Log.d("设置Panel尺寸 " + width + " x " + height + ", 当前Panel尺寸: " + screenPanel.width + " x " + screenPanel.height)
+        }
         if (screenPanel.width != width || screenPanel.height != height) {
-            ApplicationManager.getApplication().invokeLater {
-                val isSizeEqualsSetValue =
-                        (screenPanel.width != width || screenPanel.height != height)
-                Log.e("执行尺寸一致性检查 screenPanel: " + screenPanel.width + " " + screenPanel.height
-                        + ", setValue: " + width + " " + height + ", isEqual: " + isSizeEqualsSetValue)
+            ThreadUtils.runOnUIThread {
+                val isSizeEqualsSetValue = (screenPanel.width != width || screenPanel.height != height)
+                Log.d(
+                    "执行尺寸一致性检查 screenPanel: " + screenPanel.width + " " + screenPanel.height
+                        + ", setValue: " + width + " " + height + ", isEqual: " + isSizeEqualsSetValue
+                )
                 if (!isSizeEqualsSetValue) {
                     screenPanel.tryFixWidthAndHeight(width, height)
                 }
@@ -192,16 +226,19 @@ class MainPanel(val codeLocatorWindow: CodeLocatorWindow, val rootPanel: RootPan
     }
 
     private fun adjustTabPanelHeightIfNeed() {
-        if (codeLocatorWindow.codeLocatorConfig.isCanAdjustPanelHeight) {
+        if (codeLocatorWindow.codelocatorConfig.isCanAdjustPanelHeight) {
             maximumSize = Dimension(10086, parent.height)
             if (screenPanel.isLandScape) {
-                tabContainerPanel.maximumSize = Dimension(10086, Math.max(CoordinateUtils.SCALE_TO_LAND_PANEL_HEIGHT, parent.height - screenPanel.height))
+                tabContainerPanel.maximumSize = Dimension(
+                    10086,
+                    Math.max(CoordinateUtils.SCALE_TO_LAND_PANEL_HEIGHT, parent.height - screenPanel.height)
+                )
             } else {
                 tabContainerPanel.maximumSize = Dimension(10086, Math.max(parent.height, screenPanel.height))
             }
+            doLayout()
+            tabContainerPanel.repaint()
         }
-        doLayout()
-        tabContainerPanel.repaint()
     }
 
     private fun addChild() {

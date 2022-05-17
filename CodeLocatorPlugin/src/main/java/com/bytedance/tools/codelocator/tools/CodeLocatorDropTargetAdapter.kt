@@ -7,6 +7,7 @@ import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.utils.FileUtils
 import com.bytedance.tools.codelocator.utils.Log
 import com.bytedance.tools.codelocator.utils.Mob
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import java.awt.datatransfer.Transferable
@@ -20,7 +21,7 @@ class CodeLocatorDropTargetAdapter(val project: Project, val codeLocatorWindow: 
 
     override fun drop(event: DropTargetDropEvent) {
         try {
-            event.acceptDrop(DnDConstants.ACTION_LINK)
+            event.acceptDrop(DnDConstants.ACTION_COPY)
             val transferable: Transferable = event.getTransferable()
             val flavors = transferable.transferDataFlavors
             var canProcess = false
@@ -29,7 +30,7 @@ class CodeLocatorDropTargetAdapter(val project: Project, val codeLocatorWindow: 
                     val files =
                         transferable.getTransferData(flavor) as List<File>
                     for (file in files) {
-                        if (file.exists() && file.name.endsWith("apk")) {
+                        if (file.exists() && file.name.endsWith(".apk")) {
                             canProcess = true
                             Mob.mob(Mob.Action.CLICK, Mob.Button.INSTALL_APK_DRAG)
                             InstallApkAction.installApkFile(project, file)
@@ -40,14 +41,14 @@ class CodeLocatorDropTargetAdapter(val project: Project, val codeLocatorWindow: 
                                 codeLocatorWindow,
                                 file.absolutePath
                             )
-                        } else if (file.exists() && file.name.endsWith(".codelocator")) {
+                        } else if (file.exists() && file.name.endsWith(FileUtils.CODE_LOCATOR_FILE_SUFFIX)) {
                             canProcess = true
                             val fileContentBytes = FileUtils.getFileContentBytes(file)
                             val codelocatorInfo = CodeLocatorInfo.fromCodeLocatorInfo(fileContentBytes)
                             if (codelocatorInfo == null) {
                                 Messages.showMessageDialog(
                                     codeLocatorWindow,
-                                    "所选文件不是一个有效的CodeLocator文件",
+                                    ResUtils.getString("not_a_codeLocator_file"),
                                     "CodeLocator",
                                     Messages.getInformationIcon()
                                 )
@@ -62,7 +63,7 @@ class CodeLocatorDropTargetAdapter(val project: Project, val codeLocatorWindow: 
             if (!canProcess) {
                 Messages.showMessageDialog(
                     project,
-                    "只支持apk, dependencies, codelocator文件",
+                    ResUtils.getString("support_file_type_tip"),
                     "CodeLocator",
                     Messages.getInformationIcon()
                 )

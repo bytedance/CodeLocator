@@ -1,0 +1,26 @@
+package com.bytedance.tools.codelocator.action
+
+import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
+import com.bytedance.tools.codelocator.model.WView
+import com.bytedance.tools.codelocator.utils.*
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.project.Project
+
+class FoldSiblingViewAction(
+    val project: Project,
+    val codeLocatorWindow: CodeLocatorWindow,
+    val view: WView
+) : BaseAction(
+    ResUtils.getString("fold_sibling_view"),
+    ResUtils.getString("fold_sibling_view"),
+    ImageUtils.loadIcon("fold_view")
+) {
+
+    override fun isEnable(e: AnActionEvent) = true
+
+    override fun actionPerformed(e: AnActionEvent) {
+        codeLocatorWindow.getScreenPanel()?.foldSiblingView(view)
+        Mob.mob(Mob.Action.CLICK, "fold_view")
+    }
+
+}

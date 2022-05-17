@@ -3,6 +3,7 @@ package com.bytedance.tools.codelocator.panels
 import com.bytedance.tools.codelocator.listener.OnShiftClickListener
 import com.bytedance.tools.codelocator.panels.SearchableComponent.Companion.SEARCH_AUTO_DIS_TIME
 import com.bytedance.tools.codelocator.utils.ClipboardUtils
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.bytedance.tools.codelocator.utils.TimeUtils
 import com.intellij.ui.components.JBList
 import java.awt.Color
@@ -29,30 +30,30 @@ class SearchableJList<E>(model: ListModel<E>) : JBList<E>(model), SearchableComp
     private var mClearSearchTask: ClearSearchTimerTask? = null
 
     private var charArray = arrayOf(
-            '-',
-            '+',
-            '=',
-            '*',
-            '/',
-            '%',
-            '&',
-            '^',
-            '@',
-            '!',
-            ' ',
-            ';',
-            ':',
-            '>',
-            '<',
-            ',',
-            '.',
-            '{',
-            '}',
-            '|',
-            '$',
-            '~',
-            '_',
-            '?'
+        '-',
+        '+',
+        '=',
+        '*',
+        '/',
+        '%',
+        '&',
+        '^',
+        '@',
+        '!',
+        ' ',
+        ';',
+        ':',
+        '>',
+        '<',
+        ',',
+        '.',
+        '{',
+        '}',
+        '|',
+        '$',
+        '~',
+        '_',
+        '?'
     )
 
     private var preiousKey: String = "selectPrevious"
@@ -137,9 +138,9 @@ class SearchableJList<E>(model: ListModel<E>) : JBList<E>(model), SearchableComp
                         rebuildTask()
                     }
                 } else if (e.keyChar in 'a'..'z'
-                        || e.keyChar in 'A'..'Z'
-                        || e.keyChar in '0'..'9'
-                        || e.keyChar in charArray
+                    || e.keyChar in 'A'..'Z'
+                    || e.keyChar in '0'..'9'
+                    || e.keyChar in charArray
                 ) {
                     removeAction()
                     if (e.isMetaDown && e.keyChar == 'v') {
@@ -229,27 +230,35 @@ class SearchableJList<E>(model: ListModel<E>) : JBList<E>(model), SearchableComp
 
         if (g !is Graphics2D) return
 
+        if (searchFont == null) {
+            searchFont = Font(g.font.fontName, Font.PLAIN, 10)
+            g.font = searchFont
+        }
+
         if (mSearchSb.isEmpty()) {
             return
         }
 
-        if (searchFont == null) {
-            searchFont = Font("宋体", Font.PLAIN, 10)
-            g.font = searchFont
-        }
-
-        val drawStr = getModeTip("查找: $mSearchSb", mTotalCount, mCurrentSelectIndex)
-        val fontMetrics = g.getFontMetrics(g.font)
+        val drawStr = getModeTip(ResUtils.getString("search", "$mSearchSb"), mTotalCount, mCurrentSelectIndex)
+        val fontMetrics = g.getFontMetrics()
         val stringWidth = fontMetrics.stringWidth(drawStr)
         g.setColor(mDrawRectColor)
         g.fillRect(scrollX + visibleRect.width - stringWidth - 12, scrollY, stringWidth + 12, fontMetrics.height + 8)
 
         g.setColor(Color.WHITE)
-        g.drawString(drawStr, scrollX + visibleRect.width - stringWidth - 12 + 6, scrollY + (8 / 2) + fontMetrics.getAscent())
+        g.drawString(
+            drawStr,
+            scrollX + visibleRect.width - stringWidth - 12 + 6,
+            scrollY + (8 / 2) + fontMetrics.getAscent()
+        )
     }
 
     fun isSearchMode() = mSearchSb.isNotEmpty()
 
     private fun getModeTip(title: String, totalCount: Int, currentIndex: Int) =
-            title + "(按ESC或点击其他View可退出) 共计: $totalCount" + (if (totalCount > 0) ", 当前: ${currentIndex + 1}" else "")
+        title + ResUtils.getString(
+            "exit_select_mode_tip",
+            "$totalCount",
+            (if (totalCount > 0) "${currentIndex + 1}" else "")
+        )
 }

@@ -3,8 +3,9 @@ package com.bytedance.tools.codelocator.panels
 import com.bytedance.tools.codelocator.action.OpenClassAction
 import com.bytedance.tools.codelocator.model.WActivity
 import com.bytedance.tools.codelocator.model.WFragment
-import com.bytedance.tools.codelocator.utils.ImageUtils
+import com.bytedance.tools.codelocator.action.GetIntentDataAction
 import com.bytedance.tools.codelocator.utils.Mob
+import com.bytedance.tools.codelocator.utils.ThreadUtils
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.ui.popup.JBPopupFactory
@@ -30,6 +31,8 @@ class ActivityTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
 
     private var mLastSelectFragment: WFragment? = null
 
+    private var mSetByOutChange = false
+
     init {
         setLayout(BoxLayout(this, BoxLayout.Y_AXIS))
         border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
@@ -41,10 +44,10 @@ class ActivityTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
         scrollPanel.verticalScrollBar.addAdjustmentListener { mJTree!!.repaint() }
         scrollPanel.horizontalScrollBar.addAdjustmentListener { mJTree!!.repaint() }
 
-        mJTree!!.setCellRenderer(MyTreeCellRenderer(codeLocatorWindow))
+        mJTree!!.setCellRenderer(MyTreeCellRenderer(codeLocatorWindow, MyTreeCellRenderer.TYPE_FRAGMENT_TREE))
         mJTree!!.addTreeSelectionListener {
             val selectNode = mJTree!!.lastSelectedPathComponent as? DefaultMutableTreeNode
-                    ?: return@addTreeSelectionListener
+                ?: return@addTreeSelectionListener
             Mob.mob(Mob.Action.CLICK, Mob.Button.ACTIVITY_TREE)
 
             mOnGetFragmentInfoListener?.onGetFragmentOrActivityInfo(selectNode.userObject)
@@ -79,17 +82,31 @@ class ActivityTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
 
         val actionGroup = DefaultActionGroup("listGroup", true)
 
-        val copyInfo = if (selectNode.userObject is WFragment) (selectNode.userObject as WFragment).className else (selectNode.userObject as WActivity).className
+        val copyInfo =
+            if (selectNode.userObject is WFragment) (selectNode.userObject as WFragment).className else (selectNode.userObject as WActivity).className
 
-        actionGroup.add(OpenClassAction(codeLocatorWindow.project, codeLocatorWindow, "跳转类文件", ImageUtils.loadIcon("class_enable"), copyInfo))
+        actionGroup.add(
+            OpenClassAction(
+                codeLocatorWindow.project,
+                codeLocatorWindow,
+                copyInfo
+            )
+        )
+        actionGroup.add(
+            GetIntentDataAction(
+                codeLocatorWindow.project,
+                codeLocatorWindow,
+                selectNode.userObject
+            )
+        )
 
         val factory = JBPopupFactory.getInstance()
         val pop = factory.createActionGroupPopup(
-                "CodeLocator",
-                actionGroup,
-                DataManager.getInstance().getDataContext(),
-                JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
-                true
+            "CodeLocator",
+            actionGroup,
+            DataManager.getInstance().getDataContext(),
+            JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
+            true
         )
         val point = Point(x, y)
         pop.show(RelativePoint(container, point))
@@ -142,7 +159,7 @@ class ActivityTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
         }
         path ?: return
         mJTree!!.selectionPath = path
-        SwingUtilities.invokeLater {
+        ThreadUtils.runOnUIThread {
             mJTree!!.scrollPathToVisible(path)
         }
     }

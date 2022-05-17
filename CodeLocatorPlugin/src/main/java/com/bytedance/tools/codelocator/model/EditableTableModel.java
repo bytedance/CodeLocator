@@ -2,11 +2,10 @@ package com.bytedance.tools.codelocator.model;
 
 import com.bytedance.tools.codelocator.utils.Log;
 
+import javax.swing.table.AbstractTableModel;
 import java.net.URLEncoder;
 import java.util.LinkedList;
 import java.util.List;
-
-import javax.swing.table.AbstractTableModel;
 
 public class EditableTableModel extends AbstractTableModel {
 

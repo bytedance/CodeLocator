@@ -213,10 +213,10 @@ public class ColorUtils {
         double KH = 1;
 
         double deltaE = Math.sqrt(
-                ((deltaLprime / (KL * SL)) * (deltaLprime / (KL * SL))) +
-                        ((deltaCprime / (KC * SC)) * (deltaCprime / (KC * SC))) +
-                        ((deltaHprime / (KH * SH)) * (deltaHprime / (KH * SH))) +
-                        (RT * (deltaCprime / (KC * SC)) * (deltaHprime / (KH * SH)))
+            ((deltaLprime / (KL * SL)) * (deltaLprime / (KL * SL))) +
+                ((deltaCprime / (KC * SC)) * (deltaCprime / (KC * SC))) +
+                ((deltaHprime / (KH * SH)) * (deltaHprime / (KH * SH))) +
+                (RT * (deltaCprime / (KC * SC)) * (deltaHprime / (KH * SH)))
         );
         return deltaE;
     }

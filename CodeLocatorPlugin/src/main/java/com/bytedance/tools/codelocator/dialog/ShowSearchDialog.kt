@@ -8,9 +8,11 @@ import com.intellij.openapi.util.SystemInfo
 import org.apache.http.util.TextUtils
 import java.awt.Dimension
 import java.awt.Font
+import java.awt.event.ActionEvent
 import java.awt.event.ActionListener
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.io.File
 import javax.swing.*
 
 class ShowSearchDialog(
@@ -29,6 +31,7 @@ class ShowSearchDialog(
     }
 
     var dialogPanel: JPanel
+    var syncBox: Box
     var moduleLabel: JLabel
     var cancelBt: JButton
     var webBt: JButton
@@ -39,17 +42,16 @@ class ShowSearchDialog(
     }
 
     override fun createActions(): Array<Action> {
-        return emptyArray()
+        return emptyArray<Action>()
     }
 
     init {
         title = "CodeLocator"
+        var message = ResUtils.getString("file_not_found_format", if (pkName.isEmpty()) fileName else "$pkName.$fileName")
 
-        var message = "当前项目没有源码依赖 $fileName<br>(点击可复制, 可以点击修复源码索引试试哦!)"
+        projectStr = FileUtils.getProjectFilePath(project) ?: "unknown"
 
-        projectStr = project.basePath!!
-
-        val lastIndexOfSplit = projectStr.lastIndexOf('/')
+        val lastIndexOfSplit = projectStr.lastIndexOf(File.separatorChar)
         if (lastIndexOfSplit > -1) {
             projectStr = projectStr.substring(lastIndexOfSplit + 1)
         }
@@ -73,7 +75,7 @@ class ShowSearchDialog(
         title.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent?) {
                 super.mouseClicked(e)
-                ClipboardUtils.copyContentToClipboard(project, fileName)
+                ClipboardUtils.copyContentToClipboard(project, if (pkName == null) fileName else "$pkName.$fileName")
             }
         })
         val titleBox = Box.createHorizontalBox()
@@ -92,26 +94,38 @@ class ShowSearchDialog(
 
         val btBox = Box.createHorizontalBox()
         dialogPanel.add(btBox)
-        cancelBt = getButton("取消", ActionListener { close(1) })
-        webBt = getButton("去搜索", ActionListener {
-            Mob.mob(Mob.Action.CLICK, Mob.Button.SEARCH_CODE_INDEX)
-            val arrays: Array<String> = fileName.split(".").toTypedArray()
-            val className = arrays[0]
-            val searchLine = if (TextUtils.isEmpty(searchText)) {
-                lines + 1
-            } else {
-                lines
+        syncBox = Box.createHorizontalBox()
+        cancelBt = getButton(ResUtils.getString("cancel"), object : ActionListener {
+            override fun actionPerformed(e: ActionEvent?) {
+                close(1)
             }
-            IdeaUtils.openBrowser(
-                StringUtils.appendArgToUrl(
-                    NetUtils.SEARCH_CODE_URL,
-                    "file=$className&line=$searchLine&project=$projectStr&fullName=$pkName.$className"
+
+        })
+        webBt = getButton(ResUtils.getString("search_code_index"), object : ActionListener {
+            override fun actionPerformed(e: ActionEvent?) {
+                Mob.mob(Mob.Action.CLICK, Mob.Button.SEARCH_CODE_INDEX)
+                val arrays: Array<String> = fileName.split(".").toTypedArray()
+                val className = arrays[0]
+                val searchLine = if (TextUtils.isEmpty(searchText)) {
+                    lines + 1
+                } else {
+                    lines
+                }
+                IdeaUtils.openBrowser(
+                    StringUtils.appendArgToUrl(
+                        NetUtils.SEARCH_CODE_URL,
+                        "file=$className&line=$searchLine&project=$projectStr&fullName=$pkName.$className"
+                    )
                 )
-            )
-            close(1)
+                close(1)
+            }
         })
         btBox.add(Box.createVerticalGlue())
         btBox.add(cancelBt)
+        if (NetUtils.SEARCH_CODE_URL.isNotEmpty()) {
+            btBox.add(Box.createHorizontalStrut(10))
+            btBox.add(webBt)
+        }
     }
 
     private fun getTitle(title: String): JLabel {

@@ -16,6 +16,7 @@
             <option value="$PROJECT_DIR$/CodeLocatorModel" />
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/lancet/CodeLocatorLancetActivity" />
+            <option value="$PROJECT_DIR$/lancet/CodeLocatorLancetAll" />
             <option value="$PROJECT_DIR$/lancet/CodeLocatorLancetDialog" />
             <option value="$PROJECT_DIR$/lancet/CodeLocatorLancetPopup" />
             <option value="$PROJECT_DIR$/lancet/CodeLocatorLancetToast" />
@@ -23,7 +24,6 @@
             <option value="$PROJECT_DIR$/lancet/CodeLocatorLancetXml" />
           </set>
         </option>
-        <option name="resolveModulePerSourceSet" value="false" />
       </GradleProjectSettings>
     </option>
   </component>

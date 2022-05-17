@@ -3,33 +3,41 @@ package com.bytedance.tools.codelocator.action
 import com.bytedance.tools.codelocator.model.JumpInfo
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.utils.IdeaUtils
+import com.bytedance.tools.codelocator.utils.ImageUtils
 import com.bytedance.tools.codelocator.utils.Mob
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
-import javax.swing.Icon
 
 class OpenClassAction(
-    project: Project,
-    codeLocatorWindow: CodeLocatorWindow,
-    text: String?,
-    icon: Icon?,
+    val project: Project,
+    val codeLocatorWindow: CodeLocatorWindow,
     val jumpClassName: String? = null
-) : BaseAction(project, codeLocatorWindow, text, text, icon) {
+) : BaseAction(
+    ResUtils.getString("jump_class_file"),
+    ResUtils.getString("jump_class_file"),
+    ImageUtils.loadIcon("class")
+) {
 
     companion object {
 
         @JvmStatic
-        fun jumpToClassName(codeLocatorWindow: CodeLocatorWindow, project: Project, classFullName: String, searchStr : String? = "") {
+        fun jumpToClassName(
+            codeLocatorWindow: CodeLocatorWindow,
+            project: Project,
+            classFullName: String,
+            searchStr: String? = ""
+        ) {
             if (classFullName.endsWith(".xml")) {
                 val jumpInfo = JumpInfo(classFullName)
                 IdeaUtils.navigateByJumpInfo(
-                        codeLocatorWindow,
-                        project,
-                        jumpInfo,
-                        false,
-                        "",
-                        "id=\"@+id/$searchStr\"",
-                        true
+                    codeLocatorWindow,
+                    project,
+                    jumpInfo,
+                    false,
+                    "",
+                    "id=\"@+id/$searchStr\"",
+                    true
                 )
                 return
             }
@@ -45,17 +53,16 @@ class OpenClassAction(
             if (className == null) {
                 className = fileName
             }
-            IdeaUtils.goSourceCodeAndSearch(codeLocatorWindow, project,
-                    fileName, "", "class $className", false, false,
-                    pkName)
+            IdeaUtils.goSourceCodeAndSearch(
+                codeLocatorWindow, project,
+                fileName, "", "class $className", false, false,
+                pkName,
+                0
+            )
         }
     }
 
     override fun actionPerformed(e: AnActionEvent) {
-        if (!enable) return
-
-        Mob.mob(Mob.Action.CLICK, Mob.Button.CLASS)
-
         if (jumpClassName != null) {
             jumpToClassName(codeLocatorWindow, project, jumpClassName)
             codeLocatorWindow.notifyCallJump(null, jumpClassName, Mob.Button.CLASS)
@@ -63,13 +70,10 @@ class OpenClassAction(
             jumpToClassName(codeLocatorWindow, project, codeLocatorWindow.currentSelectView!!.className)
             codeLocatorWindow.notifyCallJump(null, codeLocatorWindow.currentSelectView!!.className, Mob.Button.CLASS)
         }
+        Mob.mob(Mob.Action.CLICK, Mob.Button.CLASS)
     }
 
-    override fun update(e: AnActionEvent) {
-        super.update(e)
-        enable = jumpClassName != null || codeLocatorWindow.currentSelectView?.className != null
-        if (jumpClassName == null) {
-            updateView(e, "class_disable", "class_enable")
-        }
+    override fun isEnable(e: AnActionEvent): Boolean {
+        return (jumpClassName != null || codeLocatorWindow.currentSelectView?.className != null)
     }
 }

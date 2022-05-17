@@ -1,8 +1,6 @@
 package com.bytedance.tools.codelocator.utils;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.PrintWriter;
+import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -35,15 +33,15 @@ public class Log {
 
     private static void writeMsgToFile(String msg, Throwable t) {
         try {
-            final BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(FileUtils.logFile, true));
-            bufferedWriter.write(sSimpleDateFormat.format(new Date()) + ": " + msg);
-            bufferedWriter.write("\n");
+            final OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(FileUtils.sLogFilePath, true), FileUtils.CHARSET_NAME);
+            writer.write(sSimpleDateFormat.format(new Date()) + ": " + msg);
+            writer.write("\n");
             if (t != null) {
-                t.printStackTrace(new PrintWriter(bufferedWriter));
-                bufferedWriter.write("\n");
+                t.printStackTrace(new PrintWriter(writer));
+                writer.write("\n");
             }
-            bufferedWriter.flush();
-            bufferedWriter.close();
+            writer.flush();
+            writer.close();
         } catch (Exception e) {
             e.printStackTrace();
         }

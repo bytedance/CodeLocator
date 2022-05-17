@@ -3,6 +3,7 @@ package com.bytedance.tools.codelocator.processor
 import com.bytedance.tools.codelocator.model.EditMarginModel
 import com.bytedance.tools.codelocator.model.EditModel
 import com.bytedance.tools.codelocator.model.WView
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.bytedance.tools.codelocator.utils.UIUtils
 import com.intellij.openapi.project.Project
 import java.util.regex.Pattern
@@ -10,7 +11,7 @@ import java.util.regex.Pattern
 class MarginProcessor(project: Project, view: WView) : ViewValueProcessor(project, "Margin", view) {
 
     override fun getHint(view: WView): String {
-        return "格式: left, top, right, bottom 示例: -10dp, 5px, 0, -10px"
+        return ResUtils.getString("edit_margin_tip")
     }
 
     override fun getShowValue(view: WView): String {

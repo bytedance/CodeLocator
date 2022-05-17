@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <item name="codelocator_xml_tag_id" type="id" />
-    <item name="codelocator_onclick_tag_id" type="id" />
-    <item name="codelocator_ontouch_tag_id" type="id" />
-    <item name="codelocator_drawable_tag_id" type="id" />
-    <item name="codelocator_findviewbyId_tag_id" type="id" />
-    <item name="codelocator_viewholder_tag_id" type="id" />
-    <item name="codelocator_viewholder_adapter_tag_id" type="id" />
+    <item name="codeLocator_onclick_tag_id" type="id" />
+    <item name="codeLocator_ontouch_tag_id" type="id" />
+    <item name="codeLocator_xml_tag_id" type="id" />
+    <item name="codeLocator_background_tag_id" type="id" />
+    <item name="codeLocator_background_tag_info" type="id" />
+    <item name="codeLocator_drawable_tag_id" type="id" />
+    <item name="codeLocator_drawable_tag_info" type="id" />
+    <item name="codeLocator_findviewbyId_tag_id" type="id" />
+    <item name="codeLocator_viewholder_tag_id" type="id" />
+    <item name="codeLocator_viewholder_adapter_tag_id" type="id" />
 </resources>

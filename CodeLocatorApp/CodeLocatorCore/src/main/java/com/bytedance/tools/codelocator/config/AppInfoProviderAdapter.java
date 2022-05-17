@@ -5,15 +5,17 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.view.View;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.bytedance.tools.codelocator.model.ColorInfo;
 import com.bytedance.tools.codelocator.model.ExtraInfo;
 import com.bytedance.tools.codelocator.model.SchemaInfo;
 import com.bytedance.tools.codelocator.model.WView;
 
 import java.util.Collection;
 import java.util.HashMap;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import java.util.List;
 
 public class AppInfoProviderAdapter implements AppInfoProvider {
 
@@ -55,5 +57,11 @@ public class AppInfoProviderAdapter implements AppInfoProvider {
     @Override
     public boolean processSchema(String schema) {
         return false;
+    }
+
+    @Nullable
+    @Override
+    public List<ColorInfo> providerColorInfo(@NonNull Context context) {
+        return null;
     }
 }

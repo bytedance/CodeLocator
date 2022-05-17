@@ -22,13 +22,13 @@ public class SchemaInfo implements Serializable {
     /**
      * 对应的Schema全路径
      */
-    @SerializedName("mSchema")
+    @SerializedName("db")
     private String mSchema;
 
     /**
      * Schema描述
      */
-    @SerializedName("mDesc")
+    @SerializedName("dc")
     private String mDesc;
 
     public String getSchema() {

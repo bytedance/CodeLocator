@@ -26,25 +26,25 @@ public class ExtraAction implements Serializable {
     /**
      * see {@link ActionType}
      */
-    @SerializedName("mActionType")
+    @SerializedName("cw")
     private int mActionType;
 
     /**
      * Action在Table或者Tree结点中展示的内容
      */
-    @SerializedName("mDisplayText")
+    @SerializedName("cx")
     private String mDisplayText;
 
     /**
      * Action在Table中展示的标题
      */
-    @SerializedName("mDisplayTitle")
+    @SerializedName("cy")
     private String mDisplayTitle;
 
     /**
      * 如果类型是 Jump_File 需要提供JumpInfo
      */
-    @SerializedName("mJumpInfo")
+    @SerializedName("cq")
     private JumpInfo mJumpInfo;
 
     public ExtraAction(int actionType, String displayText, JumpInfo jumpInfo) {

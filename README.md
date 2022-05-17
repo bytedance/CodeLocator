@@ -8,7 +8,7 @@
 <img src="misc/CodeLocator.gif" alt="CodeLocator"/>
 
 
-CodeLocator是一个包含Android SDK 与 Android Studio插件的Android工具集, 包含如下的功能(目前仅支持Mac)：
+CodeLocator是一个包含Android SDK 与 Android Studio插件的Android工具集, 包含如下的功能(目前仅支持Mac, Windows)：
 
 1. 展示当前的View视图
 2. 展示当前的Activity信息
@@ -47,7 +47,7 @@ CodeLocator是一个包含Android SDK 与 Android Studio插件的Android工具�
 ## 集成说明
 按照如下操作即可使用CodeLocator:
 
-1. 在Android Studio中安装CodeLocator插件([点此下载最新版插件](https://github.com/bytedance/CodeLocator/releases))
+1. 在Android Studio中安装CodeLocator插件([点此下载最新版插件](https://github.com/bytedance/CodeLocator/releases)), 也可直接在插件商店搜索 CodeLocator
 2. App中集成CodeLocator
 
 ```gradle
@@ -59,18 +59,37 @@ allprojects {
 
 // 集成基础能力, 只需要添加一行依赖即可
 dependencies {
-    implementation "com.bytedance.tools.codelocator:codelocator-core:1.0.0"
+    // 依赖androidx, 已升级AndroidX的项目集成下面的依赖
+    implementation "com.bytedance.tools.codelocator:codelocator-core:2.0.0"
+    // 未升级AndroidX的项目集成下面的依赖
+    implementation "com.bytedance.tools.codelocator:codelocator-core-support:2.0.0"
 }
 ```
 如果需要集成代码跳转能力, 需要先集成 [Lancet](https://github.com/eleme/lancet), 同时添加如下依赖
 ```gradle
 dependencies {
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-activity:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-view:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-toast:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog:1.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-popup:1.0.0"
+    // 两种依赖方式
+    // 依赖lancet-all, 则包含所有lancet能力
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-all:2.0.0"
+
+    // 分别依赖对应的lancet模块, 包含相对应的跳转能力
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-activity:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-view:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-toast:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-popup:2.0.0"
+    
+    // 如果未升级AndroidX, 可使用下方的依赖
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-support-all:2.0.0"
+
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml-support:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-activity-support:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-view-support:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-toast-support:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog-support:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-popup-support:2.0.0"
+    
 }
 ```
 

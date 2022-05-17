@@ -21,19 +21,19 @@ public class JumpInfo implements Serializable {
     /**
      * 跳转文件类名(可不带后缀)
      */
-    @SerializedName("mFileName")
+    @SerializedName("cz")
     private String mFileName;
 
     /**
      * 跳转行号, 可不传
      */
-    @SerializedName("mLineCount")
+    @SerializedName("d0")
     private int mLineCount = -1;
 
     /**
      * 查找的id, 接入方可忽略
      */
-    @SerializedName("mId")
+    @SerializedName("ad")
     private String mId;
 
     public String getFileName() {
@@ -83,4 +83,3 @@ public class JumpInfo implements Serializable {
     }
 
 }
-

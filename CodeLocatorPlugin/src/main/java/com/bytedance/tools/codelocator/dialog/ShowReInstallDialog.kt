@@ -1,8 +1,13 @@
 package com.bytedance.tools.codelocator.dialog
 
 import com.bytedance.tools.codelocator.action.InstallApkAction
+import com.bytedance.tools.codelocator.device.DeviceManager
+import com.bytedance.tools.codelocator.device.action.AdbAction
+import com.bytedance.tools.codelocator.device.action.AdbCommand
+import com.bytedance.tools.codelocator.device.action.AdbCommand.ACTION.UNINSTALL
+import com.bytedance.tools.codelocator.device.Device
 import com.bytedance.tools.codelocator.utils.*
-import com.intellij.openapi.application.ApplicationManager
+import com.bytedance.tools.codelocator.response.StringResponse
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import java.awt.Dimension
@@ -15,10 +20,8 @@ class ShowReInstallDialog(
     val project: Project,
     val msg: String,
     val apkFile: File,
-    val errorType: Int = ERROR_UNKOWN,
-    val aaptPath: String? = null
-) :
-    DialogWrapper(project) {
+    val errorType: Int = ERROR_UNKOWN
+) : DialogWrapper(project) {
 
     companion object {
 
@@ -36,22 +39,17 @@ class ShowReInstallDialog(
 
         const val ERROR_UNKOWN = 4
 
+        const val ERROR_DEVICES_SDK_TO_LOW = 5
+
+        val canReInstallErrorTypes =
+            listOf(ERROR_USER_NOT_OK, ERROR_APK_VERSION_DOWN, ERROR_APK_INCONSISTENT_CERTIFICATES, ERROR_UNKOWN)
+
         @JvmStatic
-        fun showInstallFailDialog(project: Project, msg: String, apkFile: File, errorType: Int, aaptPath: String?) {
-            val showDialog = ShowReInstallDialog(
-                project,
-                msg,
-                apkFile,
-                errorType,
-                aaptPath
-            )
-            if (InstallApkAction.enableVoiceMap.getOrDefault(project.basePath!!, true)) {
-                SoundUtils.say("安装失败")
-            }
+        fun showInstallFailDialog(project: Project, msg: String, apkFile: File, errorType: Int) {
+            val showDialog = ShowReInstallDialog(project, msg, apkFile, errorType)
+            SoundUtils.say(ResUtils.getString("voice_install_apk_failed"))
             showDialog.window.isAlwaysOnTop = true
-            ApplicationManager.getApplication().invokeLater {
-                showDialog.showAndGet()
-            }
+            showDialog.show()
         }
     }
 
@@ -62,7 +60,7 @@ class ShowReInstallDialog(
     }
 
     private fun initContentPanel() {
-        title = "安装Apk失败"
+        title = ResUtils.getString("install_failed")
         dialogContentPanel = JPanel()
         dialogContentPanel.border = BorderFactory.createEmptyBorder(
             CoordinateUtils.DEFAULT_BORDER,
@@ -70,7 +68,8 @@ class ShowReInstallDialog(
             CoordinateUtils.DEFAULT_BORDER,
             CoordinateUtils.DEFAULT_BORDER
         )
-        JComponentUtils.setSize(dialogContentPanel,
+        JComponentUtils.setSize(
+            dialogContentPanel,
             DIALOG_WIDTH,
             DIALOG_HEIGHT
         )
@@ -86,55 +85,33 @@ class ShowReInstallDialog(
     override fun createActions(): Array<Action> = emptyArray()
 
     private fun addButton() {
-        var createLabel: JComponent? = null
+        var createLabel: JComponent = createLabel(msg)
         var confirmButton: JButton? = null
-        if (msg != null) {
-            createLabel = createLabel(msg)
-        }
-        val cancelText = getBtnText("知道了")
+        val cancelText = getBtnText(ResUtils.getString("known"))
         val cancelBtn = JButton(cancelText)
         cancelBtn.addActionListener {
             close(0)
         }
         var stringWidth = 180
 
-        if (createLabel != null) {
-            var horizontalBox = Box.createHorizontalBox()
-            horizontalBox.add(Box.createHorizontalGlue())
-            horizontalBox.add(createLabel)
-            horizontalBox.add(Box.createHorizontalGlue())
-            dialogContentPanel.add(horizontalBox)
-            dialogContentPanel.add(Box.createVerticalGlue())
-        }
+        var horizontalBox = Box.createHorizontalBox()
+        horizontalBox.add(Box.createHorizontalGlue())
+        horizontalBox.add(createLabel)
+        horizontalBox.add(Box.createHorizontalGlue())
+        dialogContentPanel.add(horizontalBox)
+        dialogContentPanel.add(Box.createVerticalGlue())
 
         val buttonBox = Box.createHorizontalBox()
         buttonBox.add(Box.createHorizontalGlue())
         buttonBox.add(cancelBtn)
 
-        if (errorType == ERROR_APK_VERSION_DOWN
-            || errorType == ERROR_UNKOWN
-            || errorType == ERROR_APK_INCONSISTENT_CERTIFICATES
-            || errorType == ERROR_USER_NOT_OK
-        ) {
-            var pkgNameStr: String? = null
-            if (!aaptPath.isNullOrEmpty()) {
-                try {
-                    val pkgNameData = ShellHelper.execCommand(
-                        aaptPath.replace(
-                            " ",
-                            "\\ "
-                        ) + " dump badging '" + apkFile.absolutePath + "' | grep package | awk -F 'versionCode=' '{print\$1}' | awk -F 'name=' '{print\$2}' | awk '{print substr(\$1, 2)}' | awk '{sub(/.\$/,\"\")}1'"
-                    )
-                    pkgNameStr = String(pkgNameData.resultBytes)
-                } catch (t: Throwable) {
-                    Log.e("获取包名失败, aapt: " + aaptPath + ", apk: " + apkFile.absolutePath)
-                }
-            }
+        if (errorType in canReInstallErrorTypes) {
+            var pkgNameStr = OSHelper.instance.getApkPkgName(apkFile.absolutePath)
             val btnText =
                 if (!pkgNameStr.isNullOrEmpty() && (errorType == ERROR_APK_VERSION_DOWN || errorType == ERROR_APK_INCONSISTENT_CERTIFICATES)) {
-                    "卸载后安装"
+                    ResUtils.getString("uninstall_and_install")
                 } else {
-                    "重新安装"
+                    ResUtils.getString("re_install")
                 }
             confirmButton = JButton(getBtnText(btnText))
             buttonBox.add(Box.createHorizontalStrut(CoordinateUtils.DEFAULT_BORDER))
@@ -142,15 +119,28 @@ class ShowReInstallDialog(
             confirmButton.addMouseListener(object : MouseAdapter() {
                 override fun mouseClicked(e: MouseEvent?) {
                     super.mouseClicked(e)
-                    ThreadUtils.submit {
-                        if (!pkgNameStr.isNullOrEmpty() && (errorType == ERROR_APK_VERSION_DOWN || errorType == ERROR_APK_INCONSISTENT_CERTIFICATES)) {
-                            ShellHelper.execCommand("adb uninstall $pkgNameStr")
-                        }
-                        InstallApkAction.installApkFile(
+                    if (!pkgNameStr.isNullOrEmpty() && (errorType == ERROR_APK_VERSION_DOWN || errorType == ERROR_APK_INCONSISTENT_CERTIFICATES)) {
+                        DeviceManager.enqueueCmd(
                             project,
-                            apkFile,
-                            aaptPath
+                            AdbCommand(
+                                AdbAction(
+                                    UNINSTALL,
+                                    pkgNameStr
+                                )
+                            ),
+                            StringResponse::class.java,
+                            object : DeviceManager.OnExecutedListener<StringResponse> {
+                                override fun onExecSuccess(device: Device, response: StringResponse) {
+                                    InstallApkAction.installApkFile(project, apkFile)
+                                }
+
+                                override fun onExecFailed(t: Throwable) {
+                                    Log.e("卸载apk失败", t)
+                                }
+                            }
                         )
+                    } else {
+                        InstallApkAction.installApkFile(project, apkFile)
                     }
                     close(0)
                 }

@@ -20,6 +20,9 @@ project(':CodeLocatorLancetActivity').projectDir = new File("lancet/CodeLocatorL
 include ':CodeLocatorLancetView'
 project(':CodeLocatorLancetView').projectDir = new File("lancet/CodeLocatorLancetView")
 
+include ':CodeLocatorLancetAll'
+project(':CodeLocatorLancetAll').projectDir = new File("lancet/CodeLocatorLancetAll")
+
 rootProject.name = "CodeLocatorApp"
 
 if (new File("codeLocator.gradle").exists()) {

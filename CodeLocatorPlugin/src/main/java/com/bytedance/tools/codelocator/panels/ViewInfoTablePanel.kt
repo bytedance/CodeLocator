@@ -1,12 +1,15 @@
 package com.bytedance.tools.codelocator.panels
 
 import com.bytedance.tools.codelocator.action.CopyInfoAction
+import com.bytedance.tools.codelocator.action.DrawAttrAction
 import com.bytedance.tools.codelocator.action.EditViewAction
 import com.bytedance.tools.codelocator.action.OpenClassAction
 import com.bytedance.tools.codelocator.listener.OnClickTableListener
 import com.bytedance.tools.codelocator.model.CommonTableModel
 import com.bytedance.tools.codelocator.model.WView
 import com.bytedance.tools.codelocator.action.OpenDrawableAction
+import com.bytedance.tools.codelocator.device.DeviceManager
+import com.bytedance.tools.codelocator.model.WApplication
 import com.bytedance.tools.codelocator.utils.*
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.DefaultActionGroup
@@ -28,26 +31,30 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
     var mOnClickTableListener: OnClickTableListener? = null
 
     val defaultList: ArrayList<String> = arrayListOf(
-            "id",
-            "memAddr",
-            "visible",
-            "realVisible",
-            "clickable",
-            "class",
-            "enable",
-            "position",
-            "size",
-            "layout",
-            "alpha",
-            "realAlpha",
-            "padding",
-            "margin",
-            "background",
-            "scrollX",
-            "scrollY",
-            "translationX",
-            "translationY",
-            "isFocused"
+        "id",
+        "memAddr",
+        "visible",
+        "realVisible",
+        "clickable",
+        "class",
+        "enable",
+        "position",
+        "size",
+        "layout",
+        "alpha",
+        "realAlpha",
+        "padding",
+        "margin",
+        "background",
+        "scrollX",
+        "scrollY",
+        "translationX",
+        "translationY",
+        "scaleX",
+        "scaleY",
+        "pivotX",
+        "pivotY",
+        "isFocused"
     )
 
     var list: ArrayList<String> = arrayListOf()
@@ -68,7 +75,7 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
                 }
             }
         })
-        table.toolTipText = "支持 Ctrl + C, 右键"
+        table.toolTipText = ResUtils.getString("view_op_tip")
         table.actionMap?.remove("copy")
         table.tableHeader?.reorderingAllowed = false
         table.actionMap?.parent?.remove("copy")
@@ -126,53 +133,77 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
                             value = value.substring(indexOfSplit + 1)
                         }
                     }
-                    showPop(table, value, e.x, e.y, name)
+                    var canJumpBackground = false
+                    if ("background" == name && value.contains("/")) {
+                        val indexOfSplit = value.lastIndexOf("/")
+                        if (indexOfSplit > -1) {
+                            value = value.substring(indexOfSplit + 1)
+                            canJumpBackground = true
+                        }
+                    }
+                    showPop(table, value, e.x, e.y, name, canJumpBackground)
                 }
             }
         })
     }
 
-    fun showPop(container: JComponent, copyInfo: String, x: Int, y: Int, name: String? = null) {
+    fun showPop(
+        container: JComponent,
+        copyInfo: String,
+        x: Int,
+        y: Int,
+        name: String? = null,
+        canJumpBackground: Boolean = false
+    ) {
         val actionGroup: DefaultActionGroup =
-                DefaultActionGroup("listGroup", true)
-        actionGroup.add(CopyInfoAction(codeLocatorWindow.project, "复制", copyInfo))
-        actionGroup.add(
+            DefaultActionGroup("listGroup", true)
+        actionGroup.add(CopyInfoAction(codeLocatorWindow.project, copyInfo))
+        name?.run {
+            actionGroup.add(DrawAttrAction(codeLocatorWindow.project, this))
+        }
+        if (DeviceManager.hasAndroidDevice() && codeLocatorWindow.currentApplication?.isFromSdk == true) {
+            actionGroup.add(
                 EditViewAction(
-                        codeLocatorWindow.project,
-                        codeLocatorWindow,
-                        "修改属性",
-                        ImageUtils.loadIcon("edit_view_disable"),
-                        codeLocatorWindow.rootPanel
+                    codeLocatorWindow.project,
+                    codeLocatorWindow,
+                    codeLocatorWindow.rootPanel
                 )
-        )
+            )
+        }
         if ("class" == name) {
             actionGroup.add(
-                    OpenClassAction(
-                            codeLocatorWindow.project,
-                            codeLocatorWindow,
-                            "跳转类文件",
-                            ImageUtils.loadIcon("class_enable"),
-                            copyInfo
-                    )
+                OpenClassAction(
+                    codeLocatorWindow.project,
+                    codeLocatorWindow,
+                    copyInfo
+                )
             )
         }
         if ("image" == name) {
             actionGroup.add(
-                    OpenDrawableAction(
-                            codeLocatorWindow.project,
-                            codeLocatorWindow,
-                            ImageUtils.loadIcon("jump_enable"),
-                            copyInfo
-                    )
+                OpenDrawableAction(
+                    codeLocatorWindow.project,
+                    codeLocatorWindow,
+                    copyInfo
+                )
+            )
+        }
+        if ("background" == name && canJumpBackground) {
+            actionGroup.add(
+                OpenDrawableAction(
+                    codeLocatorWindow.project,
+                    codeLocatorWindow,
+                    copyInfo
+                )
             )
         }
         val factory = JBPopupFactory.getInstance()
         val pop = factory.createActionGroupPopup(
-                "CodeLocator",
-                actionGroup,
-                DataManager.getInstance().getDataContext(),
-                JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
-                true
+            "CodeLocator",
+            actionGroup,
+            DataManager.getInstance().getDataContext(),
+            JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
+            true
         )
         val point = Point(x, y)
         pop.show(RelativePoint(container, point))
@@ -206,67 +237,103 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
         list.addAll(defaultList)
 
         val application = view?.activity?.application
-        if (view?.isTextView == true) {
-            list.add(1, "text")
-            list.add(2, "textSize")
-            list.add(3, "textColor")
-            list.add(4, "textLineHeight")
-            list.add(5, "textSpacingExtra")
-            map["text"] = view.text ?: ""
-            map["textSize"] = "" + view.textSize + "dp"
-            map["textColor"] = view.textColor
-            map["textLineHeight"] = view.lineHeight.toString()
-            map["textSpacingExtra"] = view.spacingAdd.toString()
-        }
-
         if (view?.type == WView.Type.TYPE_IMAGE && view.drawableTag != null) {
             list.add(1, "image")
-            if (view.drawableTag.startsWith(":drawable/")) {
-                map["image"] = view.drawableTag.substring(":".length)
-            } else if (view.drawableTag.startsWith("http")) {
-                map["image"] = view.drawableTag
+        }
+        if (view?.isTextView == true) {
+            if (StringUtils.getVersionInt(application?.sdkVersion ?: "1.0.0") >= 1000057) {
+                list.add(1, "text")
+                list.add(2, "span")
+                list.add(3, "textSize")
+                list.add(4, "textColor")
+                list.add(5, "textLineHeight")
+                list.add(6, "textSpacingExtra")
+                list.add(7, "shadowX")
+                list.add(8, "shadowY")
+                list.add(9, "shadowRadius")
+                list.add(10, "shadowColor")
+            } else {
+                list.add(1, "text")
+                list.add(2, "textSize")
+                list.add(3, "textColor")
+                list.add(4, "textLineHeight")
+                list.add(5, "textSpacingExtra")
             }
         }
-        map["id"] = view?.idStr ?: ""
-        map["class"] = view?.className ?: ""
-        map["alpha"] = view?.alpha?.toString() ?: ""
-        map["realAlpha"] = DataUtils.getViewRealAlpha(view)
-        map["clickable"] = view?.isClickable?.toString() ?: ""
-        map["enable"] = view?.isEnabled?.toString() ?: ""
-        map["isFocused"] = view?.isFocused?.toString() ?: ""
-        map["memAddr"] = if (view?.memAddr != null) {
-            view.memAddr.toLowerCase() + " (" + Integer.valueOf(view.memAddr, 16) + ")"
-        } else ""
-        map["background"] = view?.backgroundColor ?: ""
-        map["padding"] = UIUtils.getCommonStr(view?.padding, application)
-        map["margin"] = UIUtils.getCommonStr(view?.margin, application)
-        map["size"] = UIUtils.getSizeStr(view, application)
-        map["position"] = UIUtils.getPositionStr(view)
-        map["translationY"] = UIUtils.getSizeStr(view?.translationY, application)
-        map["translationX"] = UIUtils.getSizeStr(view?.translationX, application)
-        map["scrollY"] = UIUtils.getSizeStr(view?.scrollY, application)
-        map["scrollX"] = UIUtils.getSizeStr(view?.scrollX, application)
-        map["layout"] = UIUtils.getLayoutStr(view?.layout, application)
-        map["visible"] = when (view?.visibility) {
-            'V' -> "visible"
-            'G' -> "gone"
-            'I' -> "invisible"
-            else -> ""
-        }
-        map["realVisible"] = when (view?.realVisiblity) {
-            'V' -> "visible"
-            'G' -> "gone"
-            'I' -> "invisible"
-            else -> ""
-        }
 
-        val viewAllTypeExtra = DataUtils.getViewAllTableTypeExtra(view)
-        viewAllTypeExtra?.forEach { key, extra ->
-            list.add(extra.extraAction.displayTitle)
-            map[extra.extraAction.displayTitle] = extra.extraAction.displayText
-        }
-
+        buildViewMap(view, application, map, list)
         table.tableChanged(TableModelEvent(tableModel, TableModelEvent.ALL_COLUMNS))
         tableColumnAdjuster.adjustColumns()
+    }
+
+    companion object {
+        @JvmStatic
+        fun buildViewMap(
+            view: WView?,
+            application: WApplication?,
+            map: HashMap<String, String>,
+            list: ArrayList<String>? = null
+        ) {
+            if (view?.drawableTag?.startsWith(":drawable/") == true) {
+                map["image"] = view.drawableTag?.substring(":".length) ?: ""
+            } else if (view?.drawableTag?.startsWith("http") == true) {
+                map["image"] = view.drawableTag ?: ""
+            }
+            map["span"] = view?.span ?: ""
+            map["shadowX"] = view?.shadowDx?.toString() ?: ""
+            map["shadowY"] = view?.shadowDy?.toString() ?: ""
+            map["shadowRadius"] = view?.shadowRadius?.toString() ?: ""
+            map["shadowColor"] = view?.shadowColor ?: ""
+            map["text"] = view?.text ?: ""
+            map["textSize"] = "" + view?.textSize + "dp"
+            map["textColor"] = view?.textColor ?: ""
+            map["textLineHeight"] = view?.lineHeight?.toString() ?: ""
+            map["textSpacingExtra"] = view?.spacingAdd?.toString() ?: ""
+            map["id"] = view?.idStr ?: ""
+            map["class"] = view?.className ?: ""
+            map["alpha"] = view?.alpha?.toString() ?: ""
+            map["realAlpha"] = DataUtils.getViewRealAlpha(view)
+            map["clickable"] = view?.isClickable?.toString() ?: ""
+            map["enable"] = view?.isEnabled?.toString() ?: ""
+            map["isFocused"] = view?.isFocused?.toString() ?: ""
+            map["memAddr"] = if (view?.memAddr != null) {
+                view.memAddr.toLowerCase() + " (" + Integer.valueOf(view.memAddr, 16) + ")"
+            } else ""
+            map["background"] = if (view?.backgroundColor?.startsWith(":") == true) {
+                view.backgroundColor.substring(":".length)
+            } else {
+                view?.backgroundColor ?: ""
+            }
+            map["padding"] = UIUtils.getCommonStr(view?.padding, application)
+            map["margin"] = UIUtils.getCommonStr(view?.margin, application)
+            map["size"] = UIUtils.getSizeStr(view, application)
+            map["position"] = UIUtils.getPositionStr(view)
+            map["translationY"] = UIUtils.getSizeStr(view?.translationY, application)
+            map["translationX"] = UIUtils.getSizeStr(view?.translationX, application)
+            map["scrollY"] = UIUtils.getSizeStr(view?.scrollY, application)
+            map["scrollX"] = UIUtils.getSizeStr(view?.scrollX, application)
+            map["scaleX"] = view?.scaleX?.toString() ?: ""
+            map["scaleY"] = view?.scaleY?.toString() ?: ""
+            map["pivotX"] = UIUtils.getSizeStr(view?.pivotX, application)
+            map["pivotY"] = UIUtils.getSizeStr(view?.pivotY, application)
+            map["layout"] = UIUtils.getLayoutStr(view?.layout, application)
+            map["visible"] = when (view?.visibility) {
+                'V' -> "visible"
+                'G' -> "gone"
+                'I' -> "invisible"
+                else -> ""
+            }
+            map["realVisible"] = when (view?.realVisiblity) {
+                'V' -> "visible"
+                'G' -> "gone"
+                'I' -> "invisible"
+                else -> ""
+            }
+            val viewAllTypeExtra = DataUtils.getViewAllTableTypeExtra(view)
+            viewAllTypeExtra?.forEach { key, extra ->
+                map[extra.extraAction.displayTitle] = extra.extraAction.displayText
+                list?.add(extra.extraAction.displayText)
+            }
+        }
     }
 }

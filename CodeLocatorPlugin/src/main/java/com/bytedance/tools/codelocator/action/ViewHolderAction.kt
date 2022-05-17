@@ -3,22 +3,22 @@ package com.bytedance.tools.codelocator.action
 import com.bytedance.tools.codelocator.model.WView
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.utils.IdeaUtils
+import com.bytedance.tools.codelocator.utils.ImageUtils
 import com.bytedance.tools.codelocator.utils.Mob
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
-import javax.swing.Icon
 
 class ViewHolderAction(
-    project: Project,
-    codeLocatorWindow: CodeLocatorWindow,
-    text: String?,
-    icon: Icon?
-) : BaseAction(project, codeLocatorWindow, text, text, icon) {
+    val project: Project,
+    val codeLocatorWindow: CodeLocatorWindow
+) : BaseAction(
+    ResUtils.getString("jump_view_holder"),
+    ResUtils.getString("jump_view_holder"),
+    ImageUtils.loadIcon("viewholder")
+) {
+
     override fun actionPerformed(e: AnActionEvent) {
-        if (!enable) return
-
-        Mob.mob(Mob.Action.CLICK, Mob.Button.VIEW_HOLDER)
-
         val viewHolderTag = getViewHolderTag(codeLocatorWindow.currentSelectView!!)!!
         var openFileName = viewHolderTag
         var className: String? = null
@@ -35,7 +35,6 @@ class ViewHolderAction(
         if (className == null) {
             className = viewHolder
         }
-
         var adapterTag = getViewAdapterTag(codeLocatorWindow.currentSelectView)
         if (adapterTag?.contains("$") == true) {
             adapterTag = adapterTag.substring(0, adapterTag.indexOf("$"))
@@ -44,13 +43,21 @@ class ViewHolderAction(
 
         codeLocatorWindow.notifyCallJump(null, className, Mob.Button.VIEW_HOLDER)
 
-        IdeaUtils.goSourceCodeAndSearch(codeLocatorWindow, project, viewHolder, adapterTag, "class $className", pkName)
+        IdeaUtils.goSourceCodeAndSearch(
+            codeLocatorWindow,
+            project,
+            viewHolder,
+            adapterTag,
+            "class $className",
+            pkName,
+            0
+        )
+
+        Mob.mob(Mob.Action.CLICK, Mob.Button.VIEW_HOLDER)
     }
 
-    override fun update(e: AnActionEvent) {
-        super.update(e)
-        enable = (getViewHolderTag(codeLocatorWindow.currentSelectView)?.isNotEmpty() == true)
-        updateView(e, "viewholder_disable", "viewholder_enable")
+    override fun isEnable(e: AnActionEvent): Boolean {
+        return (getViewHolderTag(codeLocatorWindow.currentSelectView)?.isNotEmpty() == true)
     }
 
     private fun getViewHolderTag(view: WView?): String? {

@@ -7,7 +7,6 @@ import com.bytedance.tools.codelocator.model.CommonTableModel
 import com.bytedance.tools.codelocator.model.WFragment
 import com.bytedance.tools.codelocator.utils.ClipboardUtils
 import com.bytedance.tools.codelocator.utils.CoordinateUtils
-import com.bytedance.tools.codelocator.utils.ImageUtils
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.ui.popup.JBPopupFactory
@@ -89,19 +88,19 @@ class FragmentInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(
     fun showPop(container: JComponent, copyInfo: String, x: Int, y: Int, isClass: Boolean = false) {
         val actionGroup = DefaultActionGroup("listGroup", true)
 
-        actionGroup.add(CopyInfoAction(codeLocatorWindow.project, "复制", copyInfo))
+        actionGroup.add(CopyInfoAction(codeLocatorWindow.project, copyInfo))
 
         if (isClass) {
-            actionGroup.add(OpenClassAction(codeLocatorWindow.project, codeLocatorWindow, "跳转类文件", ImageUtils.loadIcon("class_enable"), copyInfo))
+            actionGroup.add(OpenClassAction(codeLocatorWindow.project, codeLocatorWindow, copyInfo))
         }
 
         val factory = JBPopupFactory.getInstance()
         val pop = factory.createActionGroupPopup(
-                "CodeLocator",
-                actionGroup,
-                DataManager.getInstance().getDataContext(),
-                JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
-                true
+            "CodeLocator",
+            actionGroup,
+            DataManager.getInstance().getDataContext(),
+            JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
+            true
         )
         val point = Point(x, y)
         pop.show(RelativePoint(container, point))

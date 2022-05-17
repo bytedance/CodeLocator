@@ -3,16 +3,25 @@ package com.bytedance.tools.codelocator.processor
 import com.bytedance.tools.codelocator.model.EditBackgroudColorModel
 import com.bytedance.tools.codelocator.model.EditModel
 import com.bytedance.tools.codelocator.model.WView
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.intellij.openapi.project.Project
 import java.util.regex.Pattern
 
 class BackgroundProcessor(project: Project, view: WView) : ViewValueProcessor(project, "Backgroud", view) {
 
     override fun getHint(view: WView): String {
-        return "格式: #?[0-9a-fA-F]{3,4,6,8} 示例: #FFFF0000"
+        return ResUtils.getString("edit_color_tip")
     }
 
-    override fun getShowValue(view: WView): String = view.backgroundColor ?: ""
+    override fun getShowValue(view: WView): String {
+        view.backgroundColor ?: return ""
+        val compile = Pattern.compile("^#?([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+        val matcher = compile.matcher(view.backgroundColor)
+        if (matcher.find()) {
+            return matcher.group()
+        }
+        return ""
+    }
 
     override fun isValid(newColor: String): Boolean {
         val compile = Pattern.compile("#?([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})")

@@ -1,4 +1,13 @@
 rootProject.name = 'CodeLocatorPlugin'
 
 include ':CodeLocatorModel'
-project(':CodeLocatorModel').projectDir = new File("../CodeLocatorApp/CodeLocatorModel")
+
+boolean isWindows() {
+    return System.getProperty("os.name").toLowerCase().indexOf("windows") != -1
+}
+
+if (isWindows()) {
+    project(':CodeLocatorModel').projectDir = new File("..\\CodeLocatorApp\\CodeLocatorModel")
+} else {
+    project(':CodeLocatorModel').projectDir = new File("../CodeLocatorApp/CodeLocatorModel")
+}

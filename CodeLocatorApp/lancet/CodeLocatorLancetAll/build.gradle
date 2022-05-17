@@ -1,0 +1,56 @@
+apply plugin: 'com.android.library'
+
+if (getProperties("customUploadGradlePluginUrl") != null) {
+    apply from: getProperties("customUploadGradlePluginUrl")
+}
+
+android {
+    compileSdkVersion COMPILE_SDK_VERSION as int
+    buildToolsVersion BUILD_TOOLS_VERSION
+
+    defaultConfig {
+        minSdkVersion MIN_SDK_VERSION
+        targetSdkVersion TARGET_SDK_VERSION
+        versionCode 1
+        versionName codelocator_version
+
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+
+    if (useSupport) {
+        implementation "com.android.support:appcompat-v7:$support_version"
+    } else {
+        implementation "androidx.appcompat:appcompat:${androidx_version}"
+    }
+
+    if (useSourceCode) {
+        implementation project(path: ':CodeLocatorLancetXml')
+        implementation project(path: ':CodeLocatorLancetActivity')
+        implementation project(path: ':CodeLocatorLancetToast')
+        implementation project(path: ':CodeLocatorLancetPopup')
+        implementation project(path: ':CodeLocatorLancetView')
+        implementation project(path: ':CodeLocatorLancetDialog')
+    } else {
+        implementation "com.bytedance.tools.codelocator:codelocator-lancet-xml:$codelocator_version"
+        implementation "com.bytedance.tools.codelocator:codelocator-lancet-activity:$codelocator_version"
+        implementation "com.bytedance.tools.codelocator:codelocator-lancet-view:$codelocator_version"
+        implementation "com.bytedance.tools.codelocator:codelocator-lancet-toast:$codelocator_version"
+        implementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog:$codelocator_version"
+        implementation "com.bytedance.tools.codelocator:codelocator-lancet-popup:$codelocator_version"
+    }
+
+    compileOnly 'me.ele:lancet-base:1.0.6'
+}
+
+apply plugin: "com.vanniktech.maven.publish"

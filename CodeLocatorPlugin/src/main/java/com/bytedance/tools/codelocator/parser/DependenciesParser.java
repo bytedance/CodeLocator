@@ -3,20 +3,11 @@ package com.bytedance.tools.codelocator.parser;
 import com.bytedance.tools.codelocator.model.Dependencies;
 import com.bytedance.tools.codelocator.model.DependenciesInfo;
 import com.bytedance.tools.codelocator.utils.Log;
-
 import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.StringReader;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
 
 public class DependenciesParser {
 
@@ -32,16 +23,14 @@ public class DependenciesParser {
     }
 
     public static final String[] sNeedFilterRepo = {
-            "androidx.",
-            "android.arch",
-            "com.google.",
-            "com.android.support",
-            "org.jetbrains"
+        "androidx.",
+        "android.arch",
+        "com.google.",
+        "com.android.support",
+        "org.jetbrains"
     };
 
     private String mDependenciesInfo;
-
-    private String mMainModuleName;
 
     public DependenciesParser(String info) {
         if (info == null) {
@@ -71,9 +60,9 @@ public class DependenciesParser {
         if (mDependenciesInfo == null) {
             return null;
         }
-        List<DependenciesInfo> dependenciesInfos = getDependenciesInfos(false);
+        List<DependenciesInfo> dependenciesInfos = getDependenciesInfos();
         if (dependenciesInfos.isEmpty()) {
-            dependenciesInfos = getDependenciesInfos(false);
+            dependenciesInfos = getDependenciesInfos();
             if (dependenciesInfos.isEmpty()) {
                 return null;
             }
@@ -82,53 +71,33 @@ public class DependenciesParser {
     }
 
     @Nullable
-    private List<DependenciesInfo> getDependenciesInfos(boolean withMainModule) {
-        String debugCompileClass = null;
-        String debugRuntimeClass = null;
-        String releaseCompileClass = null;
-        String releaseRuntimeClass = null;
+    private List<DependenciesInfo> getDependenciesInfos() {
+        String debugCompileClass = "debugCompileClassPath".toLowerCase();
+        String debugRuntimeClass = "debugRuntimeClassPath".toLowerCase();
+        String releaseCompileClass = "releaseCompileClasspath".toLowerCase();
+        String releaseRuntimeClass = "releaseRuntimeClassPath".toLowerCase();
         List<DependenciesInfo> dependenciesInfos = new LinkedList<>();
         try {
             BufferedReader bufferedReader = new BufferedReader(new StringReader(mDependenciesInfo));
             String currentLine = null;
             while ((currentLine = bufferedReader.readLine()) != null) {
-                if (currentLine.startsWith("Install tasks") && mMainModuleName == null) {
-                    mMainModuleName = getMainModuleName(bufferedReader);
-                    if (mMainModuleName == null && withMainModule) {
-                        Log.e("解析Depends 文件失败, mMainModuleName == null");
-                        return null;
-                    } else {
-                        if (withMainModule) {
-                            debugCompileClass = (mMainModuleName + "DebugCompileClassPath").toLowerCase();
-                            debugRuntimeClass = (mMainModuleName + "DebugRuntimeClassPath").toLowerCase();
-                            releaseCompileClass = (mMainModuleName + "ReleaseCompileClasspath").toLowerCase();
-                            releaseRuntimeClass = (mMainModuleName + "ReleaseRuntimeClassPath").toLowerCase();
-                        } else {
-                            debugCompileClass = "debugCompileClassPath".toLowerCase();
-                            debugRuntimeClass = "debugRuntimeClassPath".toLowerCase();
-                            releaseCompileClass = "releaseCompileClasspath".toLowerCase();
-                            releaseRuntimeClass = "releaseRuntimeClassPath".toLowerCase();
-                        }
-                    }
-                } else if (mMainModuleName != null) {
-                    final String currentLineLower = currentLine.toLowerCase();
-                    if (currentLineLower.contains(debugCompileClass)) {
-                        DependenciesInfo info = getDependenciesByMode(bufferedReader, TYPE.DebugCompileClassPath);
-                        dependenciesInfos.add(info);
-                    } else if (currentLineLower.contains(debugRuntimeClass)) {
-                        DependenciesInfo info = getDependenciesByMode(bufferedReader, TYPE.DebugRuntimeClassPath);
-                        dependenciesInfos.add(info);
-                    } else if (currentLineLower.contains(releaseCompileClass)) {
-                        DependenciesInfo info = getDependenciesByMode(bufferedReader, TYPE.ReleaseCompileClasspath);
-                        dependenciesInfos.add(info);
-                    } else if (currentLineLower.contains(releaseRuntimeClass)) {
-                        DependenciesInfo info = getDependenciesByMode(bufferedReader, TYPE.ReleaseRuntimeClassPath);
-                        dependenciesInfos.add(info);
-                    }
+                final String currentLineLower = currentLine.toLowerCase();
+                if (currentLineLower.contains(debugCompileClass)) {
+                    DependenciesInfo info = getDependenciesByMode(bufferedReader, TYPE.DebugCompileClassPath);
+                    dependenciesInfos.add(info);
+                } else if (currentLineLower.contains(debugRuntimeClass)) {
+                    DependenciesInfo info = getDependenciesByMode(bufferedReader, TYPE.DebugRuntimeClassPath);
+                    dependenciesInfos.add(info);
+                } else if (currentLineLower.contains(releaseCompileClass)) {
+                    DependenciesInfo info = getDependenciesByMode(bufferedReader, TYPE.ReleaseCompileClasspath);
+                    dependenciesInfos.add(info);
+                } else if (currentLineLower.contains(releaseRuntimeClass)) {
+                    DependenciesInfo info = getDependenciesByMode(bufferedReader, TYPE.ReleaseRuntimeClassPath);
+                    dependenciesInfos.add(info);
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Throwable t) {
+            Log.e("getDependenciesInfos error", t);
         }
         return dependenciesInfos;
     }
@@ -140,23 +109,6 @@ public class DependenciesParser {
         final Collection<Dependencies> filterDependencies = getFilterDependencies(testCompileClasspath);
         info.setDependencies(filterDependencies);
         return info;
-    }
-
-    private String getMainModuleName(BufferedReader reader) {
-        try {
-            final String nextLine = reader.readLine();
-            if ("-------------".equals(nextLine)) {
-                String installCommandLine = reader.readLine();
-                final Pattern compile = Pattern.compile("(?<=install)[0-9a-zA-Z]+(?=Debug)");
-                final Matcher matcher = compile.matcher(installCommandLine);
-                if (matcher.find()) {
-                    return matcher.group();
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return "";
     }
 
     private Collection<Dependencies> getTestCompileClasspath(BufferedReader reader) {
@@ -224,7 +176,7 @@ public class DependenciesParser {
             dependenciesVersionStr = changedVersionStr;
         }
         dependenciesVersionStr = dependenciesVersionStr.replace("(*)", "")
-                .replace("(c)", "").trim();
+            .replace("(c)", "").trim();
         final int lastIndex = dependenciesVersionStr.lastIndexOf(":");
         if (lastIndex > -1) {
             dependenciesVersionStr = dependenciesVersionStr.substring(lastIndex + 1).trim();

@@ -1,99 +1,66 @@
 package com.bytedance.tools.codelocator.action
 
-import com.bytedance.tools.codelocator.constants.CodeLocatorConstants
-import com.bytedance.tools.codelocator.model.AdbCommand
-import com.bytedance.tools.codelocator.model.BroadcastBuilder
-import com.bytedance.tools.codelocator.model.Device
+import com.bytedance.tools.codelocator.device.DeviceManager
+import com.bytedance.tools.codelocator.exception.ExecuteException
+import com.bytedance.tools.codelocator.device.action.AdbCommand
+import com.bytedance.tools.codelocator.device.action.BroadcastAction
+import com.bytedance.tools.codelocator.device.Device
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
-import com.bytedance.tools.codelocator.parser.Parser
-import com.bytedance.tools.codelocator.utils.DeviceManager
-import com.bytedance.tools.codelocator.utils.Log
-import com.bytedance.tools.codelocator.utils.Mob
-import com.bytedance.tools.codelocator.utils.ShellHelper
-import com.bytedance.tools.codelocator.utils.ThreadUtils
-import com.bytedance.tools.codelocator.utils.ViewUtils
+import com.bytedance.tools.codelocator.utils.*
+import com.bytedance.tools.codelocator.response.TouchViewResponse
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
-import javax.swing.Icon
 
 class FindClickLinkAction(
-    project: Project,
-    codeLocatorWindow: CodeLocatorWindow,
-    text: String?,
-    icon: Icon?
-) : BaseAction(project, codeLocatorWindow, text, text, icon) {
+    val project: Project,
+    val codeLocatorWindow: CodeLocatorWindow
+) : BaseAction(
+    ResUtils.getString("trace_touch_event"),
+    ResUtils.getString("trace_touch_event"),
+    ImageUtils.loadIcon("find_click_link")
+) {
 
     override fun actionPerformed(e: AnActionEvent) {
-        if (!enable) return
+        DeviceManager.enqueueCmd(
+            project,
+            AdbCommand(
+                BroadcastAction(CodeLocatorConstants.ACTION_GET_TOUCH_VIEW)
+                    .args(CodeLocatorConstants.KEY_SAVE_TO_FILE, DeviceManager.isNeedSaveFile(project))
+            ),
+            TouchViewResponse::class.java,
+            object : DeviceManager.OnExecutedListener<TouchViewResponse> {
+                override fun onExecSuccess(device: Device, response: TouchViewResponse) {
+                    val viewIdLists = response.data
+                    if (viewIdLists.isEmpty()) {
+                        throw ExecuteException(ResUtils.getString("trace_view_error_tip"))
+                    }
+                    val findViewList =
+                        ViewUtils.findViewList(codeLocatorWindow.currentActivity, viewIdLists)
+                    if (findViewList.isNullOrEmpty()) {
+                        throw ExecuteException(ResUtils.getString("get_view_list_error_tip"))
+                    }
+                    ThreadUtils.runOnUIThread {
+                        codeLocatorWindow.getScreenPanel()?.notifyFindClickViewList(findViewList)
+                    }
+                }
 
-        ThreadUtils.submit {
-            try {
-                Mob.mob(Mob.Action.CLICK, Mob.Button.TOUCH_TRACE)
-                val broadcastBuilder = BroadcastBuilder(CodeLocatorConstants.ACTION_GET_TOUCH_VIEW)
-                if (DeviceManager.getCurrentDevice().grabMode == Device.GRAD_MODE_FILE) {
-                    broadcastBuilder.arg(CodeLocatorConstants.KEY_SAVE_TO_FILE, "true")
-                }
-                val execCommand =
-                    ShellHelper.execCommand(AdbCommand(DeviceManager.getCurrentDevice(), broadcastBuilder).toString())
-                val resultData = String(execCommand.resultBytes)
-                val touchViewInfo = Parser.parserCommandResult(DeviceManager.getCurrentDevice(), resultData, false)
-                if ("[]".equals(touchViewInfo)) {
-                    ApplicationManager.getApplication().invokeLater {
-                        Messages.showMessageDialog(
-                            project,
-                            "未获取到View事件, 请触摸View同时点击追踪按钮",
-                            "CodeLocator",
-                            Messages.getInformationIcon()
-                        )
-                    }
-                } else if (touchViewInfo != null && touchViewInfo.startsWith("[") && touchViewInfo.endsWith("]")) {
-                    val clickViewIdList = touchViewInfo.substring(1, touchViewInfo.length - 1)
-                    val viewIdLists = clickViewIdList.split(",")
-                    val findViewList = ViewUtils.findViewList(codeLocatorWindow.currentActivity!!.decorView, viewIdLists)
-                    if (findViewList?.isNotEmpty() == true) {
-                        ApplicationManager.getApplication().invokeLater {
-                            codeLocatorWindow.getScreenPanel()?.notifyFindClickViewList(findViewList)
-                        }
-                    } else {
-                        ApplicationManager.getApplication().invokeLater {
-                            Messages.showMessageDialog(
-                                project,
-                                "未获取到View列表, 请检查抓取界面是否发生变化",
-                                "CodeLocator",
-                                Messages.getInformationIcon()
-                            )
-                        }
-                    }
-                } else {
-                    ApplicationManager.getApplication().invokeLater {
-                        Messages.showMessageDialog(
-                            project,
-                            "获取View事件失败, 请检查设备是否连接",
-                            "CodeLocator",
-                            Messages.getInformationIcon()
-                        )
-                    }
-                }
-            } catch (t: Throwable) {
-                Log.e("获取TouchView失败", t)
-                ApplicationManager.getApplication().invokeLater {
+                override fun onExecFailed(throwable: Throwable) {
                     Messages.showMessageDialog(
                         project,
-                        "获取View事件失败, 请点击右上角小飞机反馈",
+                        throwable.message ?: ResUtils.getString("trace_view_error_tip"),
                         "CodeLocator",
                         Messages.getInformationIcon()
                     )
                 }
             }
-        }
+        )
+        Mob.mob(Mob.Action.CLICK, Mob.Button.TOUCH_TRACE)
     }
 
-    override fun update(e: AnActionEvent) {
-        super.update(e)
-        enable = codeLocatorWindow.currentActivity != null
-        updateView(e, "find_click_link_disable", "find_click_link_enable")
+    override fun isEnable(e: AnActionEvent): Boolean {
+        return codeLocatorWindow.currentActivity != null && codeLocatorWindow.currentApplication?.isFromSdk == true && DeviceManager.hasAndroidDevice()
     }
 
 }

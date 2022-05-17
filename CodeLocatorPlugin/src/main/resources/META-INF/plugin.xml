@@ -10,6 +10,8 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <h3>2.0.0: Support Windows system</h3>
+
         <h3>1.2.3: Fix search view anr & Fix edit view flag error</h3>
 
         <h3>1.2.0: Initial release of the plugin, supporting functions as follows</h3>
@@ -37,32 +39,68 @@
     ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
+
     <depends>com.intellij.modules.java</depends>
+
+    <depends>org.jetbrains.kotlin</depends>
+
+    <depends>org.jetbrains.android</depends>
 
     <extensions defaultExtensionNs="com.intellij">
 
+        <checkinHandlerFactory implementation="com.bytedance.tools.codelocator.importopt.DeleteImportinHandlerFactory"/>
+
         <defaultProjectTypeProvider type="Android"/>
 
+        <applicationInitializedListener
+            implementation="com.bytedance.tools.codelocator.listener.CodeLocatorApplicationInitializedListener"/>
+
+        <postStartupActivity implementation="com.bytedance.tools.codelocator.listener.CodeLocatorStartupActivity"/>
+
         <toolWindow id="CodeLocator"
-                    icon="/images/codelocator.svg"
+                    icon="/images/codeLocator.svg"
                     anchor="right"
                     factoryClass="com.bytedance.tools.codelocator.panels.CodeLocatorWindowFactory">
         </toolWindow>
+
+        <globalInspection hasStaticDescription="true"
+                          shortName="AndroidLintNewApiCodeLocator"
+                          displayName="CodeLocatorAndroidLintNewApi Calling new methods on older versions"
+                          bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR"
+                          implementationClass="com.bytedance.tools.codelocator.lint.CodeLocatorAndroidLintNewApiInspection"/>
     </extensions>
 
     <actions>
         <action class="com.bytedance.tools.codelocator.action.InstallApkMenuAction"
                 id="codelocator.installapk"
                 description="Install Apk"
-                icon="/images/codelocator_small.svg"
+                icon="/images/codeLocator.svg"
                 text="Install Apk">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="CutCopyPasteGroup"/>
+        </action>
+
+        <action class="com.bytedance.tools.codelocator.action.InstallApkAction"
+                id="codelocator.installprojectnewapk"
+                description="安装项目内最新Apk"
+                icon="/images/codeLocator.svg"
+                text="安装项目内最新APK">
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="shift alt i"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="shift alt i"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="shift alt i"/>
+        </action>
+
+        <action class="com.bytedance.tools.codelocator.tinypng.actions.TinyImageMenuAction"
+                id="codelocator.tinypng"
+                description="TinyPng压缩图片"
+                icon="/images/codeLocator.svg"
+                text="TinyPng压缩图片">
             <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="CutCopyPasteGroup"/>
         </action>
 
         <action id="codelocator.JumpToFileGitUrlAction"
                 class="com.bytedance.tools.codelocator.action.SearchInWebAction"
                 text="Search Code"
-                icon="/images/codelocator_small.svg"
+                icon="/images/codeLocator.svg"
                 description="Search Code">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>

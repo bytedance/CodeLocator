@@ -5,12 +5,14 @@ import android.util.Log;
 
 import com.bytedance.tools.codelocator.CodeLocator;
 import com.bytedance.tools.codelocator.config.CodeLocatorConfig;
-import com.bytedance.tools.codelocator.constants.CodeLocatorConstants;
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants;
 
 public class ActivityInfoAnalyzer {
 
     public static void analysisAndAppendInfoToIntent(Intent intent, StackTraceElement[] stackTraceElements) {
-        if (intent == null || stackTraceElements == null || CodeLocator.sGlobalConfig == null) {
+        if (intent == null || stackTraceElements == null
+                || CodeLocator.sGlobalConfig == null
+                || intent.getStringExtra(CodeLocatorConstants.ACTIVITY_START_STACK_INFO) != null) {
             return;
         }
         final CodeLocatorConfig config = CodeLocator.sGlobalConfig;
@@ -19,6 +21,7 @@ public class ActivityInfoAnalyzer {
             for (int i = config.getSkipSystemTraceCount(); i < stackTraceElements.length && i < config.getActivityMaxLoopCount(); i++) {
                 final StackTraceElement stackTraceElement = stackTraceElements[i];
                 final String currentClassName = stackTraceElement.getClassName();
+                final String currentMethodName = stackTraceElement.getMethodName();
                 final String fileName = stackTraceElement.getFileName();
                 if (fileName == null
                         || currentClassName == null
@@ -27,7 +30,8 @@ public class ActivityInfoAnalyzer {
                 } else {
                     boolean containsKeyword = false;
                     for (String keyword : config.getActivityIgnoreByKeyWords()) {
-                        if (currentClassName.contains(keyword)) {
+                        if (currentClassName.contains(keyword)
+                                || (currentMethodName != null && currentMethodName.contains(keyword))) {
                             containsKeyword = true;
                             break;
                         }
@@ -57,7 +61,7 @@ public class ActivityInfoAnalyzer {
             }
             intent.putExtra(CodeLocatorConstants.ACTIVITY_START_STACK_INFO, className + suffix + ":" + lineNumber);
         } catch (Throwable t) {
-            Log.e("CodeLocator", "analysisAndAppendInfoToIntent Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "analysisAndAppendInfoToIntent Error " + Log.getStackTraceString(t));
         }
     }
 }

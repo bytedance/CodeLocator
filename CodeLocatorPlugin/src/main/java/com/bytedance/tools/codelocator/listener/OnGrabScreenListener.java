@@ -4,6 +4,4 @@ public interface OnGrabScreenListener {
 
     void onGrabScreenSuccess(int width, int height);
 
-    void onGrabScreenFailed(Exception e);
-
 }

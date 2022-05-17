@@ -3,6 +3,7 @@ package com.bytedance.tools.codelocator.processor
 import com.bytedance.tools.codelocator.model.EditModel
 import com.bytedance.tools.codelocator.model.EditTranslationModel
 import com.bytedance.tools.codelocator.model.WView
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.bytedance.tools.codelocator.utils.UIUtils
 import com.intellij.openapi.project.Project
 import java.util.regex.Pattern
@@ -14,7 +15,7 @@ class TranslationProcessor(project: Project, view: WView) : ViewValueProcessor(p
     }
 
     override fun getHint(view: WView): String {
-        return "格式: translationX, translationY 示例: 10dp, 108px"
+        return ResUtils.getString("edit_trans_tip")
     }
 
     override fun isValid(changeText: String): Boolean {
@@ -37,7 +38,7 @@ class TranslationProcessor(project: Project, view: WView) : ViewValueProcessor(p
                 values[i] = UIUtils.dip2Px(view.activity.application?.density ?: 3f, values[i]).toFloat()
             }
         }
-        return EditTranslationModel(values[0].toInt(), values[1].toInt())
+        return EditTranslationModel(values[0], values[1])
     }
 
 }

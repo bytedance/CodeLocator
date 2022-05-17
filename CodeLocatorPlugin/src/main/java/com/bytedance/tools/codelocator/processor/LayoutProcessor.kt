@@ -3,15 +3,16 @@ package com.bytedance.tools.codelocator.processor
 import com.bytedance.tools.codelocator.model.EditLayoutModel
 import com.bytedance.tools.codelocator.model.EditModel
 import com.bytedance.tools.codelocator.model.WView
+import com.bytedance.tools.codelocator.utils.ResUtils
+import com.bytedance.tools.codelocator.utils.ThreadUtils
 import com.bytedance.tools.codelocator.utils.UIUtils
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import java.util.regex.Pattern
 
 class LayoutProcessor(project: Project, view: WView) : ViewValueProcessor(project, "Layout", view) {
 
     override fun getHint(view: WView): String {
-        return "格式: width, height 示例: wrap_content, 10(dp|px) (输入-1|-2有惊喜)"
+        return ResUtils.getString("edit_layout_tip")
     }
 
     override fun getShowValue(view: WView): String {
@@ -23,9 +24,9 @@ class LayoutProcessor(project: Project, view: WView) : ViewValueProcessor(projec
         } else {
             "" + UIUtils.px2dip(density, view.layoutWidth) + "dp"
         }
-        val heightStr = if (view.layoutWidth == -2) {
+        val heightStr = if (view.layoutHeight == -2) {
             "wrap_content"
-        } else if (view.layoutWidth == -1) {
+        } else if (view.layoutHeight == -1) {
             "match_parent"
         } else {
             "" + UIUtils.px2dip(density, view.layoutHeight) + "dp"
@@ -36,7 +37,7 @@ class LayoutProcessor(project: Project, view: WView) : ViewValueProcessor(projec
     override fun onInputTextChange(view: WView, changeString: String) {
         super.onInputTextChange(view, changeString)
         if (changeString.contains("-1") || changeString.contains("-2")) {
-            ApplicationManager.getApplication().invokeLater {
+            ThreadUtils.runOnUIThread {
                 textView.text = changeString.replace("-2", "wrap_content").replace("-1", "match_parent")
             }
         }

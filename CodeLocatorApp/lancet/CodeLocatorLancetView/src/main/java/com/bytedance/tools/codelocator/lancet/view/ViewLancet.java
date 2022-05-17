@@ -103,7 +103,7 @@ public class ViewLancet {
     @Proxy("addView")
     public void addViewOneAll(View child) {
         if (child != null) {
-            CodeLocator.notifyAddView(child, Thread.currentThread().getStackTrace());
+            CodeLocator.notifyFindViewById(child, Thread.currentThread().getStackTrace());
         }
         Origin.callVoid();
     }
@@ -112,7 +112,7 @@ public class ViewLancet {
     @Proxy("addView")
     public void addViewOneSelf(View child) {
         if (child != null) {
-            CodeLocator.notifyAddView(child, Thread.currentThread().getStackTrace());
+            CodeLocator.notifyFindViewById(child, Thread.currentThread().getStackTrace());
         }
         Origin.callVoid();
     }
@@ -121,7 +121,7 @@ public class ViewLancet {
     @Proxy("addView")
     public void addViewTwoAll(View child, ViewGroup.LayoutParams params) {
         if (child != null) {
-            CodeLocator.notifyAddView(child, Thread.currentThread().getStackTrace());
+            CodeLocator.notifyFindViewById(child, Thread.currentThread().getStackTrace());
         }
         Origin.callVoid();
     }
@@ -130,7 +130,7 @@ public class ViewLancet {
     @Proxy("addView")
     public void addViewTwoSelf(View child, ViewGroup.LayoutParams params) {
         if (child != null) {
-            CodeLocator.notifyAddView(child, Thread.currentThread().getStackTrace());
+            CodeLocator.notifyFindViewById(child, Thread.currentThread().getStackTrace());
         }
         Origin.callVoid();
     }
@@ -139,7 +139,7 @@ public class ViewLancet {
     @Proxy("addView")
     public void addViewThreeAll(View child, int index, ViewGroup.LayoutParams params) {
         if (child != null) {
-            CodeLocator.notifyAddView(child, Thread.currentThread().getStackTrace());
+            CodeLocator.notifyFindViewById(child, Thread.currentThread().getStackTrace());
         }
         Origin.callVoid();
     }
@@ -148,7 +148,7 @@ public class ViewLancet {
     @Proxy("addView")
     public void addViewThreeSelf(View child, int index, ViewGroup.LayoutParams params) {
         if (child != null) {
-            CodeLocator.notifyAddView(child, Thread.currentThread().getStackTrace());
+            CodeLocator.notifyFindViewById(child, Thread.currentThread().getStackTrace());
         }
         Origin.callVoid();
     }
@@ -159,14 +159,14 @@ public class ViewLancet {
         RecyclerView.ViewHolder viewHolder = (RecyclerView.ViewHolder) Origin.call();
         try {
             if (viewHolder != null && viewHolder.itemView != null) {
-                viewHolder.itemView.setTag(R.id.codelocator_viewholder_tag_id, viewHolder.getClass().getName());
+                viewHolder.itemView.setTag(R.id.codeLocator_viewholder_tag_id, viewHolder.getClass().getName());
                 final Object adapter = This.get();
                 if (adapter != null) {
-                    viewHolder.itemView.setTag(R.id.codelocator_viewholder_adapter_tag_id, adapter.getClass().getName());
+                    viewHolder.itemView.setTag(R.id.codeLocator_viewholder_adapter_tag_id, adapter.getClass().getName());
                 }
             }
         } catch (Throwable t) {
-            Log.e("CodeLocator", "getHolder Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "getHolder Error " + Log.getStackTraceString(t));
         }
         return viewHolder;
     }
@@ -177,15 +177,30 @@ public class ViewLancet {
         RecyclerView.ViewHolder viewHolder = (RecyclerView.ViewHolder) Origin.call();
         try {
             if (viewHolder != null && viewHolder.itemView != null) {
-                viewHolder.itemView.setTag(R.id.codelocator_viewholder_tag_id, viewHolder.getClass().getName());
+                viewHolder.itemView.setTag(R.id.codeLocator_viewholder_tag_id, viewHolder.getClass().getName());
                 final Object adapter = This.get();
                 if (adapter != null) {
-                    viewHolder.itemView.setTag(R.id.codelocator_viewholder_adapter_tag_id, adapter.getClass().getName());
+                    viewHolder.itemView.setTag(R.id.codeLocator_viewholder_adapter_tag_id, adapter.getClass().getName());
                 }
             }
         } catch (Throwable t) {
-            Log.e("CodeLocator", "getHolder Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "getHolder Error " + Log.getStackTraceString(t));
         }
         return viewHolder;
     }
+
+    @TargetClass(value = "android.view.View", scope = Scope.SELF)
+    @Proxy("setBackgroundResource")
+    public void setBackgroundResourceSelf(int resid) {
+        CodeLocator.notifySetBackgroundResource((View) This.get(), resid);
+        Origin.callVoid();
+    }
+
+    @TargetClass(value = "android.view.View", scope = Scope.ALL)
+    @Proxy("setBackgroundResource")
+    public void setBackgroundResourceAll(int resid) {
+        CodeLocator.notifySetBackgroundResource((View) This.get(), resid);
+        Origin.callVoid();
+    }
+
 }

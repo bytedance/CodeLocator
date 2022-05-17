@@ -1,97 +1,87 @@
 package com.bytedance.tools.codelocator.action
 
-import com.bytedance.tools.codelocator.constants.CodeLocatorConstants
+import com.bytedance.tools.codelocator.device.Device
+import com.bytedance.tools.codelocator.model.WView
 import com.bytedance.tools.codelocator.dialog.InvokeMethodDialog
 import com.bytedance.tools.codelocator.dialog.ShowViewClassInfoDialog
+import com.bytedance.tools.codelocator.exception.ExecuteException
 import com.bytedance.tools.codelocator.model.*
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
-import com.bytedance.tools.codelocator.parser.Parser
-import com.bytedance.tools.codelocator.utils.DeviceManager
+import com.bytedance.tools.codelocator.device.DeviceManager
+import com.bytedance.tools.codelocator.device.action.AdbCommand
+import com.bytedance.tools.codelocator.device.action.BroadcastAction
 import com.bytedance.tools.codelocator.utils.Log
 import com.bytedance.tools.codelocator.utils.Mob
-import com.bytedance.tools.codelocator.utils.NetUtils
+import com.bytedance.tools.codelocator.utils.ResUtils
 import com.bytedance.tools.codelocator.utils.StringUtils
 import com.bytedance.tools.codelocator.utils.ThreadUtils
+import com.bytedance.tools.codelocator.model.ViewClassInfo
+import com.bytedance.tools.codelocator.response.OperateResponse
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.*
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import javax.swing.Icon
 
 class GetViewClassInfoAction(
-    project: Project,
-    codeLocatorWindow: CodeLocatorWindow,
+    val project: Project,
+    val codeLocatorWindow: CodeLocatorWindow,
     text: String,
     icon: Icon?,
     val view: WView,
     val isField: Boolean
-) : BaseAction(project, codeLocatorWindow, text, text, icon) {
+) : BaseAction(text, text, icon) {
 
-    init {
-        enable = true
-    }
+    override fun isEnable(e: AnActionEvent) = DeviceManager.hasAndroidDevice()
 
     override fun actionPerformed(e: AnActionEvent) {
-        if (isField) {
-            Mob.mob(Mob.Action.CLICK, Mob.Button.VIEW_ALL_FIELD)
-        } else {
-            Mob.mob(Mob.Action.CLICK, Mob.Button.VIEW_ALL_METHOD)
-        }
-        DeviceManager.execCommand(
+        DeviceManager.enqueueCmd(
             project,
             AdbCommand(
-                BroadcastBuilder(CodeLocatorConstants.ACTION_CHANGE_VIEW_INFO)
-                    .arg(
-                        CodeLocatorConstants.KEY_CHANGE_VIEW,
+                BroadcastAction(ACTION_CHANGE_VIEW_INFO)
+                    .args(
+                        KEY_CHANGE_VIEW,
                         EditViewBuilder(view).edit(GetViewClassInfoModel()).builderEditCommand()
                     )
             ),
-            object : DeviceManager.OnExecutedListener {
-                override fun onExecSuccess(device: Device?, execResult: ExecResult?) {
-                    try {
-                        if (execResult?.resultCode == 0) {
-                            val parserCommandResult =
-                                Parser.parserCommandResult(device, String(execResult.resultBytes), false)
-                            val viewClassInfo = NetUtils.sGson.fromJson(parserCommandResult, ViewClassInfo::class.java)
-                            Log.e(
-                                "CodeLocator fieldInfoList: " + (viewClassInfo?.fieldInfoList?.size
-                                    ?: 0) + ", methodInfoList: " + (viewClassInfo?.methodInfoList?.size ?: 0)
-                            )
-                            if (viewClassInfo == null) {
-                                showGetViewClassInfoError()
-                                return
-                            }
-                            view.viewClassInfo = viewClassInfo
-                            ThreadUtils.runOnUIThread {
-                                if (isField) {
-                                    ShowViewClassInfoDialog(codeLocatorWindow, project, view).showAndGet()
-                                } else {
-                                    InvokeMethodDialog.showDialog(codeLocatorWindow, project, view)
-                                }
-                            }
+            OperateResponse::class.java,
+            object : DeviceManager.OnExecutedListener<OperateResponse> {
+                override fun onExecSuccess(device: Device, response: OperateResponse) {
+                    val result = response.data
+                    val errorMsg = result.getResult(ResultKey.ERROR)
+                    if (errorMsg != null) {
+                        throw ExecuteException(errorMsg, result.getResult(ResultKey.STACK_TRACE))
+                    }
+                    val viewClassInfo = result.getResult(ResultKey.DATA, ViewClassInfo::class.java)
+                    Log.e(
+                        "CodeLocator fieldInfoList: " + (viewClassInfo?.fieldInfoList?.size
+                            ?: 0) + ", methodInfoList: " + (viewClassInfo?.methodInfoList?.size ?: 0)
+                    )
+                    if (viewClassInfo == null) {
+                        throw ExecuteException(ResUtils.getString("get_class_info_error"))
+                    }
+                    view.viewClassInfo = viewClassInfo
+                    ThreadUtils.runOnUIThread {
+                        if (isField) {
+                            ShowViewClassInfoDialog(codeLocatorWindow, project, view).show()
                         } else {
-                            showGetViewClassInfoError()
+                            InvokeMethodDialog.showDialog(codeLocatorWindow, project, view)
                         }
-                    } catch (t: Throwable) {
-                        showGetViewClassInfoError()
                     }
                 }
 
-                override fun onExecFailed(failedReason: String?) {
+                override fun onExecFailed(t: Throwable) {
                     Messages.showMessageDialog(
                         codeLocatorWindow,
-                        failedReason, "CodeLocator", Messages.getInformationIcon()
+                        StringUtils.getErrorTip(t), "CodeLocator", Messages.getInformationIcon()
                     )
                 }
             }
         )
-    }
-
-    private fun showGetViewClassInfoError() {
-        ThreadUtils.runOnUIThread {
-            Messages.showMessageDialog(
-                codeLocatorWindow,
-                "获取失败, 请检查应用是否在前台或者View是否存在", "CodeLocator", Messages.getInformationIcon()
-            )
+        if (isField) {
+            Mob.mob(Mob.Action.CLICK, Mob.Button.VIEW_ALL_FIELD)
+        } else {
+            Mob.mob(Mob.Action.CLICK, Mob.Button.VIEW_ALL_METHOD)
         }
     }
 }

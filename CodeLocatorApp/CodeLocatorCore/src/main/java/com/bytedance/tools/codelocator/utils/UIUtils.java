@@ -35,7 +35,7 @@ public class UIUtils {
                 int resId = Integer.parseInt(field.get(obj).toString());
                 return context.getResources().getDimensionPixelSize(resId);
             } catch (Exception e) {
-                Log.e("CodeLocator", "获取状态栏高度错误 " + Log.getStackTraceString(e));
+                Log.e(CodeLocator.TAG, "获取状态栏高度错误 " + Log.getStackTraceString(e));
             }
         }
         return 0;

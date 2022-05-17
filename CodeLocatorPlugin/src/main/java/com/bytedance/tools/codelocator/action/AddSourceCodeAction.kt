@@ -5,36 +5,41 @@ import com.bytedance.tools.codelocator.dialog.ShowDownloadSourceDialog
 import com.bytedance.tools.codelocator.listener.OnClickListener
 import com.bytedance.tools.codelocator.model.Dependencies
 import com.bytedance.tools.codelocator.model.DependenciesInfo
-import com.bytedance.tools.codelocator.model.ExecResult
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.parser.DependenciesParser
 import com.bytedance.tools.codelocator.parser.DisplayDependenciesParser
 import com.bytedance.tools.codelocator.utils.*
+import com.bytedance.tools.codelocator.utils.ProjectUtils.startSync
 import com.intellij.ide.DataManager
-import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.popup.JBPopupFactory
-import java.io.BufferedWriter
 import java.io.File
-import java.io.FileWriter
-import javax.swing.Icon
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
 
 class AddSourceCodeAction(
     var project: Project,
     val codeLocatorWindow: CodeLocatorWindow,
-    val text: String?,
-    icon: Icon?
-) : AnAction(text, text, icon) {
+    val isUpdate: Boolean = false
+) : BaseAction(
+    if (isUpdate) ResUtils.getString("update_source_index") else ResUtils.getString("add_source_index"),
+    if (isUpdate) ResUtils.getString("update_source_index") else ResUtils.getString("add_source_index"),
+    if (isUpdate) {
+        ImageUtils.loadIcon("update_dependencies.png", 16)
+    } else {
+        ImageUtils.loadIcon("add_dependencies.png", 16)
+    }
+) {
 
     companion object {
-        const val UPDATE_TEXT = "更新源码索引(Control + 左键有惊喜)"
+
+        const val CODE_LOCATOR_GRADLE_FILE_NAME = "codeLocator.gradle"
 
         const val MODULE_NAME = "JustForCodeIndexModule"
 
@@ -45,14 +50,9 @@ class AddSourceCodeAction(
             mainModuleName: String,
             indicator: ProgressIndicator
         ) {
-            setIndicatorText(indicator, "获取当前项目依赖")
-            val dependenciesFilePath = "${FileUtils.codelocatorMainDir.absolutePath}${File.separator}dependencies.txt"
-            val commands = arrayListOf(
-                "cd ${projectPath.replace(" ", "\\ ")}",
-                "./gradlew :$mainModuleName:tasks :$mainModuleName:dependencies > ${dependenciesFilePath}"
-            ).joinToString(separator = ";", postfix = "", prefix = "")
-
-            val execCommand = ShellHelper.execCommand(commands)
+            setIndicatorText(indicator, ResUtils.getString("dep_get"))
+            val dependenciesFilePath = "${FileUtils.sCodeLocatorMainDirPath}${File.separator}dependencies.txt"
+            val execCommand = OSHelper.instance.getDependenciesResult(projectPath, mainModuleName, dependenciesFilePath)
             processDependenciesFile(
                 codeLocatorWindow,
                 indicator,
@@ -69,26 +69,27 @@ class AddSourceCodeAction(
             codeLocatorWindow: CodeLocatorWindow,
             filePath: String
         ) {
-            ProgressManager.getInstance().run(object : Task.Backgroundable(project, "正在分析当前项目依赖(大约需要一分钟)", true) {
-                override fun run(indicator: ProgressIndicator) {
-                    try {
-                        processDependenciesFile(
-                            codeLocatorWindow,
-                            indicator,
-                            filePath,
-                            "",
-                            project,
-                            null,
-                            project.basePath!!
-                        )
-                        ApplicationManager.getApplication().invokeLater {
-                            codeLocatorWindow.updateActionGroup()
+            ProgressManager.getInstance()
+                .run(object : Task.Backgroundable(project, ResUtils.getString("dep_source_code_analysis_tip"), true) {
+                    override fun run(indicator: ProgressIndicator) {
+                        try {
+                            processDependenciesFile(
+                                codeLocatorWindow,
+                                indicator,
+                                filePath,
+                                "",
+                                project,
+                                null,
+                                FileUtils.getProjectFilePath(project)
+                            )
+                            ThreadUtils.runOnUIThread {
+                                codeLocatorWindow.updateActionGroup()
+                            }
+                        } catch (t: Throwable) {
+                            Log.e("Create Module Error", t)
                         }
-                    } catch (t: Throwable) {
-                        Log.e("Create Module Error", t)
                     }
-                }
-            })
+                })
         }
 
         private fun processDependenciesFile(
@@ -97,20 +98,20 @@ class AddSourceCodeAction(
             dependenciesFilePath: String,
             mainModuleName: String,
             project: Project,
-            execCommand: ExecResult?,
+            execResult: ExecResult?,
             projectPath: String
         ) {
-            setIndicatorText(indicator, "分析当前项目依赖")
+            setIndicatorText(indicator, ResUtils.getString("dep_analysis"))
             val dependenciesInfos = DependenciesParser(FileUtils.getFileContent(dependenciesFilePath)).parser()
             if (dependenciesInfos.isNullOrEmpty()) {
                 Log.e("分析项目依赖失败 mainModule: $mainModuleName")
-                var tip = "获取项目依赖出现问题, 可点击反馈问题进行反馈"
-                if (execCommand?.errorBytes?.isNotEmpty() == true) {
-                    var errorStr = String(execCommand.errorBytes)
+                var tip = ResUtils.getString("dep_analysis_dep_fail_feedback")
+                if (execResult?.errorMsg?.isNotEmpty() == true) {
+                    var errorStr = execResult.errorMsg
                     if (errorStr.length > 1024) {
                         errorStr = errorStr.substring(0, 1024) + "..."
                     }
-                    tip = "获取项目依赖出现问题, 报错信息: $errorStr"
+                    tip = ResUtils.getString("dep_analysis_dep_fail_format", errorStr)
                     Log.e(errorStr)
                     FileUtils.saveContentToFile(
                         File(dependenciesFilePath),
@@ -118,11 +119,11 @@ class AddSourceCodeAction(
                     )
                 } else {
                     if (File(dependenciesFilePath).exists()) {
-                        ShellHelper.execCommand("open " + dependenciesFilePath.replace(" ", "\\ "))
-                        tip = "获取项目依赖出现问题, 已打开日志文件可查看原因, 如仍有问题可点击反馈问题进行反馈"
+                        OSHelper.instance.open(dependenciesFilePath)
+                        tip = ResUtils.getString("dep_analysis_dep_fail_open_log_file")
                     }
                 }
-                ApplicationManager.getApplication().invokeLater {
+                ThreadUtils.runOnUIThread {
                     Messages.showMessageDialog(
                         project,
                         tip,
@@ -148,7 +149,7 @@ class AddSourceCodeAction(
                 }
             }
 
-            setIndicatorText(indicator, "创建Debug项目依赖")
+            setIndicatorText(indicator, ResUtils.getString("dep_source_code_create_debug"))
             var hasAddCodeLocatorFile = false
 
             removeOpenSourceCodeDependencies(projectPath, debugDependencies)
@@ -160,25 +161,25 @@ class AddSourceCodeAction(
 
             if (hasAddCodeLocatorFile) {
                 addCodeLocatorInSettingsFile(projectPath)
-                addModuleInGitIgnoreFile(projectPath, "codelocator.gradle")
+                addModuleInGitIgnoreFile(projectPath, CODE_LOCATOR_GRADLE_FILE_NAME)
             }
 
             if (releaseDependencies.size <= 0 && debugDependencies.size <= 0) {
-                ApplicationManager.getApplication().invokeLater {
+                ThreadUtils.runOnUIThread {
                     Log.e("未获取到项目依赖 $mainModuleName")
                     Messages.showMessageDialog(
                         project,
-                        "获取项目依赖出现问题, 请点击反馈问题进行反馈",
+                        ResUtils.getString("dep_analysis_dep_fail_feedback"),
                         "CodeLocator",
                         Messages.getInformationIcon()
                     )
                 }
             }
 
-            if ("${FileUtils.codelocatorMainDir.absolutePath}${File.separator}dependencies.txt" != dependenciesFilePath) {
+            if ("${FileUtils.sCodeLocatorMainDirPath}${File.separator}dependencies.txt" != dependenciesFilePath) {
                 FileUtils.copyFile(
                     dependenciesFilePath,
-                    "${FileUtils.codelocatorMainDir.absolutePath}${File.separator}dependencies.txt"
+                    "${FileUtils.sCodeLocatorMainDirPath}${File.separator}dependencies.txt"
                 )
             }
 
@@ -186,7 +187,7 @@ class AddSourceCodeAction(
 
             Thread.sleep(3000)
 
-            IdeaUtils.startSync()
+            project.startSync()
 
             Thread.sleep(3000)
 
@@ -236,7 +237,7 @@ class AddSourceCodeAction(
             }
             addModuleInGitIgnoreFile(projectPath, "/$fullModuleName")
             ZipUtils.unZip(
-                File(FileUtils.codelocatorPluginDir, FileUtils.ANDROID_MODULE_TEMPLATE_FILE_NAME),
+                File(FileUtils.sCodeLocatorPluginDir, FileUtils.ANDROID_MODULE_TEMPLATE_FILE_NAME),
                 projectPath + File.separator + fullModuleName
             )
             appendDepInModuleGradle(projectPath + File.separator + fullModuleName, dependencies)
@@ -250,12 +251,13 @@ class AddSourceCodeAction(
             }
             addModuleInGitIgnoreFile(projectPath, "/$fullModuleName")
             ZipUtils.unZip(
-                File(FileUtils.codelocatorPluginDir, FileUtils.JAVA_MODULE_TEMPLATE_FILE_NAME),
+                File(FileUtils.sCodeLocatorPluginDir, FileUtils.JAVA_MODULE_TEMPLATE_FILE_NAME),
                 projectPath + File.separator + fullModuleName
             )
             appendDepInModuleGradle(projectPath + File.separator + fullModuleName, dependencies)
             changeModuleManifestPkgName(projectPath + File.separator + fullModuleName, "Release")
-            addModuleInCodeLocatorFile = addModuleInCodeLocatorFile(projectPath, fullModuleName) && addModuleInCodeLocatorFile
+            addModuleInCodeLocatorFile =
+                addModuleInCodeLocatorFile(projectPath, fullModuleName) && addModuleInCodeLocatorFile
 
             return addModuleInCodeLocatorFile
         }
@@ -270,7 +272,7 @@ class AddSourceCodeAction(
                 return
             }
             val splitLines = fileContent.split("\n")
-            val fileWriter = BufferedWriter(FileWriter(manifestFile))
+            val fileWriter = OutputStreamWriter(FileOutputStream(manifestFile), FileUtils.CHARSET_NAME)
             var hasContent = false
             for (line in splitLines) {
                 if (hasContent) {
@@ -292,7 +294,7 @@ class AddSourceCodeAction(
             if (fileContent == null) {
                 return
             }
-            val fileWriter = BufferedWriter(FileWriter(gradleFile))
+            val fileWriter = OutputStreamWriter(FileOutputStream(gradleFile), FileUtils.CHARSET_NAME)
             fileWriter.write(fileContent)
             val dependenciesSet = mutableSetOf<Dependencies>()
             for (dependInfo in dependenciesList) {
@@ -303,17 +305,31 @@ class AddSourceCodeAction(
             for (dependencies in dependenciesSet) {
                 fileWriter.write("\n    implementation \"$dependencies\"")
             }
+            val config = FileUtils.getConfig()
+
+            val sb = StringBuilder()
+            if (config == null) {
+                sb.append(
+                    "\n    all*.exclude group: 'androidx.lifecycle'" +
+                    "\n    all*.exclude group: 'androidx.recyclerview'" +
+                    "\n    all*.exclude group: 'androidx.savedstate'" +
+                    "\n    all*.exclude group: 'androidx.activity'" +
+                    "\n    all*.exclude group: 'androidx.fragment'")
+            } else {
+                val filterGroup = config.filterGroup!!
+                for (group in filterGroup) {
+                    sb.append("\n    all*.exclude group: '$group'")
+                }
+            }
             fileWriter.write(
-                "\n}\n\nconfigurations {\n" +
-                        "    all*.exclude group: 'androidx.lifecycle'\n" +
-                        "    all*.exclude group: 'androidx.fragment'\n}"
+                "\n}\n\nconfigurations {$sb\n}"
             )
             fileWriter.flush()
             fileWriter.close()
         }
 
         fun addModuleInCodeLocatorFile(projectPath: String, moduleName: String): Boolean {
-            val codelocatorFile = File(projectPath, "codelocator.gradle")
+            val codelocatorFile = File(projectPath, CODE_LOCATOR_GRADLE_FILE_NAME)
             if (codelocatorFile.exists() && !codelocatorFile.isFile) {
                 return false
             }
@@ -322,7 +338,7 @@ class AddSourceCodeAction(
             }
             val fileContent = FileUtils.getFileContent(codelocatorFile) ?: return false
             val fileLines = fileContent.split("\n")
-            val fileWriter = BufferedWriter(FileWriter(codelocatorFile))
+            val fileWriter = OutputStreamWriter(FileOutputStream(codelocatorFile), FileUtils.CHARSET_NAME)
             var hasAppendModule = false
             var hasContent = false
             for (line in fileLines) {
@@ -361,14 +377,14 @@ class AddSourceCodeAction(
                 return
             }
             val fileContent = FileUtils.getFileContent(settingsFile)
-            if (fileContent.contains("if (new File(\"codelocator.gradle\").exists()) {")) {
+            if (fileContent.contains("if (new File(\"${CODE_LOCATOR_GRADLE_FILE_NAME}\").exists()) {")) {
                 return
             }
-            val fileWriter = BufferedWriter(FileWriter(settingsFile, true))
+            val fileWriter = OutputStreamWriter(FileOutputStream(settingsFile, true), FileUtils.CHARSET_NAME)
             fileWriter.write(
-                "\nif (new File(\"codelocator.gradle\").exists()) {\n" +
-                        "    apply from: 'codelocator.gradle'\n" +
-                        "}"
+                "\nif (new File(\"${CODE_LOCATOR_GRADLE_FILE_NAME}\").exists()) {\n" +
+                    "    apply from: '${CODE_LOCATOR_GRADLE_FILE_NAME}'\n" +
+                    "}"
             )
             fileWriter.flush()
             fileWriter.close()
@@ -391,7 +407,7 @@ class AddSourceCodeAction(
                 }
             }
             if (!hasIgnoredModule) {
-                val fileWriter = BufferedWriter(FileWriter(gitIgnoreFile, true))
+                val fileWriter = OutputStreamWriter(FileOutputStream(gitIgnoreFile, true), FileUtils.CHARSET_NAME)
                 fileWriter.write("\n$moduleName")
                 fileWriter.flush()
                 fileWriter.close()
@@ -399,22 +415,24 @@ class AddSourceCodeAction(
         }
     }
 
-    override fun actionPerformed(p0: AnActionEvent) {
-        if (UPDATE_TEXT == text && p0.inputEvent.isControlDown) {
+    override fun isEnable(e: AnActionEvent) = true
+
+    override fun actionPerformed(e: AnActionEvent) {
+        if (isUpdate && e.inputEvent.isControlDown) {
             Mob.mob(Mob.Action.RIGHT_CLICK, Mob.Button.SOURCE_CODE)
 
             ShowDownloadSourceDialog(codeLocatorWindow, project).show()
             return
         }
-        if (UPDATE_TEXT == text && p0.inputEvent.isShiftDown) {
+        if (isUpdate && e.inputEvent.isShiftDown) {
             Mob.mob(Mob.Action.RIGHT_CLICK, Mob.Button.SOURCE_CODE)
             val fileContent =
-                FileUtils.getFileContent("${FileUtils.codelocatorMainDir.absolutePath}${File.separator}dependencies.txt")
+                FileUtils.getFileContent("${FileUtils.sCodeLocatorMainDirPath}${File.separator}dependencies.txt")
             val map = DisplayDependenciesParser(fileContent).parser()
             if (map == null) {
                 Messages.showMessageDialog(
                     project,
-                    "获取项目依赖出现问题, 请点击反馈问题进行反馈",
+                    ResUtils.getString("dep_analysis_dep_fail_feedback"),
                     "CodeLocator",
                     Messages.getInformationIcon()
                 )
@@ -426,15 +444,13 @@ class AddSourceCodeAction(
 
         Mob.mob(Mob.Action.CLICK, Mob.Button.SOURCE_CODE)
 
-        project.basePath ?: return
-
-        val projectPath = project.basePath!!
+        val projectPath = FileUtils.getProjectFilePath(project)
 
         getProjectDependenciesInfo(codeLocatorWindow, project, projectPath)
     }
 
     fun getProjectDependenciesInfo(codeLocatorWindow: CodeLocatorWindow, project: Project, projectPath: String) {
-        val mainModuleNames = FileUtils.getMainModuleName(projectPath, true)
+        val mainModuleNames = FileUtils.getMainModuleName(project, true)
         Log.d("获取到项目主module列表: $mainModuleNames")
         if (mainModuleNames.size == 1) {
             analysisProjectModuleDepsInBackground(codeLocatorWindow, project, projectPath, mainModuleNames.first())
@@ -443,7 +459,11 @@ class AddSourceCodeAction(
         }
     }
 
-    fun showSelectMainModule(codeLocatorWindow: CodeLocatorWindow, projectPath: String, mainModules: MutableSet<String>) {
+    fun showSelectMainModule(
+        codeLocatorWindow: CodeLocatorWindow,
+        projectPath: String,
+        mainModules: MutableSet<String>
+    ) {
         val actionGroup = DefaultActionGroup("listGroup", true)
         for (module in mainModules) {
             actionGroup.add(SelectModuleAction(module, null, object : OnClickListener {
@@ -453,7 +473,7 @@ class AddSourceCodeAction(
             }))
         }
         val popDialog = JBPopupFactory.getInstance().createActionGroupPopup(
-            "选择主Module",
+            ResUtils.getString("dep_source_code_select_main_module"),
             actionGroup,
             DataManager.getInstance().dataContext,
             JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
@@ -469,17 +489,18 @@ class AddSourceCodeAction(
         mainModuleName: String
     ) {
         Log.d("分析项目依赖, 主module: $mainModuleName")
-        ProgressManager.getInstance().run(object : Task.Backgroundable(project, "正在分析当前项目依赖(大约需要一分钟)", true) {
-            override fun run(indicator: ProgressIndicator) {
-                try {
-                    createModule(codeLocatorWindow, project, projectPath, mainModuleName, indicator)
-                    ApplicationManager.getApplication().invokeLater {
-                        codeLocatorWindow.updateActionGroup()
+        ProgressManager.getInstance()
+            .run(object : Task.Backgroundable(project, ResUtils.getString("dep_source_code_analysis_tip"), true) {
+                override fun run(indicator: ProgressIndicator) {
+                    try {
+                        createModule(codeLocatorWindow, project, projectPath, mainModuleName, indicator)
+                        ThreadUtils.runOnUIThread {
+                            codeLocatorWindow.updateActionGroup()
+                        }
+                    } catch (t: Throwable) {
+                        Log.e("Create Module Error", t)
                     }
-                } catch (t: Throwable) {
-                    Log.e("Create Module Error", t)
                 }
-            }
-        })
+            })
     }
 }

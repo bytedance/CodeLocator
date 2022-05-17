@@ -1,17 +1,24 @@
 package com.bytedance.tools.codelocator.action
 
-import com.bytedance.tools.codelocator.constants.CodeLocatorConstants
+import com.bytedance.tools.codelocator.device.Device
+import com.bytedance.tools.codelocator.device.DeviceManager
+import com.bytedance.tools.codelocator.device.action.AdbCommand
+import com.bytedance.tools.codelocator.device.action.BroadcastAction
+import com.bytedance.tools.codelocator.device.action.PullFileAction
+import com.bytedance.tools.codelocator.device.action.PushFileAction
 import com.bytedance.tools.codelocator.model.*
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
-import com.bytedance.tools.codelocator.parser.Parser
 import com.bytedance.tools.codelocator.model.WFile
 import com.bytedance.tools.codelocator.dialog.EditFileContentDialog
 import com.bytedance.tools.codelocator.dialog.ShowImageDialog
+import com.bytedance.tools.codelocator.exception.ExecuteException
 import com.bytedance.tools.codelocator.utils.*
+import com.bytedance.tools.codelocator.response.FilePathResponse
+import com.bytedance.tools.codelocator.response.StringResponse
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.*
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.popup.JBPopupFactory
@@ -25,14 +32,14 @@ import javax.imageio.ImageIO
 import javax.swing.*
 
 class FileOperateAction(
-    project: Project,
-    codeLocatorWindow: CodeLocatorWindow,
+    val project: Project,
+    val codeLocatorWindow: CodeLocatorWindow,
     text: String,
     icon: Icon?,
     val pkgName: String,
     val wFile: WFile,
     val operateType: Int
-) : BaseAction(project, codeLocatorWindow, text, text, icon) {
+) : BaseAction(text, text, icon) {
 
     companion object {
 
@@ -46,54 +53,52 @@ class FileOperateAction(
 
         const val FILE_UPLOAD = 4
 
-        fun isImageFile(wFile: WFile): Boolean {
-            return wFile.name.endsWith(".png")
-                    || wFile.name.endsWith(".jpg")
-                    || wFile.name.endsWith(".jpeg")
-                    || wFile.name.endsWith(".gif")
-        }
-
-        fun isTextFile(wFile: WFile): Boolean {
+        private fun isEditableFile(wFile: WFile): Boolean {
             return wFile.name.endsWith(".js")
-                    || wFile.name.endsWith(".css")
-                    || wFile.name.endsWith(".log")
-                    || wFile.name.endsWith(".xml")
-                    || wFile.name.endsWith(".html")
-                    || wFile.name.endsWith(".txt")
+                || wFile.name.endsWith(".css")
+                || wFile.name.endsWith(".log")
+                || wFile.name.endsWith(".xml")
+                || wFile.name.endsWith(".html")
+                || wFile.name.endsWith(".txt")
         }
 
         @JvmStatic
-        fun showFileOperation(codeLocatorWindow: CodeLocatorWindow, jComponent: JComponent, wFile: WFile, e: MouseEvent) {
+        fun showFileOperation(
+            codeLocatorWindow: CodeLocatorWindow,
+            jComponent: JComponent,
+            wFile: WFile,
+            e: MouseEvent
+        ) {
             val actionGroup = DefaultActionGroup("listGroup", true)
             if (!wFile.isDirectory) {
                 actionGroup.add(
                     FileOperateAction(
-                        codeLocatorWindow.project, codeLocatorWindow, "保存到本地",
-                        ImageUtils.loadIcon("download_file_enable"),
+                        codeLocatorWindow.project, codeLocatorWindow, ResUtils.getString("save_to_local"),
+                        ImageUtils.loadIcon("download_file"),
                         codeLocatorWindow.currentApplication!!.packageName, wFile, FILE_DOWNLOAD
                     )
                 )
-                if (isImageFile(wFile)) {
+                if (ImageUtils.isImageFile(wFile.name)) {
                     actionGroup.add(
                         FileOperateAction(
-                            codeLocatorWindow.project, codeLocatorWindow, "查看内容",
-                            ImageUtils.loadIcon("view_enable"),
+                            codeLocatorWindow.project, codeLocatorWindow, ResUtils.getString("view_content"),
+                            ImageUtils.loadIcon("view"),
                             codeLocatorWindow.currentApplication!!.packageName, wFile, FILE_OPEN
                         )
                     )
-                } else if (isTextFile(wFile)) {
+                } else if (isEditableFile(wFile)) {
                     actionGroup.add(
                         FileOperateAction(
-                            codeLocatorWindow.project, codeLocatorWindow, "编辑内容",
-                            ImageUtils.loadIcon("edit_view_enable"),
+                            codeLocatorWindow.project, codeLocatorWindow, ResUtils.getString("file_edit_content"),
+                            ImageUtils.loadIcon("edit_view"),
                             codeLocatorWindow.currentApplication!!.packageName, wFile, FILE_EDIT
                         )
                     )
                 } else if (wFile.customTag != null && wFile.isEditable) {
                     actionGroup.add(
                         FileOperateAction(
-                            codeLocatorWindow.project, codeLocatorWindow, "编辑内容",
-                            ImageUtils.loadIcon("edit_view_enable"),
+                            codeLocatorWindow.project, codeLocatorWindow, ResUtils.getString("file_edit_content"),
+                            ImageUtils.loadIcon("edit_view"),
                             codeLocatorWindow.currentApplication!!.packageName, wFile, FILE_EDIT
                         )
                     )
@@ -101,16 +106,16 @@ class FileOperateAction(
             } else {
                 actionGroup.add(
                     FileOperateAction(
-                        codeLocatorWindow.project, codeLocatorWindow, "上传文件到此目录",
-                        ImageUtils.loadIcon("download_file_enable"),
+                        codeLocatorWindow.project, codeLocatorWindow, ResUtils.getString("upload_file_to_dir"),
+                        ImageUtils.loadIcon("download_file"),
                         codeLocatorWindow.currentApplication!!.packageName, wFile, FILE_UPLOAD
                     )
                 )
                 if (wFile.customTag != null && wFile.isEditable) {
                     actionGroup.add(
                         FileOperateAction(
-                            codeLocatorWindow.project, codeLocatorWindow, "编辑内容",
-                            ImageUtils.loadIcon("edit_view_enable"),
+                            codeLocatorWindow.project, codeLocatorWindow, ResUtils.getString("file_edit_content"),
+                            ImageUtils.loadIcon("edit_view"),
                             codeLocatorWindow.currentApplication!!.packageName, wFile, FILE_EDIT
                         )
                     )
@@ -118,8 +123,8 @@ class FileOperateAction(
             }
             actionGroup.add(
                 FileOperateAction(
-                    codeLocatorWindow.project, codeLocatorWindow, "删除",
-                    ImageUtils.loadIcon("delete_file_enable"),
+                    codeLocatorWindow.project, codeLocatorWindow, ResUtils.getString("delete"),
+                    ImageUtils.loadIcon("delete_file"),
                     codeLocatorWindow.currentApplication!!.packageName, wFile, FILE_DELETE
                 )
             )
@@ -136,6 +141,8 @@ class FileOperateAction(
         }
     }
 
+    override fun isEnable(e: AnActionEvent) = DeviceManager.hasAndroidDevice()
+
     override fun actionPerformed(e: AnActionEvent) {
         when (operateType) {
             FILE_DOWNLOAD -> downloadFile()
@@ -143,7 +150,6 @@ class FileOperateAction(
             FILE_DELETE -> deleteFile()
             FILE_OPEN -> openFile()
             FILE_UPLOAD -> uploadFile()
-            else -> NotificationUtils.showNotification(project, "该版本目前不支持当前操作, 请升级最新插件", 3000)
         }
     }
 
@@ -155,16 +161,16 @@ class FileOperateAction(
         val windowAncestor = SwingUtilities.getWindowAncestor(codeLocatorWindow)
         val fileDialog = when (windowAncestor) {
             is JFrame -> {
-                FileDialog(windowAncestor, "选择文件保存路径", FileDialog.SAVE)
+                FileDialog(windowAncestor, ResUtils.getString("select_path"), FileDialog.SAVE)
             }
             is Dialog -> {
-                FileDialog(windowAncestor, "选择文件保存路径", FileDialog.SAVE)
+                FileDialog(windowAncestor, ResUtils.getString("select_path"), FileDialog.SAVE)
             }
             else -> {
                 return
             }
         }
-        val loadConfig = CodeLocatorConfig.loadConfig()
+        val loadConfig = CodeLocatorUserConfig.loadConfig()
         if (!loadConfig.lastSaveFilePath.isNullOrEmpty() && File(loadConfig.lastSaveFilePath).exists()) {
             fileDialog.directory = File(loadConfig.lastSaveFilePath).parent
         }
@@ -180,55 +186,64 @@ class FileOperateAction(
             saveFile.delete()
         }
 
-        downloadFileToPath(wFile, saveFile, true)
+        downloadFileToPath(codeLocatorWindow, true, wFile, saveFile, true)
     }
 
     private fun downloadFileToPath(
+        codeLocatorWindow: CodeLocatorWindow,
+        isFirst: Boolean,
         wfile: WFile,
         saveFile: File,
         showTip: Boolean = true,
         saveFileCallBack: OnSaveFileCallBack? = null
     ) {
-        val currentDevice = DeviceManager.getCurrentDevice()
-
-        var execCommand = when {
-            wfile.isInSDCard -> {
-                "pull ${wfile.absoluteFilePath.replace(" ", "\\ ")} ${saveFile.absolutePath.replace(" ", "\\ ")}"
+        var adbCommand = when {
+            (canDirectlyDownloadFile(codeLocatorWindow, wfile, isFirst)) -> {
+                AdbCommand(
+                    PullFileAction(
+                        wfile.absoluteFilePath,
+                        saveFile.absolutePath
+                    )
+                )
             }
             else -> {
-                var broadcastBuilder = BroadcastBuilder(CodeLocatorConstants.ACTION_DEBUG_FILE_OPERATE)
-                    .arg(CodeLocatorConstants.KEY_PROCESS_SOURCE_FILE_PATH, wfile.absoluteFilePath.replace(" ", "\\ "))
-                    .arg(CodeLocatorConstants.KEY_PROCESS_FILE_OPERATE, CodeLocatorConstants.KEY_ACTION_PULL)
-                if (currentDevice?.grabMode != Device.GRAD_MODE_SHELL) {
-                    broadcastBuilder.arg(CodeLocatorConstants.KEY_SAVE_TO_FILE, "true")
-                }
-                broadcastBuilder.build()
+                AdbCommand(
+                    BroadcastAction(ACTION_DEBUG_FILE_OPERATE)
+                        .args(KEY_PROCESS_SOURCE_FILE_PATH, wfile.absoluteFilePath)
+                        .args(KEY_PROCESS_FILE_OPERATE, KEY_ACTION_PULL)
+                        .args(KEY_SAVE_TO_FILE, DeviceManager.isNeedSaveFile(project))
+                )
             }
         }
-        DeviceManager.execCommand(project,
-            AdbCommand(execCommand),
-            object : DeviceManager.OnExecutedListener {
-                override fun onExecSuccess(device: Device?, execResult: ExecResult?) {
-                    if (wfile.isInSDCard) {
+        DeviceManager.enqueueCmd(
+            project,
+            adbCommand,
+            FilePathResponse::class.java,
+            object : DeviceManager.OnExecutedListener<FilePathResponse> {
+                override fun onExecSuccess(device: Device, response: FilePathResponse) {
+                    if (response.msg != null) {
+                        throw ExecuteException(response.msg)
+                    }
+                    if (canDirectlyDownloadFile(codeLocatorWindow, wfile, isFirst)) {
                         if (saveFile.exists()) {
                             saveFileCallBack?.onSaveSuccess(saveFile)
                             if (showTip) {
-                                ShellHelper.execCommand("open " + saveFile.parent.replace(" ", "\\ "))
+                                OSHelper.instance.open(saveFile.path)
                                 ThreadUtils.runOnUIThread {
-                                    NotificationUtils.showNotification(
+                                    NotificationUtils.showNotifyInfoShort(
                                         project,
-                                        "文件已保存到 " + saveFile.absolutePath,
+                                        ResUtils.getString("save_file_tip", saveFile.absolutePath),
                                         3000
                                     )
                                 }
                             }
                         } else {
-                            saveFileCallBack?.onSaveFailed("文件保存出现错误, 请点击小飞机反馈")
+                            saveFileCallBack?.onSaveFailed(ResUtils.getString("save_file_error"))
                             if (showTip) {
                                 ThreadUtils.runOnUIThread {
                                     Messages.showMessageDialog(
                                         project,
-                                        "文件保存出现错误, 请点击小飞机反馈",
+                                        ResUtils.getString("save_file_error"),
                                         "CodeLocator",
                                         Messages.getInformationIcon()
                                     )
@@ -236,59 +251,21 @@ class FileOperateAction(
                             }
                         }
                     } else {
-                        var resultString = Parser.parserCommandResult(
-                            DeviceManager.getCurrentDevice(),
-                            String(execResult!!.resultBytes),
-                            false
-                        )
-                        if (resultString?.startsWith("path:") == true) {
-                            val newFilePath = resultString.substring("path:".length)
-                            val newFile = WFile()
-                            newFile.isExists = true
-                            newFile.isInSDCard = true
-                            newFile.name = wfile.name
-                            newFile.length = wfile.length
-                            newFile.lastModified = wfile.lastModified
-                            newFile.absoluteFilePath = newFilePath
-                            downloadFileToPath(newFile, saveFile, showTip, saveFileCallBack)
-                        } else if (resultString?.startsWith("msg:") == true) {
-                            saveFileCallBack?.onSaveFailed("文件保存出现错误, ${resultString.substring("msg:".length)}")
-                            if (showTip) {
-                                ThreadUtils.runOnUIThread {
-                                    Messages.showMessageDialog(
-                                        project,
-                                        "文件保存出现错误, ${resultString.substring("msg:".length)}",
-                                        "CodeLocator",
-                                        Messages.getInformationIcon()
-                                    )
-                                }
-                            }
-                        } else {
-                            if (resultString.isNullOrEmpty()) {
-                                resultString = "请检查应用是否在前台"
-                            }
-                            saveFileCallBack?.onSaveFailed("文件保存出现错误, $resultString")
-                            if (showTip) {
-                                ThreadUtils.runOnUIThread {
-                                    Messages.showMessageDialog(
-                                        project,
-                                        "文件保存出现错误, $resultString",
-                                        "CodeLocator",
-                                        Messages.getInformationIcon()
-                                    )
-                                }
-                            }
-                        }
+                        val newFile = WFile()
+                        newFile.isExists = true
+                        newFile.isInSDCard = true
+                        newFile.name = wfile.name
+                        newFile.length = wfile.length
+                        newFile.lastModified = wfile.lastModified
+                        newFile.absoluteFilePath = response.data
+                        downloadFileToPath(codeLocatorWindow, false, newFile, saveFile, showTip, saveFileCallBack)
                     }
                 }
 
-                override fun onExecFailed(failReason: String?) {
-                    saveFileCallBack?.onSaveFailed(failReason)
+                override fun onExecFailed(t: Throwable) {
+                    saveFileCallBack?.onSaveFailed(t.message)
                     if (showTip) {
-                        var realFailReason = failReason
-                        if (realFailReason == null) {
-                            realFailReason = "下载文件失败, 请检查应用是否在前台"
-                        }
+                        var realFailReason = StringUtils.getErrorTip(t)
                         Messages.showMessageDialog(
                             project,
                             "$realFailReason",
@@ -300,17 +277,23 @@ class FileOperateAction(
             })
     }
 
+    private fun canDirectlyDownloadFile(
+        codeLocatorWindow: CodeLocatorWindow,
+        wfile: WFile,
+        isFirst: Boolean
+    ) = ((codeLocatorWindow?.currentApplication?.androidVersion ?: 30) < 30 && wfile.isInSDCard) || !isFirst
+
     private fun editFile() {
         Mob.mob(Mob.Action.CLICK, Mob.Button.EDIT_FILE)
         if (wFile.customTag != null && wFile.isEditable) {
             editCustomFile()
             return
         }
-        val saveFile = File(FileUtils.codelocatorTmpFileDir, wFile.name)
+        val saveFile = File(FileUtils.sCodelocatorTmpFileDirPath, wFile.name)
         if (saveFile.exists()) {
             saveFile.delete()
         }
-        downloadFileToPath(wFile, saveFile, false, object : OnSaveFileCallBack {
+        downloadFileToPath(codeLocatorWindow, true, wFile, saveFile, false, object : OnSaveFileCallBack {
             override fun onSaveSuccess(file: File) {
                 EditFileContentDialog.showViewDataDialog(codeLocatorWindow, project, wFile, file, pkgName)
             }
@@ -327,78 +310,61 @@ class FileOperateAction(
     }
 
     private fun editCustomFile() {
-        var execCommand = BroadcastBuilder(CodeLocatorConstants.ACTION_OPERATE_CUSTOM_FILE)
-            .arg(CodeLocatorConstants.KEY_PROCESS_FILE_OPERATE, CodeLocatorConstants.KEY_ACTION_GET)
-            .arg(CodeLocatorConstants.KEY_PROCESS_SOURCE_FILE_PATH, wFile.absoluteFilePath)
-            .arg(CodeLocatorConstants.KEY_CUSTOM_TAG, wFile.customTag)
-        DeviceManager.execCommand(project, AdbCommand(execCommand), object : DeviceManager.OnExecutedListener {
-            override fun onExecSuccess(device: Device?, execResult: ExecResult?) {
-                if (execResult?.resultCode == 0) {
-                    try {
-                        val parserCommandResult =
-                            Parser.parserCommandResult(device, String(execResult.resultBytes), false)
-                        val saveFile =
-                            File(FileUtils.codelocatorTmpFileDir, "codelocator_" + wFile.customTag + "_" + wFile.name)
-                        if (saveFile.exists()) {
-                            saveFile.delete()
-                        }
-                        if (parserCommandResult.isNullOrEmpty()) {
-                            ThreadUtils.runOnUIThread {
-                                Messages.showMessageDialog(
-                                    project, "下载文件失败, 请检查应用是否在前台",
-                                    "CodeLocator",
-                                    Messages.getInformationIcon()
-                                )
-                            }
-                            return
-                        }
-                        wFile.pullFilePath = saveFile.absolutePath
-                        if (wFile.isIsJson) {
-                            FileUtils.saveContentToFile(saveFile, StringUtils.formatJson(parserCommandResult))
-                        } else {
-                            FileUtils.saveContentToFile(saveFile, parserCommandResult)
-                        }
-                        EditFileContentDialog.showViewDataDialog(
-                            codeLocatorWindow,
-                            project,
-                            wFile,
-                            saveFile,
-                            pkgName
-                        )
-                    } catch (t: Throwable) {
-                        ThreadUtils.runOnUIThread {
-                            Messages.showMessageDialog(
-                                project,
-                                "文件读取失败, $t", "CodeLocator", Messages.getInformationIcon()
-                            )
-                        }
-                    }
-                } else {
-                    ThreadUtils.runOnUIThread {
-                        Messages.showMessageDialog(
-                            project,
-                            "文件读取失败, " + String(execResult!!.errorBytes), "CodeLocator", Messages.getInformationIcon()
-                        )
-                    }
-                }
-            }
+        DeviceManager.enqueueCmd(
+            project,
+            AdbCommand(
+                BroadcastAction(ACTION_OPERATE_CUSTOM_FILE)
+                    .args(KEY_PROCESS_FILE_OPERATE, KEY_ACTION_GET)
+                    .args(KEY_PROCESS_SOURCE_FILE_PATH, wFile.absoluteFilePath)
+                    .args(KEY_CUSTOM_TAG, wFile.customTag)
+            ),
+            StringResponse::class.java,
+            object : DeviceManager.OnExecutedListener<StringResponse> {
 
-            override fun onExecFailed(failedReason: String?) {
-                Messages.showMessageDialog(
-                    project,
-                    failedReason, "CodeLocator", Messages.getInformationIcon()
-                )
-            }
-        })
+                override fun onExecSuccess(device: Device, response: StringResponse) {
+                    if (response.msg != null) {
+                        throw ExecuteException(response.msg)
+                    }
+                    val saveFile =
+                        File(
+                            FileUtils.sCodelocatorTmpFileDirPath,
+                            "codelocator_" + wFile.customTag + "_" + wFile.name
+                        )
+                    if (saveFile.exists()) {
+                        saveFile.delete()
+                    }
+                    wFile.pullFilePath = saveFile.absolutePath
+                    if (wFile.isIsJson) {
+                        FileUtils.saveContentToFile(saveFile, StringUtils.formatJson(response.data))
+                    } else {
+                        FileUtils.saveContentToFile(saveFile, response.data)
+                    }
+                    EditFileContentDialog.showViewDataDialog(
+                        codeLocatorWindow,
+                        project,
+                        wFile,
+                        saveFile,
+                        pkgName
+                    )
+                }
+
+                override fun onExecFailed(t: Throwable) {
+                    Messages.showMessageDialog(
+                        project,
+                        StringUtils.getErrorTip(t),
+                        "CodeLocator",
+                        Messages.getInformationIcon()
+                    )
+                }
+            })
     }
 
     private fun openFile() {
-        Mob.mob(Mob.Action.CLICK, Mob.Button.OPEN_FILE)
-        val saveFile = File(FileUtils.codelocatorTmpFileDir, wFile.name)
+        val saveFile = File(FileUtils.sCodelocatorTmpFileDirPath, wFile.name)
         if (saveFile.exists()) {
             saveFile.delete()
         }
-        downloadFileToPath(wFile, saveFile, false, object : OnSaveFileCallBack {
+        downloadFileToPath(codeLocatorWindow, true, wFile, saveFile, false, object : OnSaveFileCallBack {
             override fun onSaveSuccess(file: File) {
                 try {
                     val readImage = if (file.name.endsWith(".gif")) {
@@ -410,25 +376,28 @@ class FileOperateAction(
                         ThreadUtils.runOnUIThread {
                             Messages.showMessageDialog(
                                 project,
-                                "图片解析失败, 可保存到本地查看",
+                                ResUtils.getString("file_image_decode_failed"),
                                 "CodeLocator",
                                 Messages.getInformationIcon()
                             )
                         }
                         return
                     }
-                    ApplicationManager.getApplication().invokeLater {
+                    ThreadUtils.runOnUIThread {
                         ShowImageDialog(
-                            codeLocatorWindow.project, codeLocatorWindow, readImage, "图片: " + wFile.absoluteFilePath,
+                            codeLocatorWindow.project,
+                            codeLocatorWindow,
+                            readImage,
+                            ResUtils.getString("file_image_title_format", wFile.absoluteFilePath),
                             wFile.name.endsWith(".gif")
-                        ).showAndGet()
+                        ).show()
                     }
                 } catch (t: Throwable) {
                     ThreadUtils.runOnUIThread {
                         Log.e("保存图片文件失败", t)
                         Messages.showMessageDialog(
                             project,
-                            "图片解析失败, 可保存到本地查看",
+                            ResUtils.getString("file_image_decode_failed"),
                             "CodeLocator",
                             Messages.getInformationIcon()
                         )
@@ -438,30 +407,34 @@ class FileOperateAction(
 
             override fun onSaveFailed(failReason: String?) {
                 ThreadUtils.runOnUIThread {
-                    Messages.showMessageDialog(project, "$failReason", "CodeLocator", Messages.getInformationIcon())
+                    Messages.showMessageDialog(
+                        project,
+                        "$failReason",
+                        "CodeLocator",
+                        Messages.getInformationIcon()
+                    )
                 }
             }
         })
+        Mob.mob(Mob.Action.CLICK, Mob.Button.OPEN_FILE)
     }
 
     private fun uploadFile() {
-        Mob.mob(Mob.Action.CLICK, Mob.Button.UPLOAD_FILE)
-
         val windowAncestor = SwingUtilities.getWindowAncestor(codeLocatorWindow)
         System.setProperty("apple.awt.fileDialogForDirectories", "true")
         System.setProperty("com.apple.macos.use-file-dialog-packages", "true")
         val fileDialog = when (windowAncestor) {
             is JFrame -> {
-                FileDialog(windowAncestor, "选择要上传的文件", FileDialog.LOAD)
+                FileDialog(windowAncestor, ResUtils.getString("file_choose_to_upload"), FileDialog.LOAD)
             }
             is Dialog -> {
-                FileDialog(windowAncestor, "选择要上传的文件", FileDialog.LOAD)
+                FileDialog(windowAncestor, ResUtils.getString("file_choose_to_upload"), FileDialog.LOAD)
             }
             else -> {
                 return
             }
         }
-        val loadConfig = CodeLocatorConfig.loadConfig()
+        val loadConfig = CodeLocatorUserConfig.loadConfig()
         var file: File? = null
         if (!loadConfig.lastOpenFilePath.isNullOrEmpty() && File(loadConfig.lastOpenFilePath).exists()) {
             file = File(loadConfig.lastOpenFilePath)
@@ -475,148 +448,114 @@ class FileOperateAction(
         }
         val selectFile = File(selectFileName)
         if (selectFile.isDirectory) {
-            Messages.showMessageDialog(codeLocatorWindow.project, "暂不支持上传文件夹", "CodeLocator", Messages.getInformationIcon())
+            Messages.showMessageDialog(
+                codeLocatorWindow.project,
+                ResUtils.getString("file_upload_dir_not_support"),
+                "CodeLocator",
+                Messages.getInformationIcon()
+            )
             return
         }
 
         loadConfig.lastOpenFilePath = selectFile.absolutePath
-        CodeLocatorConfig.updateConfig(loadConfig)
+        CodeLocatorUserConfig.updateConfig(loadConfig)
 
-        val codelocatorFile = FileUtils.getCodeLocatorFile(codeLocatorWindow.currentApplication!!.file)
+        val codelocatorFile = FileUtils.getCodeLocatorFile(
+            codeLocatorWindow.currentApplication!!.file,
+            codeLocatorWindow.currentApplication!!.androidVersion
+        )
         if (codelocatorFile == null) {
             Log.e("客户端 CodeLocator 文件夹不存在")
-            Messages.showMessageDialog(project, "文件保存失败, 请点击小飞机反馈", "CodeLocator", Messages.getInformationIcon())
+            Messages.showMessageDialog(
+                project,
+                ResUtils.getString("file_save_failed_need_feedback"),
+                "CodeLocator",
+                Messages.getInformationIcon()
+            )
             return
         }
 
-        DeviceManager.execCommand(project, AdbCommand(
-            "push " + selectFile.absolutePath.replace(" ", "\\ ")
-                    + " " + codelocatorFile.absoluteFilePath.replace(" ", "\\ ") + File.separator + selectFile.name
-        ), object : DeviceManager.OnExecutedListener {
-            override fun onExecSuccess(device: Device?, execResult: ExecResult?) {
-                if (execResult?.resultCode != 0) {
-                    ThreadUtils.runOnUIThread {
-                        Messages.showMessageDialog(
-                            project,
-                            "文件上传失败, " + String(execResult!!.errorBytes),
-                            "CodeLocator",
-                            Messages.getInformationIcon()
-                        )
-                    }
-                    return
-                }
-                var broadcastBuilder = BroadcastBuilder(CodeLocatorConstants.ACTION_DEBUG_FILE_OPERATE)
-                    .arg(
-                        CodeLocatorConstants.KEY_PROCESS_SOURCE_FILE_PATH,
-                        codelocatorFile.absoluteFilePath + File.separator + selectFile.name
-                    )
-                    .arg(CodeLocatorConstants.KEY_PROCESS_TARGET_FILE_PATH, wFile.absoluteFilePath)
-                    .arg(
-                        CodeLocatorConstants.KEY_PROCESS_FILE_OPERATE, CodeLocatorConstants.KEY_ACTION_MOVE
-                    )
-                if (device!!.getGrabMode() == Device.GRAD_MODE_FILE) {
-                    broadcastBuilder.arg(CodeLocatorConstants.KEY_SAVE_TO_FILE, "true")
-                }
-                val moveResult = ShellHelper.execCommand(AdbCommand(device, broadcastBuilder).toString())
-                if (moveResult.resultCode == 0) {
-                    val rowData = String(moveResult.resultBytes)
-                    val parserCommandResult = Parser.parserCommandResult(device, rowData, false)
-                    if (parserCommandResult.startsWith("path:")) {
-                        ThreadUtils.runOnUIThread {
-                            NotificationUtils.showNotification(project, "上传成功", 3000)
-                            codeLocatorWindow.getScreenPanel()?.getFileInfo(codeLocatorWindow!!.currentApplication, true)
-                        }
-                    } else if (parserCommandResult.startsWith("msg:")) {
-                        ThreadUtils.runOnUIThread {
-                            Messages.showMessageDialog(
-                                project,
-                                "保存失败 " + parserCommandResult.substring("msg:".length),
-                                "CodeLocator",
-                                Messages.getInformationIcon()
+        DeviceManager.enqueueCmd(
+            project,
+            AdbCommand(
+                PushFileAction(
+                    selectFile.absolutePath,
+                    codelocatorFile.absoluteFilePath + File.separator + selectFile.name
+                )
+            ),
+            StringResponse::class.java,
+            object : DeviceManager.OnExecutedListener<StringResponse> {
+                override fun onExecSuccess(device: Device, response: StringResponse) {
+                    val response = DeviceManager.executeCmd(
+                        project, AdbCommand(
+                            BroadcastAction(
+                                ACTION_DEBUG_FILE_OPERATE
                             )
-                        }
-                    } else {
-                        ThreadUtils.runOnUIThread {
-                            Messages.showMessageDialog(
-                                project,
-                                "保存失败 " + parserCommandResult,
-                                "CodeLocator",
-                                Messages.getInformationIcon()
-                            )
-                        }
+                                .args(
+                                    KEY_PROCESS_SOURCE_FILE_PATH,
+                                    codelocatorFile.absoluteFilePath + File.separator + selectFile.name
+                                )
+                                .args(KEY_PROCESS_TARGET_FILE_PATH, wFile.absoluteFilePath)
+                                .args(KEY_PROCESS_FILE_OPERATE, KEY_ACTION_MOVE)
+                                .args(KEY_SAVE_TO_FILE, DeviceManager.isNeedSaveFile(project))
+                        ), FilePathResponse::class.java
+                    )
+                    if (response.msg != null) {
+                        throw ExecuteException(response.msg)
                     }
-                } else {
                     ThreadUtils.runOnUIThread {
-                        Messages.showMessageDialog(
-                            project,
-                            "保存失败 " + String(moveResult.errorBytes),
-                            "CodeLocator",
-                            Messages.getInformationIcon()
-                        )
+                        NotificationUtils.showNotifyInfoShort(project, ResUtils.getString("file_upload_success"), 3000)
+                        codeLocatorWindow.getScreenPanel()?.getFileInfo(codeLocatorWindow!!.currentApplication, true)
                     }
                 }
-            }
 
-            override fun onExecFailed(failedReason: String?) {
-                Messages.showMessageDialog(project, failedReason, "CodeLocator", Messages.getInformationIcon())
-            }
-        })
+                override fun onExecFailed(t: Throwable) {
+                    Messages.showMessageDialog(
+                        project,
+                        StringUtils.getErrorTip(t),
+                        "CodeLocator",
+                        Messages.getInformationIcon()
+                    )
+                }
+            })
+        Mob.mob(Mob.Action.CLICK, Mob.Button.UPLOAD_FILE)
     }
 
     private fun deleteFile() {
-        Mob.mob(Mob.Action.CLICK, Mob.Button.DELETE_FILE)
-        var broadcastBuilder = BroadcastBuilder(CodeLocatorConstants.ACTION_DEBUG_FILE_OPERATE)
-            .arg(CodeLocatorConstants.KEY_PROCESS_SOURCE_FILE_PATH, wFile.absoluteFilePath)
-        if (DeviceManager.getCurrentDevice()?.grabMode != Device.GRAD_MODE_SHELL) {
-            broadcastBuilder.arg(CodeLocatorConstants.KEY_SAVE_TO_FILE, "true")
-            broadcastBuilder.arg(CodeLocatorConstants.KEY_PROCESS_FILE_OPERATE, CodeLocatorConstants.KEY_ACTION_DELETE)
+        val adbAction = if (wFile.customTag != null) {
+            BroadcastAction(ACTION_OPERATE_CUSTOM_FILE)
+                .args(KEY_CUSTOM_TAG, wFile.customTag)
         } else {
-            broadcastBuilder.arg(CodeLocatorConstants.KEY_PROCESS_FILE_OPERATE, CodeLocatorConstants.KEY_ACTION_DELETE)
-        }
-        DeviceManager.execCommand(project, AdbCommand(broadcastBuilder), object : DeviceManager.OnExecutedListener {
-            override fun onExecSuccess(device: Device?, execResult: ExecResult?) {
-                if (execResult?.resultCode == 0) {
-                    val rowData = String(execResult!!.resultBytes)
-                    val parserCommandResult = Parser.parserCommandResult(device, rowData, false)
-                    if (parserCommandResult.startsWith("path:")) {
-                        ThreadUtils.runOnUIThread {
-                            var deleteTip = "文件删除成功"
-                            NotificationUtils.showNotification(project, deleteTip, 3000)
-                            codeLocatorWindow.getScreenPanel()?.getFileInfo(codeLocatorWindow!!.currentApplication, true)
-                        }
-                    } else if (parserCommandResult.startsWith("msg:")) {
-                        ThreadUtils.runOnUIThread {
-                            Messages.showMessageDialog(
-                                project,
-                                "文件删除失败 " + parserCommandResult.substring("msg:".length),
-                                "CodeLocator",
-                                Messages.getInformationIcon()
-                            )
-                        }
-                    } else {
-                        Messages.showMessageDialog(
-                            project,
-                            "文件删除失败, " + parserCommandResult,
-                            "CodeLocator",
-                            Messages.getInformationIcon()
-                        )
+            BroadcastAction(ACTION_DEBUG_FILE_OPERATE)
+        }.args(KEY_PROCESS_SOURCE_FILE_PATH, wFile.absoluteFilePath)
+            .args(KEY_PROCESS_FILE_OPERATE, KEY_ACTION_DELETE)
+            .args(KEY_SAVE_TO_FILE, DeviceManager.isNeedSaveFile(project))
+        DeviceManager.enqueueCmd(
+            project,
+            AdbCommand(adbAction),
+            FilePathResponse::class.java,
+            object : DeviceManager.OnExecutedListener<FilePathResponse> {
+                override fun onExecSuccess(device: Device, response: FilePathResponse) {
+                    if (response.msg != null) {
+                        throw ExecuteException(response.msg)
                     }
-                } else {
                     ThreadUtils.runOnUIThread {
-                        Messages.showMessageDialog(
-                            project,
-                            "文件删除失败, " + String(execResult!!.errorBytes),
-                            "CodeLocator",
-                            Messages.getInformationIcon()
-                        )
+                        var deleteTip = if (wFile.customTag != null) {
+                            ResUtils.getString("file_custom_delete_success")
+                        } else {
+                            ResUtils.getString("file_delete_success")
+                        }
+                        NotificationUtils.showNotifyInfoShort(project, deleteTip, 3000)
+                        codeLocatorWindow.getScreenPanel()
+                            ?.getFileInfo(codeLocatorWindow!!.currentApplication, true)
                     }
                 }
-            }
 
-            override fun onExecFailed(failedReason: String?) {
-                Messages.showMessageDialog(project, failedReason, "CodeLocator", Messages.getInformationIcon())
-            }
-        })
+                override fun onExecFailed(t: Throwable) {
+                    Messages.showMessageDialog(project, StringUtils.getErrorTip(t), "CodeLocator", Messages.getInformationIcon())
+                }
+            })
+        Mob.mob(Mob.Action.CLICK, Mob.Button.DELETE_FILE)
     }
 
     interface OnSaveFileCallBack {

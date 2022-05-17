@@ -25,4 +25,8 @@ public class UpdateInfo {
     public boolean restart;
 
     public String openUrlVersion;
+
+    public boolean funnyNo;
+
+    public int iconPos;
 }

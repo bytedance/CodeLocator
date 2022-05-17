@@ -15,16 +15,19 @@ public class ClipboardUtils {
         copyContentToClipboard(project, contentToCopy, true);
     }
 
-    public static void copyContentToClipboard(Project project, String contentToCopy, boolean showNotification) {
+    public static void copyContentToClipboard(Project project, String contentToCopy, boolean showTip) {
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         Transferable trans = new StringSelection(contentToCopy);
         clipboard.setContents(trans, null);
-        if (showNotification) {
-            NotificationUtils.showNotification(project, "内容已拷贝至剪切板", 1500L);
+        if (showTip) {
+            NotificationUtils.showNotifyInfoShort(project, ResUtils.getString("copy_success"), 1500L);
         }
     }
 
     public static void copyImageToClipboard(Image image) {
+        if (OSHelper.getInstance().copyImageToClipboard(image)) {
+            return;
+        }
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         Transferable transferable = new ImageTransferable(image);
         clipboard.setContents(transferable, null);

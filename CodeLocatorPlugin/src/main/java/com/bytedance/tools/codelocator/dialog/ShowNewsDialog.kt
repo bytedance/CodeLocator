@@ -1,24 +1,20 @@
-@file:Suppress("JAVA_MODULE_DOES_NOT_EXPORT_PACKAGE")
 package com.bytedance.tools.codelocator.dialog
 
 import com.bytedance.tools.codelocator.utils.*
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.DialogWrapper
-import com.intellij.openapi.util.SystemInfo
+import com.intellij.openapi.wm.ex.WindowManagerEx
 import sun.font.FontDesignMetrics
 import java.awt.Dimension
-import java.io.BufferedWriter
+import java.awt.Font
 import java.io.File
-import java.io.FileWriter
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
 import javax.swing.*
 
 class ShowNewsDialog(val project: Project, val msg: String, val version: String) :
-    DialogWrapper(project) {
+    JDialog(WindowManagerEx.getInstance().getFrame(project), ModalityType.MODELESS) {
 
     companion object {
-
-        const val DIALOG_HEIGHT = 380
 
         const val DIALOG_WIDTH = 600
 
@@ -29,15 +25,16 @@ class ShowNewsDialog(val project: Project, val msg: String, val version: String)
             if (!logNeedShowDialog(version)) {
                 return
             }
-            val showDialog = ShowNewsDialog(project, msg, version)
-            showDialog.window.isAlwaysOnTop = true
-            ApplicationManager.getApplication().invokeLater {
-                showDialog.showAndGet()
+            ThreadUtils.runOnUIThread {
+                val showDialog = ShowNewsDialog(project, msg, version)
+                showDialog.isAlwaysOnTop = true
+                showDialog.show()
             }
         }
 
         private fun logNeedShowDialog(version: String): Boolean {
-            val showDialogLogFile = File(FileUtils.codelocatorMainDir,
+            val showDialogLogFile = File(
+                FileUtils.sCodeLocatorMainDirPath,
                 DIALOG_SHOW_LOG_FILE
             )
             if (!showDialogLogFile.exists()) {
@@ -68,7 +65,7 @@ class ShowNewsDialog(val project: Project, val msg: String, val version: String)
     }
 
     private fun initContentPanel() {
-        title = "CodeLocator更新日志"
+        title = ResUtils.getString("update_dialog_title")
         dialogContentPanel = JPanel()
         dialogContentPanel.border = BorderFactory.createEmptyBorder(
             CoordinateUtils.DEFAULT_BORDER * 2,
@@ -76,34 +73,40 @@ class ShowNewsDialog(val project: Project, val msg: String, val version: String)
             CoordinateUtils.DEFAULT_BORDER * 2,
             CoordinateUtils.DEFAULT_BORDER * 2
         )
-        JComponentUtils.setSize(dialogContentPanel,
-            DIALOG_WIDTH,
-            DIALOG_HEIGHT
-        )
         dialogContentPanel.layout = BoxLayout(dialogContentPanel, BoxLayout.Y_AXIS)
-        contentPanel.add(dialogContentPanel)
+        contentPane = dialogContentPanel
 
         addOpenButton()
         saveShowInFile()
+        val componentCount = dialogContentPanel.componentCount
+        var panelHeight = 0
+        for (i in 0 until componentCount) {
+            val component = dialogContentPanel.getComponent(i)
+            var h = component.preferredSize.height
+            panelHeight += h
+        }
+        dialogContentPanel.minimumSize =
+            Dimension(DIALOG_WIDTH, panelHeight + CoordinateUtils.DEFAULT_BORDER * 4)
+        contentPane = dialogContentPanel
+        minimumSize = dialogContentPanel.minimumSize
+        setLocationRelativeTo(WindowManagerEx.getInstance().getFrame(project))
     }
 
-    override fun createCenterPanel(): JComponent? {
-        return dialogContentPanel
+    override fun show() {
+        super.show()
+        OSHelper.instance.adjustDialog(this, project)
     }
-
-    override fun createActions(): Array<Action> = emptyArray()
 
     private fun addOpenButton() {
         var createLabel: JComponent? = null
-        var confirmButton: JButton? = null
         if (msg != null) {
             createLabel = createLabel(msg)
         }
 
-        val confrimText = getBtnText("知道了")
+        val confrimText = getBtnText(ResUtils.getString("known"))
         val confirmBtn = JButton(confrimText)
         confirmBtn.addActionListener {
-            close(0)
+            hide()
         }
         try {
             val stringWidth = FontDesignMetrics.getMetrics(confirmBtn.font).stringWidth(confrimText)
@@ -129,16 +132,11 @@ class ShowNewsDialog(val project: Project, val msg: String, val version: String)
         val buttonBox = Box.createHorizontalBox()
         buttonBox.add(Box.createHorizontalGlue())
         buttonBox.add(confirmBtn)
-
-        if (confirmButton != null) {
-            buttonBox.add(Box.createHorizontalStrut(CoordinateUtils.DEFAULT_BORDER))
-            buttonBox.add(confirmButton)
-        }
-
         buttonBox.add(Box.createHorizontalGlue())
         horizontalBox.add(buttonBox)
         horizontalBox.add(Box.createHorizontalGlue())
 
+        dialogContentPanel.add(Box.createVerticalStrut(10 * 3))
         dialogContentPanel.add(horizontalBox)
     }
 
@@ -148,13 +146,14 @@ class ShowNewsDialog(val project: Project, val msg: String, val version: String)
     private fun saveShowInFile() {
         try {
             Mob.mob(Mob.Action.DIALOG_SHOW, "show_$version")
-            val showDialogLogFile = File(FileUtils.codelocatorMainDir,
+            val showDialogLogFile = File(
+                FileUtils.sCodeLocatorMainDirPath,
                 DIALOG_SHOW_LOG_FILE
             )
             if (!showDialogLogFile.exists()) {
                 showDialogLogFile.createNewFile()
             }
-            val writer = BufferedWriter(FileWriter(showDialogLogFile, true))
+            val writer = OutputStreamWriter(FileOutputStream(showDialogLogFile, true), FileUtils.CHARSET_NAME)
             val fileContent = FileUtils.getFileContent(showDialogLogFile)
             if (fileContent.trim().isNullOrEmpty()) {
                 writer.write("$version")
@@ -175,10 +174,8 @@ class ShowNewsDialog(val project: Project, val msg: String, val version: String)
         )
         jLabel.maximumSize = Dimension(ShowReInstallDialog.DIALOG_WIDTH - CoordinateUtils.DEFAULT_BORDER * 2, 10086)
         jLabel.minimumSize = Dimension(ShowReInstallDialog.DIALOG_WIDTH - CoordinateUtils.DEFAULT_BORDER * 2, 0)
+        jLabel.font = Font.getFont("JetBrains Mono", jLabel.font)
         return jLabel
     }
 
-    override fun getPreferredFocusedComponent(): JComponent? {
-        return  if (SystemInfo.isMac) dialogContentPanel else null
-    }
 }

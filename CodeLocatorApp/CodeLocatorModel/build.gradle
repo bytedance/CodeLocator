@@ -6,10 +6,10 @@ if (getProperties("customUploadGradlePluginUrl") != null) {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    api 'com.google.code.gson:gson:2.8.5'
+    api "com.google.code.gson:gson:2.8.5"
 }
 
-sourceCompatibility = "1.7"
-targetCompatibility = "1.7"
+sourceCompatibility = "1.8"
+targetCompatibility = "1.8"
 
-//apply from: rootProject.file('publish.gradle')
+//apply plugin: "com.vanniktech.maven.publish"

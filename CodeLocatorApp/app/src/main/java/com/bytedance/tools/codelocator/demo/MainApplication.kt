@@ -12,6 +12,7 @@ import com.bytedance.tools.codelocator.CodeLocator
 import com.bytedance.tools.codelocator.config.AppInfoProvider
 import com.bytedance.tools.codelocator.config.CodeLocatorConfig
 import com.bytedance.tools.codelocator.model.*
+import com.bytedance.tools.codelocator.utils.ActivityUtils
 import java.util.*
 
 class MainApplication : Application() {
@@ -21,6 +22,7 @@ class MainApplication : Application() {
 
         CodeLocator.config(
             CodeLocatorConfig.Builder().debug(true)
+                .enableHookInflater(ActivityUtils.isApkInDebug(this))
                 .dialogIgnoreByClassList(mutableListOf("androidx.fragment.app.DialogFragment"))
                 .dialogReturnByClassList(mutableListOf("androidx.fragment.app.DialogFragment"))
                 .appInfoProvider(object : AppInfoProvider {
@@ -84,6 +86,10 @@ class MainApplication : Application() {
                     override fun providerAllSchema(): Collection<SchemaInfo>? {
                         return mutableListOf(SchemaInfo("MockSchema", "Mock schema just for test"),
                             SchemaInfo("codelocator://testActivity", "Open Test Page"))
+                    }
+
+                    override fun providerColorInfo(context: Context): MutableList<ColorInfo>? {
+                        return null
                     }
 
                     override fun processSchema(schema: String): Boolean {

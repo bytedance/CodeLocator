@@ -1,29 +1,37 @@
 package com.bytedance.tools.codelocator.action
 
+import com.bytedance.tools.codelocator.device.DeviceManager
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
-import com.bytedance.tools.codelocator.utils.IdeaUtils
-import com.bytedance.tools.codelocator.utils.Mob
-import com.bytedance.tools.codelocator.utils.NetUtils
-import com.intellij.openapi.actionSystem.AnAction
+import com.bytedance.tools.codelocator.utils.*
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
-import javax.swing.Icon
 
-class FeedbackAction(
+class FeedBackAction(
     var codeLocatorWindow: CodeLocatorWindow,
-    var project: Project,
-    text: String?,
-    icon: Icon?
-) : AnAction(text, text, icon) {
+    var project: Project
+) : BaseAction(
+    ResUtils.getString("feedback_format", AutoUpdateUtils.getCurrentPluginVersion()),
+    ResUtils.getString("feedback_format", AutoUpdateUtils.getCurrentPluginVersion()),
+    ImageUtils.loadIcon("lark")
+) {
+
+    override fun isEnable(e: AnActionEvent) = true
 
     override fun actionPerformed(p0: AnActionEvent) {
-        Mob.mob(Mob.Action.CLICK, Mob.Button.LARK)
-
-        Mob.uploadLog(codeLocatorWindow)
-
+        val currentDevice = DeviceManager.getCurrentDevice(project)
+        if (currentDevice != null && currentDevice.device != null) {
+            Mob.mob(
+                Mob.Action.EXEC,
+                "Device: " + currentDevice.deviceName +
+                    ", v: " + currentDevice.device.version + ", " + currentDevice.device.serialNumber
+            )
+        }
+        Mob.uploadUserLog(codeLocatorWindow)
         codeLocatorWindow.resetGrabState()
 
         IdeaUtils.openBrowser(NetUtils.FEEDBACK_URL)
+
+        Mob.mob(Mob.Action.CLICK, Mob.Button.LARK)
     }
 
 }
