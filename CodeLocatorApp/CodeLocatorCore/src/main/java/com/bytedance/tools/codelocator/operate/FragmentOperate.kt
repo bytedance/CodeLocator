@@ -4,7 +4,7 @@ import android.app.Activity
 import android.app.Fragment
 import android.app.FragmentManager
 import android.os.Build
-import androidx.fragment.app.FragmentActivity
+import android.support.v4.app.FragmentActivity
 import com.bytedance.tools.codelocator.utils.CodeLocatorConstants
 import com.bytedance.tools.codelocator.model.OperateData
 import com.bytedance.tools.codelocator.model.ResultData
@@ -51,7 +51,7 @@ class FragmentOperate : Operate() {
     private fun findTargetSupportFragment(
         activity: Activity,
         fragmentMemId: Int
-    ): androidx.fragment.app.Fragment? {
+    ): android.support.v4.app.Fragment? {
         if (activity is FragmentActivity) {
             return findTargetFragment(activity.supportFragmentManager, fragmentMemId)
         }
@@ -107,9 +107,9 @@ class FragmentOperate : Operate() {
     }
 
     private fun findTargetFragment(
-        fragmentManager: androidx.fragment.app.FragmentManager,
+        fragmentManager: android.support.v4.app.FragmentManager,
         fragmentMemId: Int
-    ): androidx.fragment.app.Fragment? {
+    ): android.support.v4.app.Fragment? {
         val fragments = fragmentManager.fragments
         if (fragments != null) {
             for (i in 0 until fragments.size) {

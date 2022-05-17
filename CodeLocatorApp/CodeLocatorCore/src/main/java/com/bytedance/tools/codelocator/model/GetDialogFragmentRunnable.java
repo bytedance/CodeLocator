@@ -4,7 +4,7 @@ import android.app.Dialog;
 import android.util.Log;
 import android.view.View;
 
-import androidx.fragment.app.DialogFragment;
+import android.support.v4.app.DialogFragment;
 
 import com.bytedance.tools.codelocator.CodeLocator;
 import com.bytedance.tools.codelocator.utils.ViewUtils;

@@ -20,9 +20,9 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
-import androidx.fragment.app.FragmentManager
+import android.support.v4.app.Fragment
+import android.support.v4.app.FragmentActivity
+import android.support.v4.app.FragmentManager
 import com.bytedance.tools.codelocator.BuildConfig
 import com.bytedance.tools.codelocator.CodeLocator
 import com.bytedance.tools.codelocator.R

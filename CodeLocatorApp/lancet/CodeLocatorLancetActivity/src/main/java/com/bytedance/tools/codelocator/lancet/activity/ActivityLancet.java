@@ -3,7 +3,7 @@ package com.bytedance.tools.codelocator.lancet.activity;
 import android.content.Intent;
 import android.os.Bundle;
 
-import androidx.annotation.Nullable;
+import android.support.annotation.Nullable;
 
 import com.bytedance.tools.codelocator.CodeLocator;
 

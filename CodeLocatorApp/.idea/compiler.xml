@@ -11,15 +11,6 @@
       <module name="CodeLocatorApp.CodeLocatorLancetToast" target="11" />
       <module name="CodeLocatorApp.CodeLocatorLancetView" target="11" />
       <module name="CodeLocatorApp.CodeLocatorLancetXml" target="11" />
-      <module name="CodeLocatorModel" target="1.7" />
-      <module name="WranglerApp.app" target="11" />
-      <module name="WranglerApp.WranglerCore" target="11" />
-      <module name="WranglerApp.WranglerLancetActivity" target="11" />
-      <module name="WranglerApp.WranglerLancetDialog" target="11" />
-      <module name="WranglerApp.WranglerLancetPopup" target="11" />
-      <module name="WranglerApp.WranglerLancetToast" target="11" />
-      <module name="WranglerApp.WranglerLancetView" target="11" />
-      <module name="WranglerApp.WranglerLancetXml" target="11" />
     </bytecodeTargetLevel>
   </component>
 </project>

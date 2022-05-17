@@ -2,14 +2,13 @@ package com.bytedance.tools.codelocator.lancet.xml;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import android.support.annotation.DrawableRes;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
 import android.widget.ImageView;
-
-import androidx.annotation.DrawableRes;
 
 import com.bytedance.tools.codelocator.CodeLocator;
 

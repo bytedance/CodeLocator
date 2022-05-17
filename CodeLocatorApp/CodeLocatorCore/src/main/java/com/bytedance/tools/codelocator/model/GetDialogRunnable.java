@@ -6,7 +6,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.Window;
 
-import androidx.annotation.Nullable;
+import android.support.annotation.Nullable;
 
 import com.bytedance.tools.codelocator.CodeLocator;
 import com.bytedance.tools.codelocator.utils.ReflectUtils;

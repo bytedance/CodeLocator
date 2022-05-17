@@ -42,12 +42,21 @@ dependencies {
         implementation project(path: ':CodeLocatorLancetView')
         implementation project(path: ':CodeLocatorLancetDialog')
     } else {
-        implementation "com.bytedance.tools.codelocator:codelocator-lancet-xml:$codelocator_version"
-        implementation "com.bytedance.tools.codelocator:codelocator-lancet-activity:$codelocator_version"
-        implementation "com.bytedance.tools.codelocator:codelocator-lancet-view:$codelocator_version"
-        implementation "com.bytedance.tools.codelocator:codelocator-lancet-toast:$codelocator_version"
-        implementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog:$codelocator_version"
-        implementation "com.bytedance.tools.codelocator:codelocator-lancet-popup:$codelocator_version"
+        if (useSupport) {
+            implementation "com.bytedance.tools.codelocator:codelocator-lancet-xml-support:$codelocator_version"
+            implementation "com.bytedance.tools.codelocator:codelocator-lancet-activity-support:$codelocator_version"
+            implementation "com.bytedance.tools.codelocator:codelocator-lancet-view-support:$codelocator_version"
+            implementation "com.bytedance.tools.codelocator:codelocator-lancet-toast-support:$codelocator_version"
+            implementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog-support:$codelocator_version"
+            implementation "com.bytedance.tools.codelocator:codelocator-lancet-popup-support:$codelocator_version"
+        } else {
+            implementation "com.bytedance.tools.codelocator:codelocator-lancet-xml:$codelocator_version"
+            implementation "com.bytedance.tools.codelocator:codelocator-lancet-activity:$codelocator_version"
+            implementation "com.bytedance.tools.codelocator:codelocator-lancet-view:$codelocator_version"
+            implementation "com.bytedance.tools.codelocator:codelocator-lancet-toast:$codelocator_version"
+            implementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog:$codelocator_version"
+            implementation "com.bytedance.tools.codelocator:codelocator-lancet-popup:$codelocator_version"
+        }
     }
 
     compileOnly 'me.ele:lancet-base:1.0.6'

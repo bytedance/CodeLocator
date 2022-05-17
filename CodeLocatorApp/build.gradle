@@ -7,7 +7,7 @@ buildscript {
     ext.codelocator_version = project["VERSION_NAME"]
 
     ext.useSourceCode = false
-    ext.useSupport = false
+    ext.useSupport = true
 
     repositories {
         mavenCentral()

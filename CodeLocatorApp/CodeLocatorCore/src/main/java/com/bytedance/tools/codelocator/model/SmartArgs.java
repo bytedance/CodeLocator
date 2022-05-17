@@ -1,8 +1,7 @@
 package com.bytedance.tools.codelocator.model;
 
 import android.content.Intent;
-
-import androidx.annotation.Nullable;
+import android.support.annotation.Nullable;
 
 import com.bytedance.tools.codelocator.utils.Base64;
 import com.bytedance.tools.codelocator.utils.CodeLocatorConstants;

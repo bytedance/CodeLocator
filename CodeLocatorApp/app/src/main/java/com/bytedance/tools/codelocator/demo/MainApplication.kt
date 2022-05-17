@@ -5,9 +5,9 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.graphics.Rect
+import android.support.v7.widget.RecyclerView
 import android.view.View
 import android.widget.Toast
-import androidx.recyclerview.widget.RecyclerView
 import com.bytedance.tools.codelocator.CodeLocator
 import com.bytedance.tools.codelocator.config.AppInfoProvider
 import com.bytedance.tools.codelocator.config.CodeLocatorConfig
@@ -23,8 +23,8 @@ class MainApplication : Application() {
         CodeLocator.config(
             CodeLocatorConfig.Builder().debug(true)
                 .enableHookInflater(ActivityUtils.isApkInDebug(this))
-                .dialogIgnoreByClassList(mutableListOf("androidx.fragment.app.DialogFragment"))
-                .dialogReturnByClassList(mutableListOf("androidx.fragment.app.DialogFragment"))
+                .dialogIgnoreByClassList(mutableListOf("android.support.v4.app.DialogFragment"))
+                .dialogReturnByClassList(mutableListOf("android.support.v4.app.DialogFragment"))
                 .appInfoProvider(object : AppInfoProvider {
                     override fun providerAppInfo(context: Context): HashMap<String, String>? {
                         return hashMapOf(

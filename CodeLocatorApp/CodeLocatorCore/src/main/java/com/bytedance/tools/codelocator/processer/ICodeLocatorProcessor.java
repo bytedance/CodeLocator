@@ -1,10 +1,9 @@
 package com.bytedance.tools.codelocator.processer;
 
 import android.content.Context;
+import android.support.annotation.Keep;
+import android.support.annotation.Nullable;
 import android.view.View;
-
-import androidx.annotation.Keep;
-import androidx.annotation.Nullable;
 
 import com.bytedance.tools.codelocator.model.SmartArgs;
 import com.bytedance.tools.codelocator.model.WActivity;

@@ -59,7 +59,10 @@ allprojects {
 
 // 集成基础能力, 只需要添加一行依赖即可
 dependencies {
+    // 依赖androidx, 已升级AndroidX的项目集成下面的依赖
     implementation "com.bytedance.tools.codelocator:codelocator-core:2.0.0"
+    // 未升级AndroidX的项目集成下面的依赖
+    implementation "com.bytedance.tools.codelocator:codelocator-core-support:2.0.0"
 }
 ```
 如果需要集成代码跳转能力, 需要先集成 [Lancet](https://github.com/eleme/lancet), 同时添加如下依赖
@@ -76,6 +79,17 @@ dependencies {
     debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-toast:2.0.0"
     debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog:2.0.0"
     debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-popup:2.0.0"
+    
+    // 如果未升级AndroidX, 可使用下方的依赖
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-support-all:2.0.0"
+
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml-support:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-activity-support:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-view-support:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-toast-support:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog-support:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-popup-support:2.0.0"
+    
 }
 ```
 

@@ -24,7 +24,7 @@ abstract class FragmentAction {
 
     open fun processFragmentAction(
         fragment: Fragment?,
-        supportFragment: androidx.fragment.app.Fragment?,
+        supportFragment: android.support.v4.app.Fragment?,
         data: String,
         result: ResultData
     ) {
@@ -32,7 +32,7 @@ abstract class FragmentAction {
 
     fun processFragment(
         fragment: Fragment?,
-        supportFragment: androidx.fragment.app.Fragment?,
+        supportFragment: android.support.v4.app.Fragment?,
         data: String,
         result: ResultData
     ) {
@@ -52,7 +52,7 @@ class GetFragmentArgAction : FragmentAction() {
 
     override fun processFragmentAction(
         fragment: Fragment?,
-        supportFragment: androidx.fragment.app.Fragment?,
+        supportFragment: android.support.v4.app.Fragment?,
         data: String,
         result: ResultData
     ) {

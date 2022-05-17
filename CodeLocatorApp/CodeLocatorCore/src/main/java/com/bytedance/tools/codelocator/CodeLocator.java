@@ -14,7 +14,7 @@ import android.util.ArrayMap;
 import android.util.Log;
 import android.view.View;
 
-import androidx.annotation.Nullable;
+import android.support.annotation.Nullable;
 
 import com.bytedance.tools.codelocator.analyzer.ActivityInfoAnalyzer;
 import com.bytedance.tools.codelocator.analyzer.DialogInfoAnalyzer;
