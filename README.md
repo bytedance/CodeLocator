@@ -65,8 +65,11 @@ dependencies {
     implementation "com.bytedance.tools.codelocator:codelocator-core-support:2.0.0"
 }
 ```
-如果需要集成代码跳转能力, 需要先集成 [Lancet](https://github.com/eleme/lancet), 同时添加如下依赖
+如果需要集成代码跳转能力, <mark>需要先集成 [Lancet](https://github.com/eleme/lancet)</mark>, 同时添加如下依赖
 ```gradle
+
+apply plugin: 'me.ele.lancet'
+
 dependencies {
     // 两种依赖方式
     // 依赖lancet-all, 则包含所有lancet能力
