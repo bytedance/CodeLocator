@@ -42,14 +42,6 @@ public class CodeLocatorLayoutFactoryWrapper implements LayoutInflater.Factory2 
 
     private LayoutInflater.Factory mOutFactory;
 
-    private Integer mImageSrc = null;
-
-    private int[] mImageStyle = null;
-
-    private Integer mViewBackground = null;
-
-    private int[] mViewStyle = null;
-
     public String rootDrawableTag;
 
     public String rootBackgroundTag;
@@ -111,25 +103,12 @@ public class CodeLocatorLayoutFactoryWrapper implements LayoutInflater.Factory2 
         }
         String drawableName = null;
         try {
-            if (mViewStyle == null) {
-                Class clz = Class.forName("com.android.internal.R$styleable");
-                Field field = ReflectUtils.getClassField(clz, "View");
-                mViewStyle = (int[]) field.get(null);
-                field = ReflectUtils.getClassField(clz, "View_background");
-                mViewBackground = (Integer) field.get(null);
-            }
-        } catch (Throwable t) {
-            Log.d(CodeLocator.TAG, "Hook view background error, " + Log.getStackTraceString(t));
-        }
-        try {
-            if (mViewStyle != null && mViewBackground != null) {
-                final TypedArray a = context.obtainStyledAttributes(attrs, mViewStyle, 0, 0);
-                final int resourceId = a.getResourceId(mViewBackground, 0);
-                if (resourceId != 0) {
-                    drawableName = context.getResources().getResourceName(resourceId).replace(context.getPackageName(), "");
-                    if (!drawableName.contains("drawable/")) {
-                        drawableName = null;
-                    }
+            final TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CodeLocator, 0, 0);
+            final int resourceId = a.getResourceId(R.styleable.CodeLocator_android_background, 0);
+            if (resourceId != 0) {
+                drawableName = context.getResources().getResourceName(resourceId).replace(context.getPackageName(), "");
+                if (!drawableName.contains("drawable/")) {
+                    drawableName = null;
                 }
             }
         } catch (Throwable t) {
@@ -160,23 +139,10 @@ public class CodeLocatorLayoutFactoryWrapper implements LayoutInflater.Factory2 
         }
         String drawableName = null;
         try {
-            if (mImageStyle == null) {
-                Class clz = Class.forName("com.android.internal.R$styleable");
-                Field field = ReflectUtils.getClassField(clz, "ImageView");
-                mImageStyle = (int[]) field.get(null);
-                field = ReflectUtils.getClassField(clz, "ImageView_src");
-                mImageSrc = (Integer) field.get(null);
-            }
-        } catch (Throwable t) {
-            Log.d(CodeLocator.TAG, "Hook view background error, " + Log.getStackTraceString(t));
-        }
-        try {
-            if (mImageStyle != null && mImageSrc != null) {
-                final TypedArray a = context.obtainStyledAttributes(attrs, mImageStyle, 0, 0);
-                final int resourceId = a.getResourceId(mImageSrc, 0);
-                if (resourceId != 0) {
-                    drawableName = context.getResources().getResourceName(resourceId).replace(context.getPackageName(), "");
-                }
+            final TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CodeLocator, 0, 0);
+            final int resourceId = a.getResourceId(R.styleable.CodeLocator_android_src, 0);
+            if (resourceId != 0) {
+                drawableName = context.getResources().getResourceName(resourceId).replace(context.getPackageName(), "");
             }
         } catch (Throwable t) {
             Log.d(CodeLocator.TAG, "get view background name error, " + Log.getStackTraceString(t));

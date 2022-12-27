@@ -16,11 +16,7 @@ import android.view.TouchDelegate
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import android.widget.FrameLayout
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.RelativeLayout
-import android.widget.TextView
+import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
@@ -29,15 +25,10 @@ import com.bytedance.tools.codelocator.CodeLocator
 import com.bytedance.tools.codelocator.R
 import com.bytedance.tools.codelocator.config.AppInfoProvider
 import com.bytedance.tools.codelocator.config.CodeLocatorConfigFetcher
-import com.bytedance.tools.codelocator.model.WActivity
-import com.bytedance.tools.codelocator.model.WApplication
-import com.bytedance.tools.codelocator.model.WFile
-import com.bytedance.tools.codelocator.model.WFragment
-import com.bytedance.tools.codelocator.model.WView
+import com.bytedance.tools.codelocator.model.*
 import com.bytedance.tools.codelocator.operate.ViewOperate
 import java.io.File
 import java.lang.Math.abs
-import java.lang.reflect.Field
 
 object ActivityUtils {
 
@@ -684,32 +675,40 @@ object ActivityUtils {
             val currentWindowToken = activity.window.attributes.token
             val mGlobal = ReflectUtils.getClassField(windowManager.javaClass, "mGlobal")
             val mWindowManagerGlobal = mGlobal?.get(windowManager) ?: return dialogViews
-            val mRoots = ReflectUtils.getClassField(mWindowManagerGlobal.javaClass, "mRoots")
-            val list = mRoots?.get(mWindowManagerGlobal) as? List<Any>
+
+            val mViewsField = ReflectUtils.getClassField(mWindowManagerGlobal.javaClass, "mViews")
+            val mParamsField = ReflectUtils.getClassField(mWindowManagerGlobal.javaClass, "mParams")
+            val mViews = mViewsField?.get(mWindowManagerGlobal) as? List<Any>
+            val mParams = mParamsField?.get(mWindowManagerGlobal) as? List<Any>
+
             val activityDecorView = activity.window.decorView
-            if (list?.isNotEmpty() == true) {
-                for (element in list) {
-                    val viewRoot = element
-                    val mAttrFiled: Field? = ReflectUtils.getClassField(viewRoot.javaClass, "mWindowAttributes")
-                    val layoutParams: WindowManager.LayoutParams? =
-                        mAttrFiled?.get(viewRoot) as? WindowManager.LayoutParams
-                    if (layoutParams?.token != currentWindowToken && (layoutParams?.type != WindowManager.LayoutParams.FIRST_SUB_WINDOW
-                            && layoutParams?.type != WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)) {
-                        continue
-                    }
-                    val viewFiled: Field? = ReflectUtils.getClassField(viewRoot.javaClass, "mView")
-                    var view: View = viewFiled?.get(viewRoot) as? View ?: continue
+            if (mViews?.isNotEmpty() == true && mParams?.isNotEmpty() == true) {
+                for (i in mViews.indices) {
+                    val view = mViews[i] as View
                     if (activityDecorView == view) {
                         continue
                     }
-                    val winFrameRectField = ReflectUtils.getClassField(viewRoot.javaClass, "mWinFrame")
-                    val winFrameRect: Rect? = winFrameRectField?.get(viewRoot) as? Rect
+                    val layoutParams = mParams[i] as? WindowManager.LayoutParams
+                    if (layoutParams?.token != currentWindowToken && (layoutParams?.type != WindowManager.LayoutParams.FIRST_SUB_WINDOW
+                                && layoutParams?.type != WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+                    ) {
+                        continue
+                    }
+
+                    val winFrameRect = Rect()
+                    val loc = IntArray(2)
+                    view.getLocationOnScreen(loc)
+                    winFrameRect.left = loc[0]
+                    winFrameRect.top = loc[1]
+                    winFrameRect.right = loc[0] + view.width
+                    winFrameRect.bottom = loc[1] + view.height
+
                     val decorView = convertViewToWView(view, winFrameRect)
                     dialogViews.add(decorView)
                 }
             }
         } catch (e: Exception) {
-            Log.d(CodeLocator.TAG, "getDialogWindow Fail $e")
+            Log.d(CodeLocator.TAG, "getDialogWindow Fail", e)
         }
         return dialogViews
     }
