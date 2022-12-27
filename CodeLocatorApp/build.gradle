@@ -6,7 +6,7 @@ buildscript {
     ext.androidx_version = "1.2.0"
     ext.codelocator_version = project["VERSION_NAME"]
 
-    ext.useSourceCode = true
+    ext.useSourceCode = false
     ext.useSupport = false
 
     repositories {
