@@ -98,7 +98,7 @@ dependencies {
 
 ## 使用说明
 CodeLocator插件是一个侧边栏插件, 安装后展示在Android Studio的右侧, 点击可展开
-初始状态如下
+初始状态如下:
 
 <img src="misc/codelocator_init.png" alt="codelocator_init" width="680"/>
 
