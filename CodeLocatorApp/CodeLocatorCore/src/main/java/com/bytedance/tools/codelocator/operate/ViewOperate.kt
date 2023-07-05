@@ -124,7 +124,7 @@ class ViewOperate : Operate() {
                     viewList.add(remove)
                 }
             } catch (e: Exception) {
-                Log.e(CodeLocator.TAG, "getDialogWindow Fail $e")
+                Log.d(CodeLocator.TAG, "getDialogWindow Fail $e")
             }
             return viewList
         }

@@ -1,23 +1,28 @@
 package com.bytedance.tools.codelocator.dialog
 
-import com.bytedance.tools.codelocator.model.SchemaInfo
+import com.bytedance.tools.codelocator.action.CopyInfoAction
+import com.bytedance.tools.codelocator.action.SchemaToQRAction
 import com.bytedance.tools.codelocator.action.SimpleAction
 import com.bytedance.tools.codelocator.device.Device
 import com.bytedance.tools.codelocator.device.DeviceManager
 import com.bytedance.tools.codelocator.device.action.AdbAction
 import com.bytedance.tools.codelocator.device.action.AdbCommand
+import com.bytedance.tools.codelocator.device.action.AdbCommand.*
 import com.bytedance.tools.codelocator.device.action.BroadcastAction
 import com.bytedance.tools.codelocator.exception.ExecuteException
 import com.bytedance.tools.codelocator.listener.DocumentListenerAdapter
 import com.bytedance.tools.codelocator.listener.OnActionListener
-import com.bytedance.tools.codelocator.model.*
-import com.bytedance.tools.codelocator.device.action.AdbCommand.*
 import com.bytedance.tools.codelocator.listener.OnClickListener
+import com.bytedance.tools.codelocator.model.*
+import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.panels.OnEventListener
 import com.bytedance.tools.codelocator.panels.SearchableJList
-import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
+import com.bytedance.tools.codelocator.response.StatesResponse
+import com.bytedance.tools.codelocator.response.StringResponse
 import com.bytedance.tools.codelocator.utils.ClipboardUtils
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants
 import com.bytedance.tools.codelocator.utils.CoordinateUtils
+import com.bytedance.tools.codelocator.utils.ImageUtils
 import com.bytedance.tools.codelocator.utils.JComponentUtils
 import com.bytedance.tools.codelocator.utils.Log
 import com.bytedance.tools.codelocator.utils.Mob
@@ -27,10 +32,8 @@ import com.bytedance.tools.codelocator.utils.ResUtils
 import com.bytedance.tools.codelocator.utils.StringUtils
 import com.bytedance.tools.codelocator.utils.ThreadUtils
 import com.bytedance.tools.codelocator.views.JTextHintField
-import com.bytedance.tools.codelocator.response.StatesResponse
-import com.bytedance.tools.codelocator.response.StringResponse
-import com.bytedance.tools.codelocator.utils.CodeLocatorConstants
 import com.intellij.ide.DataManager
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.Project
@@ -52,22 +55,25 @@ import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.net.URLDecoder
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 import javax.swing.BorderFactory
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JButton
+import javax.swing.JComponent
 import javax.swing.JDialog
+import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JSplitPane
 import javax.swing.event.DocumentEvent
 import javax.swing.event.TableModelEvent
 import javax.swing.table.TableColumn
-import kotlin.Comparator
 
 class SendSchemaDialog(
     val codeLocatorWindow: CodeLocatorWindow,
-    val project: Project
+    val project: Project,
+    val outSchemaList: List<String>? = null
 ) : JDialog(WindowManagerEx.getInstance().getFrame(project), ModalityType.MODELESS), OnEventListener<JBList<String>> {
 
     companion object {
@@ -77,8 +83,8 @@ class SendSchemaDialog(
         const val DIALOG_WIDTH = 850
 
         @JvmStatic
-        fun showDialog(codeLocatorWindow: CodeLocatorWindow, project: Project) {
-            val showDialog = SendSchemaDialog(codeLocatorWindow, project)
+        fun showDialog(codeLocatorWindow: CodeLocatorWindow, project: Project, schemaList: List<String>? = null) {
+            val showDialog = SendSchemaDialog(codeLocatorWindow, project, schemaList)
             showDialog.show()
         }
     }
@@ -96,7 +102,8 @@ class SendSchemaDialog(
     var showSchemaList = mutableListOf<SchemaInfo>()
 
     var schemaListMode = SearchableListModel(showSchemaList, SearchableListModel.Convert<SchemaInfo> {
-        if (it.getDesc() == null) it.getSchema() else it.getSchema().toString() + " (" + it.getDesc() + ")"
+        val schema = if (it.displaySchema.isNullOrEmpty()) it.schema else it.displaySchema
+        if (it.desc == null) schema else schema + " (" + it.desc + ")"
     })
 
     var schemaListJComponent = SearchableJList(schemaListMode)
@@ -197,7 +204,24 @@ class SendSchemaDialog(
         })
         val createHorizontalBox = Box.createHorizontalBox()
         createHorizontalBox.add(textField)
-
+        val qrSchemaCode = JLabel(ImageUtils.loadIcon("qrcode", 20))
+        createHorizontalBox.add(Box.createHorizontalStrut(5))
+        createHorizontalBox.add(qrSchemaCode)
+        qrSchemaCode.addMouseListener(object : MouseAdapter() {
+            override fun mousePressed(e: MouseEvent) {
+                if (textField.text.isNullOrEmpty()) {
+                    Messages.showMessageDialog(
+                        dialogContentPanel,
+                        ResUtils.getString("schema_empty"),
+                        "CodeLocator",
+                        Messages.getInformationIcon()
+                    )
+                    return
+                }
+                val schema = textField.text + editableTableModel.buildArgsStr()
+                SchemaToQRAction(project, schema, "").performClick("qrcode_create")
+            }
+        })
         val sendSchema =
             JButton("<html><body style='text-align:center;font-size:11px;'>" + ResUtils.getString("send_schema") + "</body></html>")
         sendSchema.toolTipText = ResUtils.getString("send_schema_tip")
@@ -217,12 +241,13 @@ class SendSchemaDialog(
                     return
                 }
                 val schema = textField.text + editableTableModel.buildArgsStr()
+                val originSchema = textField.text + editableTableModel.buildOriginArgsStr()
                 Log.d("send schema " + schema)
                 if (e.isMetaDown) {
                     ClipboardUtils.copyContentToClipboard(project, schema)
                     return
                 }
-                sendSchemaToDevice(schema)
+                sendSchemaToDevice(schema, originSchema)
             }
         })
         createHorizontalBox.add(Box.createHorizontalStrut(5))
@@ -234,6 +259,59 @@ class SendSchemaDialog(
         dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
     }
 
+    private fun convertToEncodeSchema(originSchema: String?): String {
+        originSchema ?: return ""
+        try {
+            val uri = Uri(originSchema)
+            var hasQuery = true
+            val indexOfSplit = originSchema.indexOf("?")
+            if (indexOfSplit > -1) {
+                val sb = StringBuilder(originSchema.substring(0, indexOfSplit))
+                var realQuery = originSchema.substring(indexOfSplit + 1)
+                val splitArgs = realQuery.split("&")
+                var isFirst = true
+                splitArgs.forEach {
+                    val pair = it.split("=")
+                    if (pair.size > 1) {
+                        if (hasQuery) {
+                            sb.append("?")
+                            hasQuery = false
+                        }
+                        if (!isFirst) {
+                            sb.append("&")
+                        }
+                        sb.append(pair[0])
+                        sb.append("=")
+                        sb.append(URLEncoder.encode(pair[1], "UTF-8"))
+                        isFirst = false
+                    }
+                }
+                return sb.toString()
+            } else {
+                return originSchema
+            }
+        } catch (t: Throwable) {
+        }
+        return originSchema
+    }
+
+    private fun getAdbSchemaCommand(originSchema: String?): String {
+        originSchema ?: return ""
+        val buildCmd = BroadcastAction(
+            CodeLocatorConstants.ACTION_PROCESS_SCHEMA
+        ).args(
+            CodeLocatorConstants.KEY_SCHEMA,
+            originSchema
+        ).buildCmd()
+        var command =
+            "hasError=`adb shell ${ACTION.AM} start -d '${adjustStrForAdbShell(convertToEncodeSchema(originSchema))}' 2>&1`\n"
+        command += "hasError=`echo \$hasError | grep Error`\n"
+        command += "if [[ -n \$hasError ]]; then\n"
+        command += "    adb shell $buildCmd\n"
+        command += "fi"
+        return command
+    }
+
     private fun checkInputContent() {
         if (isProcessing) {
             isProcessing = false
@@ -242,6 +320,7 @@ class SendSchemaDialog(
         if (textField.text.isEmpty()) {
             return
         }
+        editableTableModel.clearAll()
         try {
             if (textField.text != null && textField.text.endsWith("?")) {
                 return
@@ -252,7 +331,6 @@ class SendSchemaDialog(
             val indexOfSplit = uriStr.indexOf("?")
             if (indexOfSplit > -1) {
                 var realQuery = uriStr.substring(indexOfSplit + 1)
-                editableTableModel.clearAll()
                 val splitArgs = realQuery.split("&")
                 splitArgs.forEach {
                     val pair = it.split("=")
@@ -273,11 +351,12 @@ class SendSchemaDialog(
                     }
                 }
             } else {
-                editableTableModel.clearAll()
                 schemaArgTable.tableChanged(TableModelEvent(editableTableModel, TableModelEvent.ALL_COLUMNS))
                 adjustColumn()
             }
         } catch (ignore: Throwable) {
+            schemaArgTable.tableChanged(TableModelEvent(editableTableModel, TableModelEvent.ALL_COLUMNS))
+            adjustColumn()
         }
     }
 
@@ -285,13 +364,13 @@ class SendSchemaDialog(
         return schema.replace("&", "\\&")
     }
 
-    private fun sendSchemaToDevice(schema: String) {
+    private fun sendSchemaToDevice(schema: String, originSchema: String) {
         DeviceManager.enqueueCmd(
             project,
             AdbCommand(
                 AdbAction(
                     ACTION.AM,
-                    "start -d '${adjustStrForAdbShell(schema)}'"
+                    "start -d '$schema'"
                 )
             ),
             StringResponse::class.java,
@@ -315,11 +394,11 @@ class SendSchemaDialog(
                             throw ExecuteException(states.msg)
                         }
                         if (states.data) {
-                            onSendSchemaSuccess(schema)
+                            onSendSchemaSuccess(schema, originSchema)
                             return
                         }
                     }
-                    throw ExecuteException(ResUtils.getString("schema_process_error"))
+                    onSendSchemaSuccess(schema, originSchema)
                 }
 
                 override fun onExecFailed(t: Throwable) {
@@ -333,14 +412,16 @@ class SendSchemaDialog(
             })
     }
 
-    private fun onSendSchemaSuccess(schema: String) {
-        val findSendSchema = schemaList.firstOrNull { it.schema == schema }
+    private fun onSendSchemaSuccess(schema: String, displaySchema: String) {
+        val findSendSchema = schemaList.firstOrNull { it.schema?.trim() == schema.trim() }
         if (findSendSchema != null) {
             schemaList.remove(findSendSchema)
+            findSendSchema.displaySchema = displaySchema
             schemaList.add(0, findSendSchema)
             SchemaHistory.loadHistory().addHistory(findSendSchema)
         } else {
             val schemaInfo = SchemaInfo(schema)
+            schemaInfo.displaySchema = displaySchema
             schemaList.add(0, schemaInfo)
             SchemaHistory.loadHistory().addHistory(schemaInfo)
         }
@@ -447,7 +528,7 @@ class SendSchemaDialog(
 
                 val locationToIndex = schemaListJComponent.locationToIndex(Point(e.x, e.y))
                 if (e.isMetaDown) {
-                    ClipboardUtils.copyContentToClipboard(project, showSchemaList[locationToIndex].schema.trim())
+                    showPop(schemaListJComponent, showSchemaList[locationToIndex], e.x, e.y)
                 } else if (lastClickIndex == locationToIndex) {
                     if (System.currentTimeMillis() - lastClickTime < 1000) {
                         textField.text = showSchemaList[locationToIndex].schema.trim()
@@ -459,6 +540,11 @@ class SendSchemaDialog(
             }
         })
 
+        outSchemaList?.run {
+            textField.text = this[0]
+            schemaList.addAll(this.map { SchemaInfo(it) })
+        }
+
         SchemaHistory.loadHistory()?.historySchema?.forEach {
             schemaList.add(it)
         }
@@ -468,6 +554,65 @@ class SendSchemaDialog(
             }
         }
         showSchemaList.addAll(schemaList)
+    }
+
+    fun showPop(
+        container: JComponent,
+        schemaInfo: SchemaInfo,
+        x: Int,
+        y: Int
+    ) {
+        val actionGroup: DefaultActionGroup =
+            DefaultActionGroup("listGroup", true)
+        actionGroup.add(
+            SchemaToQRAction(
+                codeLocatorWindow.project,
+                convertToEncodeSchema(schemaInfo.schema),
+                ResUtils.getString("qrcode")
+            )
+        )
+        actionGroup.add(
+            CopyInfoAction(
+                codeLocatorWindow.project,
+                convertToEncodeSchema(schemaInfo.schema),
+                ResUtils.getString("copy_schema")
+            )
+        )
+        actionGroup.add(
+            CopyInfoAction(
+                codeLocatorWindow.project,
+                getAdbSchemaCommand(schemaInfo.schema),
+                ResUtils.getString("copy_command"),
+                "copy_schema_adb"
+            )
+        )
+        actionGroup.add(object :
+            AnAction(ResUtils.getString("mark"), ResUtils.getString("mark"), ImageUtils.loadIcon("mark_view")) {
+            override fun actionPerformed(e: AnActionEvent) {
+                EditContentDialog(this@SendSchemaDialog, project, schemaInfo.desc) { result ->
+                    if (result == null) {
+                        return@EditContentDialog
+                    } else {
+                        if (result.trim() == schemaInfo.desc) {
+                            return@EditContentDialog
+                        }
+                        schemaInfo.desc = result
+                        SchemaHistory.updateHistory(SchemaHistory.loadHistory())
+                        schemaListMode.update()
+                    }
+                }.show()
+            }
+        })
+        val factory = JBPopupFactory.getInstance()
+        val pop = factory.createActionGroupPopup(
+            "CodeLocator",
+            actionGroup,
+            DataManager.getInstance().getDataContext(),
+            JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
+            true
+        )
+        val point = Point(x, y)
+        pop.show(RelativePoint(container, point))
     }
 
     override fun onSearchKeyChange(component: JBList<String>, keyWord: String): Int {
@@ -499,10 +644,12 @@ class SendSchemaDialog(
         showSchemaList.clear()
         showSchemaList.addAll(schemaList)
         schemaListMode.update()
-        if (showSchemaList.size > 0) {
-            schemaListJComponent.selectedIndex = 0
+        ThreadUtils.runOnUIThread {
+            listScrollPane.verticalScrollBar.value = 0
+            if (showSchemaList.size > 0) {
+                schemaListJComponent.selectedIndex = 0
+            }
         }
-        listScrollPane.verticalScrollBar.value = 0
     }
 
     override fun onControlKeyDown(component: JBList<String>, keyCode: Int) {

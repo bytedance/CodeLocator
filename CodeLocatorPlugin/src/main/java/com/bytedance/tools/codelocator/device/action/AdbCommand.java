@@ -32,6 +32,8 @@ public class AdbCommand {
 
         String DUMPSYS = "dumpsys";
 
+        String UIAUTOMATOR = "uiautomator";
+
         String WM = "wm";
 
         String PM = "pm";
@@ -39,6 +41,8 @@ public class AdbCommand {
         String MONKEY = "monkey";
 
         String CONTENT = "content";
+
+        String RUN_AS = "run-as";
 
         List<String> DEVICE_NOT_SUPPORT_ACTIONS = new ArrayList() {
             {

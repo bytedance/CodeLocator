@@ -29,7 +29,7 @@ class FeedBackAction(
         Mob.uploadUserLog(codeLocatorWindow)
         codeLocatorWindow.resetGrabState()
 
-        IdeaUtils.openBrowser(NetUtils.FEEDBACK_URL)
+        IdeaUtils.openBrowser(project, NetUtils.FEEDBACK_URL)
 
         Mob.mob(Mob.Action.CLICK, Mob.Button.LARK)
     }

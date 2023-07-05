@@ -16,8 +16,11 @@ import com.bytedance.tools.codelocator.utils.ResUtils
 import com.bytedance.tools.codelocator.utils.StringUtils
 import com.bytedance.tools.codelocator.utils.ThreadUtils
 import com.intellij.openapi.ui.Messages
+import com.intellij.psi.impl.source.codeStyle.CodeEditUtil.addChild
+import java.awt.Color
 import java.awt.Component
 import java.awt.Dimension
+import java.awt.Toolkit
 import java.awt.event.HierarchyBoundsAdapter
 import java.awt.event.HierarchyEvent
 import javax.swing.*
@@ -46,7 +49,7 @@ class MainPanel(val codeLocatorWindow: CodeLocatorWindow, val rootPanel: RootPan
         JComponentUtils.setMinimumSize(
             this,
             CoordinateUtils.PANEL_WIDTH * 2 + CoordinateUtils.DEFAULT_BORDER * 3,
-            CoordinateUtils.SCALE_TO_HEIGHT + CoordinateUtils.DEFAULT_BORDER * 2
+            codeLocatorWindow.screenPanelHeight + CoordinateUtils.DEFAULT_BORDER * 2
         )
         addChild()
         initAction()
@@ -60,14 +63,16 @@ class MainPanel(val codeLocatorWindow: CodeLocatorWindow, val rootPanel: RootPan
 
     private fun initAction() {
         screenPanel.setOnGrabScreenListener(object : OnGrabScreenListener {
-            override fun onGrabScreenSuccess(width: Int, height: Int) {
+            override fun onGrabScreenSuccess(width: Int, height: Int, resize: Boolean) {
                 isVisible = true
                 if (screenPanel.isLandScape) {
-                    adjustForLandscape(width, height)
+                    adjustForLandscape(width, height, resize)
                 } else {
                     adjustForPortrait(width, height)
                 }
-                tabContainerPanel.resetTabView()
+                if (!resize) {
+                    tabContainerPanel.resetTabView()
+                }
                 repaint()
             }
         })
@@ -151,13 +156,23 @@ class MainPanel(val codeLocatorWindow: CodeLocatorWindow, val rootPanel: RootPan
         tabContainerPanel.updateSelectView(it, fromOutSide)
     }
 
-    private fun adjustForLandscape(width: Int, height: Int) {
+    private fun adjustForLandscape(width: Int, height: Int, resize: Boolean) {
         JComponentUtils.setSize(screenPanel, width, height)
-        JComponentUtils.setMinimumSize(tabContainerPanel, width, Math.max(700 - height, parent.height - height))
-        JComponentUtils.setMinimumSize(
-            this, width + CoordinateUtils.DEFAULT_BORDER * 3,
-            height + CoordinateUtils.SCALE_TO_LAND_PANEL_HEIGHT + CoordinateUtils.DEFAULT_BORDER * 2
-        )
+        val setHeight = if (parent.height == 0) {
+            CoordinateUtils.getDefaultHeight()
+        } else parent.height
+        JComponentUtils.setMinimumSize(tabContainerPanel, width, setHeight - height - CoordinateUtils.DEFAULT_BORDER * 2)
+        if (codeLocatorWindow.isWindowMode) {
+            JComponentUtils.setMinimumSize(
+                this, width + CoordinateUtils.DEFAULT_BORDER * 2,
+                setHeight
+            )
+        } else {
+            JComponentUtils.setMinimumSize(
+                this, width + CoordinateUtils.DEFAULT_BORDER * 2,
+                height + codeLocatorWindow.landScreenPanelHeight + CoordinateUtils.DEFAULT_BORDER * 2
+            )
+        }
         adjustTabPanelHeightIfNeed()
         if ((layout as? BoxLayout)?.axis != BoxLayout.Y_AXIS) {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -165,14 +180,18 @@ class MainPanel(val codeLocatorWindow: CodeLocatorWindow, val rootPanel: RootPan
             tabContainerPanel.alignmentX = Component.LEFT_ALIGNMENT
             doLayout()
             JComponentUtils.setSize(screenPanel, width, height)
+            Mob.mob(Mob.Action.EXEC, Mob.Button.SWITCH_LAND_MODE)
             ThreadUtils.runOnUIThread {
                 tabContainerPanel.adjustForLandscape()
             }
-            Mob.mob(Mob.Action.EXEC, Mob.Button.SWITCH_LAND_MODE)
+        } else if (resize) {
+            ThreadUtils.runOnUIThread {
+                tabContainerPanel.adjustForLandscape()
+            }
         }
         Log.d(
             "设置Panel横屏尺寸 " + width + " x " + height + ", setHeight: "
-                + (height + CoordinateUtils.SCALE_TO_LAND_PANEL_HEIGHT + CoordinateUtils.DEFAULT_BORDER * 2)
+                + (height + codeLocatorWindow.landScreenPanelHeight + CoordinateUtils.DEFAULT_BORDER * 2)
         )
         if (screenPanel.width != width || screenPanel.height != height) {
             ThreadUtils.runOnUIThread {
@@ -231,7 +250,7 @@ class MainPanel(val codeLocatorWindow: CodeLocatorWindow, val rootPanel: RootPan
             if (screenPanel.isLandScape) {
                 tabContainerPanel.maximumSize = Dimension(
                     10086,
-                    Math.max(CoordinateUtils.SCALE_TO_LAND_PANEL_HEIGHT, parent.height - screenPanel.height)
+                    parent.height - screenPanel.height - CoordinateUtils.DEFAULT_BORDER * 2
                 )
             } else {
                 tabContainerPanel.maximumSize = Dimension(10086, Math.max(parent.height, screenPanel.height))
@@ -244,9 +263,9 @@ class MainPanel(val codeLocatorWindow: CodeLocatorWindow, val rootPanel: RootPan
     private fun addChild() {
         screenPanel.alignmentY = Component.TOP_ALIGNMENT
         tabContainerPanel.alignmentY = Component.TOP_ALIGNMENT
-        JComponentUtils.setSize(screenPanel, CoordinateUtils.PANEL_WIDTH, CoordinateUtils.SCALE_TO_HEIGHT)
+        JComponentUtils.setSize(screenPanel, CoordinateUtils.PANEL_WIDTH, codeLocatorWindow.screenPanelHeight)
         add(screenPanel)
-        JComponentUtils.setMinimumSize(tabContainerPanel, CoordinateUtils.PANEL_WIDTH, CoordinateUtils.SCALE_TO_HEIGHT)
+        JComponentUtils.setMinimumSize(tabContainerPanel, CoordinateUtils.PANEL_WIDTH, codeLocatorWindow.screenPanelHeight)
         add(tabContainerPanel)
     }
 

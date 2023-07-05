@@ -1,8 +1,8 @@
 package com.bytedance.tools.codelocator.model;
 
 import com.bytedance.tools.codelocator.utils.FileUtils;
-import com.bytedance.tools.codelocator.utils.ThreadUtils;
 import com.bytedance.tools.codelocator.utils.GsonUtils;
+import com.bytedance.tools.codelocator.utils.ThreadUtils;
 import com.google.gson.annotations.SerializedName;
 import org.jetbrains.annotations.NotNull;
 
@@ -73,6 +73,7 @@ public class SchemaHistory {
                     configFile.delete();
                 } else {
                     sSchemaHistory = codelocatorConfig;
+                    sSchemaHistory.mHistorySchema.removeIf(schemaInfo -> schemaInfo.getSchema() == null);
                 }
             }
         } catch (Throwable t) {

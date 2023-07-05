@@ -44,7 +44,7 @@ public class DialogInfoAnalyzer {
             }
             return getTagInfoByElement(findElement);
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "analysisShowDialogInfo Error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "analysisShowDialogInfo Error " + Log.getStackTraceString(t));
         }
         return null;
     }

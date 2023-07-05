@@ -43,17 +43,10 @@ class ShowViewDataDialog(
                         StringUtils.formatJson("{\"typeInfo\":\"$typeInfo\",\"data\":$data}")
                     )
                 }
-                val virtualFile = LocalFileSystem.getInstance().refreshAndFindFileByPath(mainFilePath)!!
+                val virtualFile = LocalFileSystem.getInstance().findFileByPath(mainFilePath)!!
                 virtualFile.refresh(false, false)
-                val openFileDescriptor =
-                    OpenFileDescriptor(
-                        project,
-                        virtualFile,
-                        0,
-                        0
-                    )
                 ThreadUtils.runOnUIThread {
-                    FileEditorManager.getInstance(project).openTextEditor(openFileDescriptor, true)
+                    FileEditorManager.getInstance(project).openFile(virtualFile, true)
                     NotificationUtils.showNotifyInfoShort(
                         project,
                         ResUtils.getString("file_opened_with_edit_format", mainFilePath),

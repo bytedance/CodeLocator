@@ -1,25 +1,5 @@
-Welcome to CodeLocator 2.0.0
-
-Because the version has changed too much, it is incompatible with the old version SDK
-The SDK also needs to be upgraded to 2.0.0
+Welcome to CodeLocator 2.0.1
 
 The following functions are added:
 
-1. Faster grasping speed and higher grasping success rate
-2. Equipment selection and logcat panel selection are linked
-3. ADB uses as to reduce compatibility problems
-4. The SDK supports network configuration, and jump errors can be quickly repaired
-5. Fix the jump error of files with the same name
-6. Jump to file and follow flavor
-7. The view tree is displayed according to the window, and the view tree that is not selected can be marked
-8. Support capturing APK without integrated SDK (view tree only)
-9. Support fetching asynchronous broadcast apk
-10. The latest APK in the installation project supports shortcut keys, and the default is shift + option + I
-11. Support to view the corresponding resources of background
-12. Support to grab the floating window
-13. Support ViewStub
-14. Support Windows system
-15. View supports scale and pivot attributes
-16. Support to add the selected drawing attribute of view
-17. Support English
-18. Support the operation of equipment cutting board
+1. Support ViewBinding

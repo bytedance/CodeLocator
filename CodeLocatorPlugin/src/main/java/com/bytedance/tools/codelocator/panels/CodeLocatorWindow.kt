@@ -28,6 +28,8 @@ import com.intellij.openapi.wm.ex.WindowManagerEx
 import com.intellij.ui.awt.RelativePoint
 import java.awt.*
 import java.awt.dnd.DropTarget
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.WindowAdapter
@@ -42,23 +44,28 @@ import javax.swing.JPanel
 class CodeLocatorWindow(
     val project: Project,
     val isWindowMode: Boolean = false,
-    codelocatorInfo: CodeLocatorInfo? = null
+    codelocatorInfo: CodeLocatorInfo? = null,
+    val isDiffMode: Boolean = false
 ) : SimpleToolWindowPanel(true) {
 
     companion object {
 
         const val CLICK_EVENT = "click_event"
 
+        @JvmStatic
+        val codeLocatorMap: MutableMap<Int, WApplication?> = mutableMapOf()
+
         fun showCodeLocatorDialog(
             project: Project,
             codeLocatorWindow: CodeLocatorWindow,
             newCodeLocatorInfo: CodeLocatorInfo,
-            isLinkMode: Boolean = false
+            isLinkMode: Boolean = false,
+            isDiffMode: Boolean = false
         ) {
             val useJDialog = true
             if (useJDialog) {
                 val dialog = object : JDialog(WindowManagerEx.getInstance().getFrame(project), false) {}
-                val newCodeLocatorWindow = CodeLocatorWindow(project, true, newCodeLocatorInfo)
+                val newCodeLocatorWindow = CodeLocatorWindow(project, true, newCodeLocatorInfo, isDiffMode)
                 if (isLinkMode) {
                     newCodeLocatorWindow.mainCodeLocatorWindow = codeLocatorWindow
                     codeLocatorWindow.dialogCodeLocatorWindowList.add(newCodeLocatorWindow)
@@ -86,11 +93,9 @@ class CodeLocatorWindow(
                 dialog.minimumSize = Dimension(
                     CoordinateUtils.PANEL_WIDTH * 2 + 3 * CoordinateUtils.DEFAULT_BORDER,
                     if (newCodeLocatorInfo.wApplication.isLandScape) {
-                        CoordinateUtils.SCALE_TO_LAND_HEIGHT + CoordinateUtils.SCALE_TO_LAND_PANEL_HEIGHT + 2 * CoordinateUtils.DEFAULT_BORDER + OSHelper.instance.getToolbarHeight(
-                            codeLocatorWindow
-                        )
+                        CoordinateUtils.getDefaultHeight() + OSHelper.instance.getToolbarHeight(codeLocatorWindow)
                     } else {
-                        CoordinateUtils.SCALE_TO_HEIGHT + 2 * CoordinateUtils.DEFAULT_BORDER + OSHelper.instance.getToolbarHeight(
+                        newCodeLocatorWindow.screenPanelHeight + 2 * CoordinateUtils.DEFAULT_BORDER + OSHelper.instance.getToolbarHeight(
                             codeLocatorWindow
                         )
                     }
@@ -98,7 +103,7 @@ class CodeLocatorWindow(
                 OSHelper.instance.adjustDialog(dialog, project)
             } else {
                 val dialog = object : DialogWrapper(project, true, IdeModalityType.MODELESS) {
-                    val selfCodeLocatorWindow = CodeLocatorWindow(project, true, newCodeLocatorInfo)
+                    val selfCodeLocatorWindow = CodeLocatorWindow(project, true, newCodeLocatorInfo, isDiffMode)
 
                     init {
                         contentPanel.add(selfCodeLocatorWindow)
@@ -117,6 +122,13 @@ class CodeLocatorWindow(
             }
         }
     }
+
+    var screenPanelHeight = 700
+    var landScreenPanelHeight = 540
+    var treePanelHeight = 370
+
+    var showSingleViewClickableAreaAction: ShowSingleViewClickableAreaAction? = null
+    var showAllClickableAreaAction: ShowAllClickableAreaAction? = null
 
     var findViewAction: FindViewAction? = null
     var findClickListenerAction: FindClickListenerAction? = null
@@ -220,6 +232,43 @@ class CodeLocatorWindow(
                 DataUtils.setCurrentApkName(currentApplication?.packageName)
                 DataUtils.setCurrentProjectName(project.name)
                 DataUtils.setCurrentSDKVersion(currentApplication?.sdkVersion)
+            }
+        })
+        val height = Toolkit.getDefaultToolkit().screenSize.height
+        if (height < 940) {
+            screenPanelHeight = Math.max(500, height - 240)
+            landScreenPanelHeight = Math.max(200, height - 240 - CoordinateUtils.SCALE_TO_LAND_HEIGHT)
+            treePanelHeight = screenPanelHeight / 2
+        }
+        addComponentListener(object : ComponentAdapter() {
+
+            var lastHeight = 0
+
+            override fun componentResized(e: ComponentEvent?) {
+                super.componentResized(e)
+                if (isWindowMode) {
+                    return
+                }
+                val newHeight = getHeight()
+                if (newHeight == lastHeight) {
+                    return
+                }
+                lastHeight = newHeight
+                if (newHeight < 780) {
+                    screenPanelHeight = Math.max(500, newHeight - 80)
+                    landScreenPanelHeight = Math.max(200, newHeight - 80 - CoordinateUtils.SCALE_TO_LAND_HEIGHT)
+                    treePanelHeight = screenPanelHeight / 2
+                    getScreenPanel()?.adjustLayout()
+                    doLayout()
+                    repaint()
+                } else if (screenPanelHeight < 700) {
+                    screenPanelHeight = 700
+                    landScreenPanelHeight = 540
+                    treePanelHeight = 370
+                    getScreenPanel()?.adjustLayout()
+                    doLayout()
+                    repaint()
+                }
             }
         })
     }
@@ -394,6 +443,10 @@ class CodeLocatorWindow(
             addActionToGroup(actionGroup, loadWindowAction)
         }
 
+        showSingleViewClickableAreaAction = ShowSingleViewClickableAreaAction(project,this)
+
+        showAllClickableAreaAction = ShowAllClickableAreaAction(project,this)
+
         findViewAction = FindViewAction(project, this)
         addActionToGroup(actionGroup, findViewAction)
 
@@ -560,6 +613,7 @@ class CodeLocatorWindow(
         findXmlAction?.update(event)
         openActivityAction?.update(event)
         viewHolderAction?.update(event)
+        showAllClickableAreaAction?.update(event)
 
         if (!fromOutSide) {
             if (isWindowMode) {
@@ -584,8 +638,33 @@ class CodeLocatorWindow(
         } else {
             currentApplication = activity.application
         }
+        codeLocatorMap[System.identityHashCode(project)] = currentApplication
         DataUtils.setCurrentApkName(currentApplication?.packageName)
         DataUtils.setCurrentSDKVersion(currentApplication?.sdkVersion)
+
+        updateDiffState(activity, false)
+    }
+
+    fun updateDiffState(activity: WActivity?, fromOutSide: Boolean) {
+        if (!isWindowMode) {
+            for (window in dialogCodeLocatorWindowList) {
+                if (window.isDiffMode) {
+                    window.updateDiffState(activity, true)
+                }
+            }
+        } else if (fromOutSide) {
+            activity ?: return
+            currentActivity?.apply {
+                val findDiffViews = ViewUtils.findDiffViews(currentActivity, activity)
+                getScreenPanel()?.clearMark(null)
+                findDiffViews?.forEach {
+                    getScreenPanel()?.markView(it, Color.RED)
+                }
+                if (!findDiffViews.isNullOrEmpty()) {
+                    getScreenPanel()?.setCustomViews(findDiffViews)
+                }
+            }
+        }
     }
 
     fun getCopyViewImageAction(currentSelectView: WView): Array<AnAction> {
@@ -625,6 +704,12 @@ class CodeLocatorWindow(
         return arrayOf(
             ClearMarkAction(project, this, null, ResUtils.getString("clean_all_mark")),
             ClearMarkAction(project, this, currentSelectView, ResUtils.getString("clean_view_mark")),
+            MarkViewChainAction(
+                project,
+                this,
+                currentSelectView,
+                ResUtils.getString("mark_view_chain")
+            ),
             MarkViewAction(
                 project,
                 this,
@@ -706,6 +791,18 @@ class CodeLocatorWindow(
             findViewAction!!.mShowPopY = y
             findViewAction!!.mShowComponet = component
             actionGroup.add(findViewAction!!)
+        }
+        if (showSingleViewClickableAreaAction?.enable == true) {
+            showSingleViewClickableAreaAction!!.mShowPopX = x
+            showSingleViewClickableAreaAction!!.mShowPopY = y
+            showSingleViewClickableAreaAction!!.mShowComponet = component
+            actionGroup.add(showSingleViewClickableAreaAction!!)
+        }
+        if (showAllClickableAreaAction?.enable == true) {
+            showAllClickableAreaAction!!.mShowPopX = x
+            showAllClickableAreaAction!!.mShowPopY = y
+            showAllClickableAreaAction!!.mShowComponet = component
+            actionGroup.add(showAllClickableAreaAction!!)
         }
         if (findClickListenerAction?.enable == true) {
             findClickListenerAction!!.mShowPopX = x

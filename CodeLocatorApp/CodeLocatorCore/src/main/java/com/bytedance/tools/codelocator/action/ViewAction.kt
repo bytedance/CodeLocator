@@ -359,7 +359,7 @@ class GetViewBitmap : ViewAction() {
                 result.addResultItem(FILE_PATH, saveBitmapPath)
             }
         } else {
-            Log.e(CodeLocator.TAG, "drawing cache is null")
+            Log.d(CodeLocator.TAG, "drawing cache is null")
         }
     }
 }
@@ -418,10 +418,10 @@ class GetViewDrawLayerBitmap : ViewAction() {
                 return
             }
         } catch (e: Throwable) {
-            Log.e(CodeLocator.TAG, "drawing cache error " + Log.getStackTraceString(e))
+            Log.d(CodeLocator.TAG, "drawing cache error " + Log.getStackTraceString(e))
             return
         }
-        Log.e(CodeLocator.TAG, "drawing cache is null")
+        Log.d(CodeLocator.TAG, "drawing cache is null")
     }
 }
 
@@ -700,7 +700,14 @@ class InvokeViewAction : ViewAction() {
             if ("void".equals(method.returnType.name, true) || method.returnType == Void::class.java) {
                 return ""
             } else {
-                return "$obj"
+                if (obj == null) {
+                    return "null"
+                }
+                val formatJson = GsonUtils.formatJson(GsonUtils.sGson.toJson(obj))
+                return "{\"type\": \"" + obj.javaClass.name + "\", \"data\": " + formatJson.replace(
+                    "\n",
+                    " "
+                ) + "}"
             }
         } catch (t: Throwable) {
             result = Log.getStackTraceString(t)

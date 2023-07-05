@@ -10,14 +10,75 @@ import java.util.*;
 public class ViewUtils {
 
     @Nullable
+    public static List<WView> findDiffViews(WActivity sourceActivity, WActivity targetActivity) {
+        if (sourceActivity == null || targetActivity == null) {
+            return Collections.emptyList();
+        }
+        final List<WView> sourceDecorViews = sourceActivity.getDecorViews();
+        if (sourceDecorViews == null || sourceDecorViews.isEmpty()) {
+            return Collections.emptyList();
+        }
+        final List<WView> targetDecorViews = targetActivity.getDecorViews();
+        if (targetDecorViews == null || targetDecorViews.isEmpty()) {
+            return Collections.emptyList();
+        }
+        final Map<String, WView> sourceViewMap = buildViewMap(sourceDecorViews);
+        final Map<String, WView> targetViewMap = buildViewMap(targetDecorViews);
+        final Set<String> sourceKeys = sourceViewMap.keySet();
+        final Set<String> targetKeys = targetViewMap.keySet();
+        sourceKeys.retainAll(targetKeys);
+        ArrayList<WView> diffViews = new ArrayList<>();
+        for (String key : sourceKeys) {
+            if (isDiffView(targetViewMap.get(key), sourceViewMap.get(key))) {
+                diffViews.add(targetViewMap.get(key));
+            }
+        }
+        return diffViews;
+    }
+
+    private static boolean isDiffView(WView sourceView, WView targetView) {
+        if (sourceView == null || targetView == null) {
+            return false;
+        }
+        if (!sourceView.getMemAddr().equalsIgnoreCase(targetView.getMemAddr())) {
+            return false;
+        }
+        return !isSame(sourceView, targetView);
+    }
+
+    private static Map<String, WView> buildViewMap(List<WView> views) {
+        if (views == null || views.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        final HashMap<String, WView> viewMap = new HashMap<>();
+        for (WView view : views) {
+            buildViewMap(view, viewMap);
+        }
+        return viewMap;
+    }
+
+    private static void buildViewMap(WView view, Map<String, WView> maps) {
+        if (view == null) {
+            return;
+        }
+        maps.put(view.getMemAddr(), view);
+        for (int i = 0; i < view.getChildCount(); i++) {
+            buildViewMap(view.getChildAt(i), maps);
+        }
+    }
+
+    @Nullable
     public static WView findClickedView(WActivity activity, int clickX, int clickY, boolean orderByArea, List<WView> forbidViews) {
         if (activity == null) {
             return null;
         }
         final List<WView> decorViews = activity.getDecorViews();
+        if (decorViews == null || decorViews.isEmpty()) {
+            return null;
+        }
         final ArrayList<WView> clickViews = new ArrayList<>();
         for (int i = 0; i < decorViews.size(); i++) {
-            findClickedView(decorViews.get(i), clickX, clickY, clickViews, orderByArea, forbidViews);
+            findClickedView(decorViews.get(i), clickX, clickY, clickViews, false, forbidViews);
         }
         return findClickViewInList(orderByArea, clickViews);
     }
@@ -31,6 +92,9 @@ public class ViewUtils {
                 }
                 return o2.getZIndex().compareTo(o1.getZIndex());
             } else {
+                if (o1.getArea() == o2.getArea()) {
+                    return o2.getZIndex().compareTo(o1.getZIndex());
+                }
                 return o1.getArea() - o2.getArea();
             }
         });
@@ -77,7 +141,7 @@ public class ViewUtils {
         }
         for (WView decor : decorViews) {
             final List<WView> viewList = findViewList(decor, viewIdList);
-            if (viewList != null) {
+            if (viewList != null && !viewList.isEmpty()) {
                 return viewList;
             }
         }
@@ -251,6 +315,81 @@ public class ViewUtils {
             view = view.getParentView();
         }
         return count;
+    }
+
+    public static void fillViewInfo(WView targetView, WView sourceView) {
+        HashSet<String> ignoreViewAddrs = new HashSet<>();
+        fillView(targetView, sourceView, ignoreViewAddrs);
+    }
+
+    private static void fillView(WView targetView, WView sourceView, HashSet<String> ignoreViewAddrs) {
+        if (sourceView == null) {
+            return;
+        }
+        if (sourceView.getText() != null
+            && !sourceView.getText().isEmpty()
+            && sourceView.getIdStr() != null
+            && !sourceView.getIdStr().isEmpty()) {
+            final WView wView = targetView.justFindViewById(sourceView.getIdStr(), ignoreViewAddrs);
+            if (wView != null) {
+                ignoreViewAddrs.add(wView.getMemAddr());
+                wView.setText(sourceView.getText());
+                wView.setType(WView.Type.TYPE_TEXT);
+            }
+        }
+        for (int i = 0; i < sourceView.getChildCount(); i++) {
+            fillView(targetView, sourceView.getChildAt(i), ignoreViewAddrs);
+        }
+    }
+
+    public static boolean isSame(WView sourceView, WView targetView) {
+        return sourceView.getTopOffset() == targetView.getTopOffset() &&
+            sourceView.getLeftOffset() == (targetView.getLeftOffset()) &&
+            sourceView.getLeft() == (targetView.getLeft()) &&
+            sourceView.getRight() == (targetView.getRight()) &&
+            sourceView.getTop() == (targetView.getTop()) &&
+            sourceView.getBottom() == (targetView.getBottom()) &&
+            sourceView.getScrollX() == (targetView.getScrollX()) &&
+            sourceView.getScrollY() == (targetView.getScrollY()) &&
+            sourceView.getScaleX() == (targetView.getScaleX()) &&
+            sourceView.getScaleY() == (targetView.getScaleY()) &&
+            sourceView.getTranslationX() == (targetView.getTranslationX()) &&
+            sourceView.getTranslationY() == (targetView.getTranslationY()) &&
+            sourceView.getPaddingTop() == (targetView.getPaddingTop()) &&
+            sourceView.getPaddingBottom() == (targetView.getPaddingBottom()) &&
+            sourceView.getPaddingLeft() == (targetView.getPaddingLeft()) &&
+            sourceView.getPaddingRight() == (targetView.getPaddingRight()) &&
+            sourceView.getMarginTop() == (targetView.getMarginTop()) &&
+            sourceView.getMarginBottom() == (targetView.getMarginBottom()) &&
+            sourceView.getMarginLeft() == (targetView.getMarginLeft()) &&
+            sourceView.getMarginRight() == (targetView.getMarginRight()) &&
+            sourceView.getLayoutWidth() == (targetView.getLayoutWidth()) &&
+            sourceView.getLayoutHeight() == (targetView.getLayoutHeight()) &&
+            sourceView.isClickable() == (targetView.isClickable()) &&
+            sourceView.isLongClickable() == (targetView.isLongClickable()) &&
+            sourceView.isFocusable() == (targetView.isFocusable()) &&
+            sourceView.isPressed() == (targetView.isPressed()) &&
+            sourceView.isSelected() == (targetView.isSelected()) &&
+            sourceView.isFocused() == (targetView.isFocused()) &&
+            sourceView.isEnabled() == (targetView.isEnabled()) &&
+            sourceView.getVisibility() == (targetView.getVisibility()) &&
+            sourceView.getId() == (targetView.getId()) &&
+            sourceView.getAlpha() == (targetView.getAlpha()) &&
+            sourceView.getTextSize() == (targetView.getTextSize()) &&
+            sourceView.getSpacingAdd() == (targetView.getSpacingAdd()) &&
+            sourceView.getLineHeight() == (targetView.getLineHeight()) &&
+            sourceView.getTextAlignment() == (targetView.getTextAlignment()) &&
+            sourceView.getShadowDx() == (targetView.getShadowDx()) &&
+            sourceView.getShadowDy() == (targetView.getShadowDy()) &&
+            sourceView.getShadowRadius() == (targetView.getShadowRadius()) &&
+            sourceView.getPivotX() == (targetView.getPivotX()) &&
+            sourceView.getPivotY() == (targetView.getPivotY()) &&
+            CodeLocatorUtils.equals(sourceView.getMemAddr(), targetView.getMemAddr()) &&
+            CodeLocatorUtils.equals(sourceView.getBackgroundColor(), targetView.getBackgroundColor()) &&
+            CodeLocatorUtils.equals(sourceView.getText(), targetView.getText()) &&
+            CodeLocatorUtils.equals(sourceView.getSpan(), targetView.getSpan()) &&
+            CodeLocatorUtils.equals(sourceView.getTextColor(), targetView.getTextColor()) &&
+            CodeLocatorUtils.equals(sourceView.getShadowColor(), targetView.getShadowColor());
     }
 
 }

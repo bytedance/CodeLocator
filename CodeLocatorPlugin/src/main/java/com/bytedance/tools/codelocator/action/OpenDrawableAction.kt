@@ -30,7 +30,7 @@ class OpenDrawableAction(
 
     private fun jumpToDrawableName(drawablePath: String) {
         if (drawablePath.startsWith("http")) {
-            IdeaUtils.openBrowser(drawablePath)
+            IdeaUtils.openBrowser(project, drawablePath)
         } else {
             val indexOfSplit = drawablePath.lastIndexOf("/")
             var openFileName = if (indexOfSplit > -1) {

@@ -100,7 +100,7 @@ class AppInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
         JComponentUtils.setMinimumSize(
                 this,
                 CoordinateUtils.PANEL_WIDTH,
-                CoordinateUtils.SCALE_TO_HEIGHT - CoordinateUtils.DEFAULT_BORDER * 3
+            codeLocatorWindow.screenPanelHeight - CoordinateUtils.DEFAULT_BORDER * 3
         )
     }
 

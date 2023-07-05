@@ -6,6 +6,7 @@ import com.bytedance.tools.codelocator.device.action.AdbCommand
 import com.bytedance.tools.codelocator.device.action.AdbCommand.ACTION
 import com.bytedance.tools.codelocator.device.Device
 import com.bytedance.tools.codelocator.listener.OnClickListener
+import com.bytedance.tools.codelocator.model.ProjectConfig
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.tools.*
 import com.bytedance.tools.codelocator.utils.*
@@ -63,8 +64,8 @@ class ToolsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: Project
         jButton.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent?) {
                 super.mouseClicked(e)
-                tool.onClick()
                 this@ToolsDialog.hide()
+                tool.onClick()
             }
         })
         tool.jButton = jButton
@@ -73,7 +74,8 @@ class ToolsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: Project
     }
 
     private fun addToolsButton() {
-        addButton(ProxyTool(codeLocatorWindow, project))
+        addButton(ProxyTool(this, codeLocatorWindow, project))
+        addButton(CloseProxyTool(codeLocatorWindow, project))
         addButton(ClipboardTool(codeLocatorWindow, project))
         addButton(LayoutTool(project))
         addButton(OverdrawTool(project))
@@ -83,6 +85,7 @@ class ToolsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: Project
         addButton(showCoordinateTools)
         addButton(SendSchemaTools(codeLocatorWindow, project))
         addButton(UnitConvertTools(codeLocatorWindow, project))
+        addButton(ColorSearchTools(codeLocatorWindow, project))
 
         DeviceManager.enqueueCmd(
             project,
@@ -109,7 +112,7 @@ class ToolsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: Project
             })
 
         dialogContentPanel.minimumSize =
-            Dimension(DIALOG_WIDTH, (CoordinateUtils.DEFAULT_BORDER + ITEM_HEIGHT) * 8 + CoordinateUtils.DEFAULT_BORDER)
+            Dimension(DIALOG_WIDTH, (CoordinateUtils.DEFAULT_BORDER + ITEM_HEIGHT) * 10 + CoordinateUtils.DEFAULT_BORDER)
         dialogContentPanel.preferredSize = dialogContentPanel.minimumSize
         minimumSize = dialogContentPanel.minimumSize
         setLocationRelativeTo(WindowManagerEx.getInstance().getFrame(project))

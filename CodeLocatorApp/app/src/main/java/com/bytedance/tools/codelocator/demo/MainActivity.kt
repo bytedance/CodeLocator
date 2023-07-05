@@ -10,36 +10,35 @@ import android.widget.ImageView
 import android.widget.PopupWindow
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.bytedance.tools.codelocator.demo.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
+    lateinit var binding : ActivityMainBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
-        findViewById<View>(R.id.tvw_start_activity).setOnClickListener {
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        binding.tvwStartActivity.setOnClickListener {
             startActivity(Intent(this, TestActivity::class.java))
         }
-
-        val showDialogView = findViewById<View>(R.id.tvw_show_dialog)
-        showDialogView.setOnTouchListener { v, event ->
+        binding.tvwShowDialog.setOnTouchListener { v, event ->
             if (event.action == MotionEvent.ACTION_UP) {
                 MainDialogFragment().show(supportFragmentManager, "CodeLocator")
             }
             return@setOnTouchListener true
         }
-
-        val showPopupView = findViewById<View>(R.id.tvw_show_pop)
-        showPopupView.setOnClickListener {
+        binding.tvwShowPop.setOnClickListener {
             PopupWindow(
                 LayoutInflater.from(it.context).inflate(R.layout.pop_view, null),
                 500,
                 90
             ).showAsDropDown(it)
         }
-
-        val showToastView = findViewById<View>(R.id.tvw_show_toast)
-        showToastView.setOnClickListener {
+        binding.tvwShowToast.setOnClickListener {
             Toast.makeText(this, "Hello CodeLocator!", Toast.LENGTH_SHORT).show()
         }
 

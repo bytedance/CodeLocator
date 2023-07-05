@@ -44,6 +44,11 @@ dependencies {
     }
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+
+    implementation('com.github.ChickenHook:RestrictionBypass:2.2') {
+        exclude group: "androidx.appcompat", module: "appcompat"
+    }
+
     compileOnly("com.squareup.okhttp3:okhttp:3.8.1")
 }
 

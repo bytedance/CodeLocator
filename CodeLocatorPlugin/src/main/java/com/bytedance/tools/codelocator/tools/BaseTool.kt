@@ -10,6 +10,8 @@ import com.bytedance.tools.codelocator.device.action.AdbCommand
 import com.bytedance.tools.codelocator.device.action.AdbCommand.ACTION
 import com.bytedance.tools.codelocator.device.action.BroadcastAction
 import com.bytedance.tools.codelocator.device.Device
+import com.bytedance.tools.codelocator.dialog.SearchColorDialog
+import com.bytedance.tools.codelocator.dialog.ToolsDialog
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.utils.*
 import com.bytedance.tools.codelocator.utils.Mob.Button.*
@@ -19,6 +21,7 @@ import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.*
 import com.intellij.openapi.project.Project
 import java.util.regex.Pattern
 import javax.swing.JButton
+import javax.swing.JPanel
 
 abstract class BaseTool(val project: Project) {
 
@@ -148,7 +151,8 @@ class OverdrawTool(project: Project) : BaseTool(project) {
 
 }
 
-class ProxyTool(val codeLocatorWindow: CodeLocatorWindow, project: Project) : BaseTool(project) {
+class ProxyTool(val toolsDialog: ToolsDialog, val codeLocatorWindow: CodeLocatorWindow, project: Project) :
+    BaseTool(project) {
 
     var isProxyOpenNow = false
 
@@ -172,7 +176,13 @@ class ProxyTool(val codeLocatorWindow: CodeLocatorWindow, project: Project) : Ba
                                 if (isProxyOpenNow) ResUtils.getString(
                                     "close_proxy",
                                     "$currentProxy"
-                                ) else ResUtils.getString("open_proxy")
+                                ) else {
+                                    ResUtils.getString("open_proxy")
+                                }
+                            if (isProxyOpenNow) {
+                                (toolsDialog.contentPane as? JPanel)?.remove(2)
+                                (toolsDialog.contentPane as? JPanel)?.remove(2)
+                            }
                         }
                     }
 
@@ -216,6 +226,42 @@ class ProxyTool(val codeLocatorWindow: CodeLocatorWindow, project: Project) : Ba
         Mob.mob(Mob.Action.TOOLS, if (isProxyOpenNow) Mob.Button.TOOLS_CLOSE_PROXY else Mob.Button.TOOLS_OPEN_PROXY)
     }
 
+}
+
+class CloseProxyTool(val codeLocatorWindow: CodeLocatorWindow, project: Project) : BaseTool(project) {
+
+    override val toolsTitle: String
+        get() {
+            return ResUtils.getString("close_proxy").replace("(%s)", "")
+        }
+
+    override val toolsIcon: String
+        get() = "tools_proxy"
+
+    override fun onClick() {
+        DeviceManager.enqueueCmd(
+            project,
+            AdbCommand(
+                AdbAction(
+                    ACTION.SETTINGS,
+                    "put global http_proxy :0"
+                ),
+                AdbAction(
+                    ACTION.SETTINGS,
+                    "delete global http_proxy"
+                ),
+                AdbAction(
+                    ACTION.SETTINGS,
+                    "delete global global_http_proxy_host"
+                ),
+                AdbAction(
+                    ACTION.SETTINGS,
+                    "delete global global_http_proxy_port"
+                )
+            ), BaseResponse::class.java, null
+        )
+        Mob.mob(Mob.Action.TOOLS, Mob.Button.TOOLS_CLOSE_PROXY)
+    }
 }
 
 class ClipboardTool(val codeLocatorWindow: CodeLocatorWindow, project: Project) : BaseTool(project) {
@@ -342,6 +388,23 @@ class UnitConvertTools(val codeLocatorWindow: CodeLocatorWindow, project: Projec
         UnitConvertDialog.showDialog(codeLocatorWindow, project)
         Mob.mob(Mob.Action.CLICK, Mob.Button.TOOLS_UNIT_CONVERT)
     }
+}
+
+class ColorSearchTools(val codeLocatorWindow: CodeLocatorWindow, project: Project) : BaseTool(project) {
+
+    override val toolsTitle: String?
+        get() {
+            return ResUtils.getString("color_search")
+        }
+
+    override val toolsIcon: String
+        get() = "view"
+
+    override fun onClick() {
+        SearchColorDialog.showDialog(codeLocatorWindow, project)
+        Mob.mob(Mob.Action.CLICK, Mob.Button.TOOLS_COLOR_SEARCH)
+    }
+
 }
 
 class SendSchemaTools(val codeLocatorWindow: CodeLocatorWindow, project: Project) : BaseTool(project) {

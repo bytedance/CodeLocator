@@ -23,6 +23,7 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.ui.popup.ListPopup;
 import com.intellij.ui.awt.RelativePoint;
+import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
@@ -127,13 +128,17 @@ public class ScreenPanel extends JPanel implements ImageObserver {
 
     private OnGrabScreenListener mOnGrabScreenListener;
 
-    private boolean mDrawPaddingMargin = false;
+    private boolean mDrawPaddingMargin = CodeLocatorUserConfig.loadConfig().isDrawViewPadding();
 
     private boolean mLastDragHintRect = false;
 
-    private boolean mIsGrabbing = false;
+    private volatile boolean mIsGrabbing = false;
+
+    private volatile long mLastGrabbingTime = 0;
 
     private Color mSelectViewBgColor = new Color(0.1f, 0.3f, 0.3f, 0.3f);
+
+    private Color mClickableAreaBgColor = new Color(1f, 0f, 0f, 0.3f);
 
     private List<WView> mCurrentViewList = new ArrayList<>();
 
@@ -148,6 +153,45 @@ public class ScreenPanel extends JPanel implements ImageObserver {
     private int mDrawMode = 0;
 
     private boolean mRepaintByClick = false;
+
+    private boolean showClickableArea = false;
+
+    public int getMinWidth() {
+        return minWidth;
+    }
+
+    public void setMinWidth(int minWidth) {
+        this.minWidth = minWidth;
+    }
+
+    public int getMinHeight() {
+        return minHeight;
+    }
+
+    public void setMinHeight(int minHeight) {
+        this.minHeight = minHeight;
+    }
+
+    private int minWidth = 44;
+    private int minHeight = 44;
+
+    public void setShowClickableArea(boolean showClickableArea) {
+        this.showClickableArea = showClickableArea;
+    }
+
+    public boolean getShowClickableArea() {
+        return this.showClickableArea;
+    }
+
+    private boolean showAllClickableArea = false;
+
+    public void setShowAllClickableArea(boolean showAllClickableArea) {
+        this.showAllClickableArea = showAllClickableArea;
+    }
+
+    public boolean getShowAllClickableArea() {
+        return this.showAllClickableArea;
+    }
 
     private int mCurrentMouseX = -1;
 
@@ -180,6 +224,8 @@ public class ScreenPanel extends JPanel implements ImageObserver {
     private AtomicInteger mGrapStepCount = new AtomicInteger(0);
 
     private int mDumpModeWidth;
+
+    private int mReleaseModeWidth;
 
     public ScreenPanel(CodeLocatorWindow codeLocatorWindow) {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -419,6 +465,48 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         }
     }
 
+    public void markViewChain(WView view) {
+        while (view != null) {
+            markView(view, getMarkViewColor(view));
+            view = view.getParentView();
+        }
+    }
+
+    private Color getMarkViewColor(WView view) {
+        if (UIUtil.isUnderDarcula()) {
+            switch (view.getVisibility()) {
+                case 'V':
+                    return Color.GREEN;
+                case 'I':
+                    return Color.YELLOW;
+                case 'G':
+                    return Color.RED;
+                default:
+                    return Color.GREEN;
+            }
+        } else {
+            switch (view.getVisibility()) {
+                case 'V':
+                    return Color.BLUE;
+                case 'I':
+                    return Color.MAGENTA;
+                case 'G':
+                    return Color.RED;
+                default:
+                    return Color.GREEN;
+            }
+        }
+    }
+
+    public void setCustomViews(List<WView> customViews) {
+        mCurrentViewList.clear();
+        mCurrentMode = SearchableJTree.MODE_CUSTOM_FLITER;
+        mCurrentViewList.addAll(customViews);
+        if (mOnGetViewListListener != null) {
+            mOnGetViewListListener.onGetViewList(SearchableJTree.MODE_CUSTOM_FLITER, mCurrentViewList);
+        }
+    }
+
     public void foldSiblingView(WView view) {
         if (mOnGetViewListListener != null) {
             mOnGetViewListListener.onFoldView(view);
@@ -501,7 +589,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         if (!"padding".equalsIgnoreCase(lineName)
             && !"margin".equalsIgnoreCase(lineName)) {
             if (mDrawPaddingMargin) {
-                mDrawPaddingMargin = false;
+                mDrawPaddingMargin = CodeLocatorUserConfig.loadConfig().isDrawViewPadding();
                 repaint();
             }
             return;
@@ -559,7 +647,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
     }
 
     public void onControlViewRelease() {
-        mDrawPaddingMargin = false;
+        mDrawPaddingMargin = CodeLocatorUserConfig.loadConfig().isDrawViewPadding();
         mLastDragHintRect = false;
         mRepaintByClick = false;
         mCurrentDrawRect.clear();
@@ -588,7 +676,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             return;
         }
         mPreviousView = mClickedView;
-        mDrawPaddingMargin = false;
+        mDrawPaddingMargin = CodeLocatorUserConfig.loadConfig().isDrawViewPadding();
         mClickedView = clickedView;
         if (mOnClickListener != null) {
             mOnClickListener.onGetClickView(clickedView);
@@ -610,7 +698,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
     }
 
     public void setClickedView(WView view, boolean isShiftSelect) {
-        mDrawPaddingMargin = false;
+        mDrawPaddingMargin = CodeLocatorUserConfig.loadConfig().isDrawViewPadding();
 
         if ((mCurrentMode == SearchableJTree.MODE_NORMAL
             || mCurrentMode == SearchableJTree.MODE_SHIFT) && isShiftSelect) {
@@ -674,7 +762,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             panelWidth = panelHeight * imageWidth / imageHeight;
         } else {
             mIsLandScape = false;
-            panelHeight = CoordinateUtils.SCALE_TO_HEIGHT;
+            panelHeight = mCodeLocatorWindow.getScreenPanelHeight();
             panelWidth = panelHeight * imageWidth / imageHeight;
         }
         mDrawWidth = panelWidth;
@@ -686,9 +774,34 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         }
     }
 
+    public void adjustLayout() {
+        if (mScreenCapImage == null || mApplication == null) {
+            return;
+        }
+        int imageWidth = mScreenCapImage.getWidth(null);
+        int imageHeight = mScreenCapImage.getHeight(null);
+        int panelWidth = 0;
+        int panelHeight = 0;
+        if (imageHeight <= imageWidth) {
+            mIsLandScape = true;
+            panelHeight = CoordinateUtils.SCALE_TO_LAND_HEIGHT;
+            panelWidth = panelHeight * imageWidth / imageHeight;
+        } else {
+            mIsLandScape = false;
+            panelHeight = mCodeLocatorWindow.getScreenPanelHeight();
+            panelWidth = panelHeight * imageWidth / imageHeight;
+        }
+        mDrawWidth = panelWidth;
+        mDrawHeight = panelHeight;
+        if (mOnGrabScreenListener != null) {
+            mOnGrabScreenListener.onGrabScreenSuccess(mDrawWidth, mDrawHeight, true);
+        }
+        caclulateActivityInfo();
+    }
+
     private void callOnGrabSuccess() {
         if (mOnGrabScreenListener != null) {
-            mOnGrabScreenListener.onGrabScreenSuccess(mDrawWidth, mDrawHeight);
+            mOnGrabScreenListener.onGrabScreenSuccess(mDrawWidth, mDrawHeight, false);
         }
     }
 
@@ -779,6 +892,9 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         }
         mActivity = mApplication.getActivity();
         WActivity activity = mActivity;
+        if (activity.getDecorViews() == null || activity.getDecorViews().isEmpty()) {
+            return activity;
+        }
         final int width = activity.getDecorViews().get(0).getWidth();
         final int height = activity.getDecorViews().get(0).getHeight();
         if (mIsLandScape) {
@@ -854,7 +970,9 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         if (mDumpModeWidth == 0) {
             mDumpModeWidth = graphics2D.getFontMetrics().stringWidth("Dump Mode");
         }
-
+        if (mReleaseModeWidth == 0) {
+            mReleaseModeWidth = graphics2D.getFontMetrics().stringWidth("Release");
+        }
         graphics2D.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
@@ -874,6 +992,11 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             graphics2D.fillRect(getWidth() - mDumpModeWidth - 2 * HALF_DRAW_TEXT_PADDING, 0, mDumpModeWidth + 2 * HALF_DRAW_TEXT_PADDING, 20);
             graphics2D.setColor(mNormalTextColor);
             graphics2D.drawString("Dump Mode", getWidth() - mDumpModeWidth - HALF_DRAW_TEXT_PADDING, 15);
+        } else if (mApplication != null && !mApplication.isIsDebug()) {
+            graphics2D.setColor(mCheckViewTextBgColor);
+            graphics2D.fillRect(getWidth() - mReleaseModeWidth - 2 * HALF_DRAW_TEXT_PADDING, 0, mReleaseModeWidth + 2 * HALF_DRAW_TEXT_PADDING, 20);
+            graphics2D.setColor(mNormalTextColor);
+            graphics2D.drawString("Release", getWidth() - mReleaseModeWidth - HALF_DRAW_TEXT_PADDING, 15);
         }
     }
 
@@ -897,6 +1020,9 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             graphics2D.fillRect(0, 0, width, 20);
             graphics2D.setColor(mNormalTextColor);
             graphics2D.drawString(paintText, 6, 15);
+        }
+        if (mCurrentMode == SearchableJTree.MODE_NORMAL && showAllClickableArea) {
+            showAllClickableAreaView(graphics2D, mCodeLocatorWindow.getCurrentSelectView());
         }
     }
 
@@ -924,6 +1050,8 @@ public class ScreenPanel extends JPanel implements ImageObserver {
 
     private void drawScreenImage(Graphics2D graphics2D) {
         if (mScreenCapImage != null) {
+            graphics2D.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             graphics2D.drawImage(mScreenCapImage, 0, 0, mDrawWidth, mDrawHeight, this);
         }
     }
@@ -1246,12 +1374,70 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             if (mCurrentMode != SearchableJTree.MODE_SHIFT && CodeLocatorUserConfig.loadConfig().isDrawViewSize()) {
                 drawViewSizeText(graphics2D, view, left, top, width, height);
             }
+            if ((view.isRealClickable() || view.isLongClickable()) && mCurrentMode == SearchableJTree.MODE_NORMAL && showClickableArea) {
+                Rectangle rect = getClickableAreaRect(view);
+                int drawLeft = CoordinateUtils.convertPhoneXToPanelX(mApplication,rect.x);
+                int drawTop = CoordinateUtils.convertPhoneYToPanelY(mApplication, rect.y);
+                int drawWidth = CoordinateUtils.convertPhoneDistanceToPanelDistance(mApplication,rect.width);
+                int drawHeight = CoordinateUtils.convertPhoneDistanceToPanelDistance(mApplication,rect.height);
+                graphics2D.setColor(Color.orange);
+                graphics2D.drawRect(drawLeft, drawTop, drawWidth, drawHeight);
+                graphics2D.setColor(mClickableAreaBgColor);
+                graphics2D.fillRect(drawLeft, drawTop, drawWidth, drawHeight);
+            }
 
             if (!mDrawPaddingMargin || !view.equals(mClickedView)) {
                 return;
             }
             drawViewMargin(graphics2D, view, left, top, width, height);
             drawViewPadding(graphics2D, view, left, top, width, height);
+        }
+    }
+    private void drawViewArea(Graphics2D graphics2D, WView view) {
+        Rectangle rect = getClickableAreaRect(view);
+        int drawLeft = CoordinateUtils.convertPhoneXToPanelX(mApplication,rect.x);
+        int drawTop = CoordinateUtils.convertPhoneYToPanelY(mApplication, rect.y);
+        int drawWidth = CoordinateUtils.convertPhoneDistanceToPanelDistance(mApplication,rect.width);
+        int drawHeight = CoordinateUtils.convertPhoneDistanceToPanelDistance(mApplication,rect.height);
+
+        int widthDp = UIUtils.px2dip(mApplication.getDensity(), rect.width);
+        int heightDp = UIUtils.px2dip(mApplication.getDensity(), rect.height);
+
+        if (drawLeft + drawWidth == getWidth()) {
+            drawWidth -= 1;
+        }
+        if (drawLeft + drawHeight == getRealHeight()) {
+            drawHeight -= 1;
+        }
+        if (widthDp <= minWidth || heightDp <= minHeight) {
+            graphics2D.setColor(Color.orange);
+            graphics2D.drawRect(drawLeft, drawTop, drawWidth, drawHeight);
+            graphics2D.setColor(mClickableAreaBgColor);
+            graphics2D.fillRect(drawLeft, drawTop, drawWidth, drawHeight);
+        }
+    }
+
+    private Rectangle getClickableAreaRect(WView view) {
+        Rectangle rect = new Rectangle();
+        rect.setLocation(
+                view.getDrawLeft() - view.getPaddingLeft() - view.getSlopBoundLeft(),
+                view.getDrawTop() - view.getPaddingTop() - view.getSlopBoundUp());
+        rect.setSize(
+                view.getRealWidth() + view.getPaddingLeft() + view.getPaddingRight() + view.getSlopBoundLeft() + view.getSlopBoundRight(),
+                view.getRealHeight() + view.getPaddingTop() + view.getPaddingBottom() + view.getSlopBoundUp() + view.getSlopBoundBottom());
+        return rect;
+    }
+
+    private void showAllClickableAreaView(Graphics2D graphics2D, WView view) {
+        if (view == null || view.getRealVisiblity() != 'V') {
+            return;
+        }
+        if (view.isClickable()) {
+            drawViewArea(graphics2D,view);
+        }
+        for (int i = 0;i < view.getChildCount();i++) {
+            WView childView = view.getChildAt(i);
+            showAllClickableAreaView(graphics2D,childView);
         }
     }
 
@@ -1270,6 +1456,9 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             ViewInfoTablePanel.buildViewMap(view, mApplication, attrsMap, null);
             for (String drawAttr : drawAttrs) {
                 String drawValue = attrsMap.get(drawAttr);
+                if (drawValue == null) {
+                    drawValue = "";
+                }
                 if ("text".equals(drawAttr) && !view.isTextView()) {
                     continue;
                 }
@@ -1299,7 +1488,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                     drawValue = drawValue.substring(drawValue.indexOf("(") + 1, drawValue.indexOf(")"));
                 } else if (drawValue.contains(":")) {
                     drawValue = drawValue.substring(drawValue.lastIndexOf(":"));
-                } else if (drawValue == null || drawValue.isEmpty()) {
+                } else if (drawValue.isEmpty()) {
                     continue;
                 }
                 drawStrings.add(drawAttr + ": " + drawValue);
@@ -1330,6 +1519,11 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             if (isRectOverlap(rectangle, dumpRect)) {
                 rectangle.x -= (mDumpModeWidth + 1);
             }
+        } else if (mApplication != null && !mApplication.isIsDebug()) {
+            final Rectangle dumpRect = new Rectangle(getWidth() - mReleaseModeWidth - 2 * HALF_DRAW_TEXT_PADDING, 0, mReleaseModeWidth + 2 * HALF_DRAW_TEXT_PADDING, 20);
+            if (isRectOverlap(rectangle, dumpRect)) {
+                rectangle.x -= (mReleaseModeWidth + 1);
+            }
         }
         graphics2D.fillRect(rectangle.x, rectangle.y, rectangle.width, rectangle.height);
         graphics2D.setColor(Color.WHITE);
@@ -1344,11 +1538,17 @@ public class ScreenPanel extends JPanel implements ImageObserver {
 
     private Color getDrawRectColor(int left, int top, int width, int height, Color[] colors) {
         Image image = null;
+        if (mScreenCapImage == null) {
+            return colors[0];
+        }
         if (mScreenCapImage instanceof BufferedImage) {
             image = mScreenCapImage;
         } else {
             try {
                 final Method getBufferedImage = ReflectUtils.getClassMethod(mScreenCapImage.getClass(), "getBufferedImage");
+                if (getBufferedImage == null) {
+                    return colors[0];
+                }
                 image = (Image) getBufferedImage.invoke(mScreenCapImage);
             } catch (Throwable t) {
                 Log.e("反射获取getBufferedImage失败", t);
@@ -1505,7 +1705,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
     public int getRealHeight() {
         int height = getHeight();
         if (height <= 0) {
-            height = CoordinateUtils.SCALE_TO_HEIGHT;
+            height = mCodeLocatorWindow.getScreenPanelHeight();
         }
         return height;
     }
@@ -1532,16 +1732,17 @@ public class ScreenPanel extends JPanel implements ImageObserver {
     }
 
     public void grab(WView lastSelectView, boolean stopAnim) {
-        if (mIsGrabbing) {
+        if (mIsGrabbing && (System.currentTimeMillis() - mLastGrabbingTime < 20_000L)) {
             Log.d("isGrabbing, skip grab");
             return;
         }
         mIsGrabbing = true;
+        mLastGrabbingTime = System.currentTimeMillis();
         if (!mCurrentViewList.isEmpty()) {
             onControlViewRelease();
         }
         if (lastSelectView == null) {
-            mDrawPaddingMargin = false;
+            mDrawPaddingMargin = CodeLocatorUserConfig.loadConfig().isDrawViewPadding();
             mCodeLocatorWindow.notifyCallJump(null, null, null);
         }
 
@@ -1768,6 +1969,10 @@ public class ScreenPanel extends JPanel implements ImageObserver {
 
                     @Override
                     public void onExecFailed(Throwable throwable) {
+                        if ("eof".equalsIgnoreCase(throwable.getMessage())) {
+                            Log.e("EOF Error, is shell Model " + !CodeLocatorUserConfig.loadConfig().isUseDefaultAdb(), throwable);
+                            CodeLocatorUserConfig.loadConfig().setUseDefaultAdb(false);
+                        }
                         Log.e("exec grab failed, reason: " + throwable.getMessage());
                         mIsGrabbing = false;
                         Messages.showMessageDialog(project, StringUtils.getErrorTip(throwable), "CodeLocator", Messages.getInformationIcon());

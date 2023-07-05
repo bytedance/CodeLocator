@@ -9,17 +9,22 @@ import com.android.layoutinspector.parser.ViewNodeV2Parser;
 import com.bytedance.tools.codelocator.device.DeviceManager;
 import com.bytedance.tools.codelocator.device.action.AdbAction;
 import com.bytedance.tools.codelocator.device.action.AdbCommand;
+import com.bytedance.tools.codelocator.device.action.DeleteFileAction;
+import com.bytedance.tools.codelocator.device.action.PullFileAction;
 import com.bytedance.tools.codelocator.listener.CodeLocatorApplicationInitializedListener;
+import com.bytedance.tools.codelocator.model.*;
 import com.bytedance.tools.codelocator.parser.CodeLocatorViewNodeParser;
 import com.bytedance.tools.codelocator.parser.DumpInfoParser;
 import com.bytedance.tools.codelocator.parser.JumpParser;
-import com.bytedance.tools.codelocator.model.*;
+import com.bytedance.tools.codelocator.parser.UixInfoParser;
+import com.bytedance.tools.codelocator.response.BaseResponse;
 import com.bytedance.tools.codelocator.response.StringResponse;
 import com.intellij.openapi.project.Project;
 import kotlin.Pair;
 import kotlin.Triple;
 
 import java.awt.*;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -209,7 +214,7 @@ public class DataUtils {
     public static ExtraInfo getViewExtra(WView view, String extraTag) {
         while (view != null) {
             final ExtraInfo extraByTag = getExtraByTag(view.getExtraInfos(), extraTag);
-            if (extraByTag != null) {
+            if (extraByTag != null && !extraByTag.isTableMode()) {
                 return extraByTag;
             }
             view = view.getParentView();
@@ -372,6 +377,31 @@ public class DataUtils {
             return parser;
         } catch (Throwable t) {
             Log.e("buildApplicationForNoSDKRelease error", t);
+        }
+        return null;
+    }
+
+    public static WView buildViewInfoFromUix(Project project) {
+        try {
+            final File tmpUixFile = new File(FileUtils.sCodeLocatorMainDirPath, FileUtils.TEMP_UIX_FILE_NAME);
+            if (tmpUixFile.exists()) {
+                tmpUixFile.delete();
+            }
+            final String tmpDevicePath = "/data/local/tmp/" + FileUtils.TEMP_UIX_FILE_NAME;
+            DeviceManager.executeCmd(project, new AdbCommand(new DeleteFileAction(tmpDevicePath)), BaseResponse.class);
+            DeviceManager.executeCmd(project, new AdbCommand(
+                new AdbAction(AdbCommand.ACTION.UIAUTOMATOR, "dump " + tmpDevicePath)
+            ), BaseResponse.class);
+            DeviceManager.executeCmd(project, new AdbCommand(
+                new PullFileAction(tmpDevicePath, tmpUixFile.getAbsolutePath())
+            ), BaseResponse.class);
+            if (!tmpUixFile.exists()) {
+                return null;
+            }
+            final WView uixView = new UixInfoParser(tmpUixFile.getAbsolutePath()).parser();
+            return uixView;
+        } catch (Throwable t) {
+            Log.e("buildViewInfoFromUix error", t);
         }
         return null;
     }

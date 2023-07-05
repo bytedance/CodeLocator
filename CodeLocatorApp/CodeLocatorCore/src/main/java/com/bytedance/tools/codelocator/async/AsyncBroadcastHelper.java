@@ -57,6 +57,9 @@ public class AsyncBroadcastHelper {
         if (!isEnableAsyncBroadcast(activity)) {
             return;
         }
+        if (activity == null) {
+            return;
+        }
         try {
             final View decorView = activity.getWindow().getDecorView();
             if (decorView != null) {

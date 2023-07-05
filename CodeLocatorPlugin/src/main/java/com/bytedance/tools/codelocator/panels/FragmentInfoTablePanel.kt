@@ -31,7 +31,7 @@ class FragmentInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(
 
     val fragmentList = listOf("class", "memAddr", "tag", "isAdded", "visible", "userVisibleHint")
 
-    val activityList = listOf("class", "memAddr")
+    val activityList = listOf("class", "memAddr", "appClass")
 
     var list: ArrayList<String> = arrayListOf()
 
@@ -79,7 +79,7 @@ class FragmentInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(
                     var name = table.model.getValueAt(clickedRow, 0) as String
                     var value = table.model.getValueAt(clickedRow, 1) as String
 
-                    showPop(table, value, e.x, e.y, name == "class")
+                    showPop(table, value, e.x, e.y, name == "class" || name == "appClass")
                 }
             }
         })
@@ -145,6 +145,7 @@ class FragmentInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(
             list.addAll(activityList)
             map["class"] = fragmentOrActivity.className ?: ""
             map["memAddr"] = fragmentOrActivity.memAddr ?: ""
+            map["appClass"] = fragmentOrActivity.application.className ?: ""
             table.tableChanged(TableModelEvent(tableModel, TableModelEvent.ALL_COLUMNS))
             tableColumnAdjuster.adjustColumns()
         }

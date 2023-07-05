@@ -80,11 +80,18 @@ class FindViewAction(
 
     private fun jumpSingleInfo(jumpInfo: JumpInfo) {
         if (jumpInfo.needJumpById()) {
-            IdeaUtils.navigateByJumpInfo(
-                codeLocatorWindow, project, jumpInfo,
-                true, "@BindView", jumpInfo.id,
-                true
-            )
+            if (jumpInfo.isIsViewBinding) {
+                IdeaUtils.navigateByJumpInfo(
+                    codeLocatorWindow, project, jumpInfo,
+                    false, "", "." + jumpInfo.camelId,
+                    true)
+            } else {
+                IdeaUtils.navigateByJumpInfo(
+                    codeLocatorWindow, project, jumpInfo,
+                    true, "@BindView", jumpInfo.id,
+                    true
+                )
+            }
         } else {
             IdeaUtils.navigateByJumpInfo(
                 codeLocatorWindow,

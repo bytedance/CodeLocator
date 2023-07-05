@@ -6,6 +6,7 @@ import com.bytedance.tools.codelocator.device.action.AdbCommand
 import com.bytedance.tools.codelocator.device.action.BroadcastAction
 import com.bytedance.tools.codelocator.device.action.PullFileAction
 import com.bytedance.tools.codelocator.device.action.PushFileAction
+import com.bytedance.tools.codelocator.device.action.RunAsAction
 import com.bytedance.tools.codelocator.model.*
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.model.WFile
@@ -19,9 +20,12 @@ import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.*
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.InputValidator
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.awt.RelativePoint
 import java.awt.Dialog
 import java.awt.FileDialog
@@ -52,6 +56,8 @@ class FileOperateAction(
         const val FILE_OPEN = 3
 
         const val FILE_UPLOAD = 4
+
+        const val FILE_CREATE = 5
 
         private fun isEditableFile(wFile: WFile): Boolean {
             return wFile.name.endsWith(".js")
@@ -104,10 +110,28 @@ class FileOperateAction(
                     )
                 }
             } else {
+                if (wFile.children.all { !it.isDirectory }) {
+                    actionGroup.add(
+                        FileOperateAction(
+                            codeLocatorWindow.project, codeLocatorWindow, ResUtils.getString("save_to_local"),
+                            ImageUtils.loadIcon("download_file"),
+                            codeLocatorWindow.currentApplication!!.packageName, wFile, FILE_DOWNLOAD
+                        )
+                    )
+                }
+                if (wFile.absoluteFilePath.startsWith("/data/user")) {
+                    actionGroup.add(
+                        FileOperateAction(
+                            codeLocatorWindow.project, codeLocatorWindow, ResUtils.getString("create_dir"),
+                            ImageUtils.loadIcon("create_window"),
+                            codeLocatorWindow.currentApplication!!.packageName, wFile, FILE_CREATE
+                        )
+                    )
+                }
                 actionGroup.add(
                     FileOperateAction(
                         codeLocatorWindow.project, codeLocatorWindow, ResUtils.getString("upload_file_to_dir"),
-                        ImageUtils.loadIcon("download_file"),
+                        ImageUtils.loadIcon("send_schema"),
                         codeLocatorWindow.currentApplication!!.packageName, wFile, FILE_UPLOAD
                     )
                 )
@@ -150,6 +174,7 @@ class FileOperateAction(
             FILE_DELETE -> deleteFile()
             FILE_OPEN -> openFile()
             FILE_UPLOAD -> uploadFile()
+            FILE_CREATE -> createDir(e.project)
         }
     }
 
@@ -176,17 +201,31 @@ class FileOperateAction(
         }
         fileDialog.file = wFile.name
         fileDialog.isVisible = true
-        var selectFileName = fileDialog.file ?: return
-        var selectDirPath = fileDialog.directory
-        if (selectDirPath != null) {
-            selectFileName = selectDirPath + selectFileName
+        if (wFile.isDirectory) {
+            wFile.children.forEach {
+                var selectFileName = it.name
+                var selectDirPath = fileDialog.directory
+                if (selectDirPath != null) {
+                    selectFileName = selectDirPath + it.name
+                }
+                val saveFile = File(selectFileName)
+                if (saveFile.exists()) {
+                    saveFile.delete()
+                }
+                downloadFileToPath(codeLocatorWindow, true, it, saveFile, false)
+            }
+        } else {
+            var selectFileName = fileDialog.file ?: return
+            var selectDirPath = fileDialog.directory
+            if (selectDirPath != null) {
+                selectFileName = selectDirPath + selectFileName
+            }
+            val saveFile = File(selectFileName)
+            if (saveFile.exists()) {
+                saveFile.delete()
+            }
+            downloadFileToPath(codeLocatorWindow, true, wFile, saveFile, true)
         }
-        val saveFile = File(selectFileName)
-        if (saveFile.exists()) {
-            saveFile.delete()
-        }
-
-        downloadFileToPath(codeLocatorWindow, true, wFile, saveFile, true)
     }
 
     private fun downloadFileToPath(
@@ -263,7 +302,7 @@ class FileOperateAction(
                 }
 
                 override fun onExecFailed(t: Throwable) {
-                    saveFileCallBack?.onSaveFailed(t.message)
+                    saveFileCallBack?.onSaveFailed(StringUtils.getErrorTip(t))
                     if (showTip) {
                         var realFailReason = StringUtils.getErrorTip(t)
                         Messages.showMessageDialog(
@@ -384,13 +423,29 @@ class FileOperateAction(
                         return
                     }
                     ThreadUtils.runOnUIThread {
-                        ShowImageDialog(
-                            codeLocatorWindow.project,
-                            codeLocatorWindow,
-                            readImage,
-                            ResUtils.getString("file_image_title_format", wFile.absoluteFilePath),
-                            wFile.name.endsWith(".gif")
-                        ).show()
+                        if (file.exists() && !file.endsWith(".gif") && CodeLocatorUserConfig.loadConfig().isUseImageEditor) {
+                            val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(file)
+                            if (virtualFile != null) {
+                                virtualFile.refresh(false, false)
+                                FileEditorManager.getInstance(project).openFile(virtualFile, true)
+                            } else {
+                                ShowImageDialog(
+                                    codeLocatorWindow.project,
+                                    codeLocatorWindow,
+                                    readImage,
+                                    ResUtils.getString("file_image_title_format", wFile.absoluteFilePath),
+                                    wFile.name.endsWith(".gif")
+                                ).show()
+                            }
+                        } else {
+                            ShowImageDialog(
+                                codeLocatorWindow.project,
+                                codeLocatorWindow,
+                                readImage,
+                                ResUtils.getString("file_image_title_format", wFile.absoluteFilePath),
+                                wFile.name.endsWith(".gif")
+                            ).show()
+                        }
                     }
                 } catch (t: Throwable) {
                     ThreadUtils.runOnUIThread {
@@ -419,6 +474,64 @@ class FileOperateAction(
         Mob.mob(Mob.Action.CLICK, Mob.Button.OPEN_FILE)
     }
 
+    private fun createDir(project: Project?) {
+        Mob.mob(Mob.Action.CLICK, "mk_dir")
+        project ?: return
+        val sdk = Messages.showInputDialog(project,
+            ResUtils.getString("input_dir_name"),
+            "CodeLocator",
+            Messages.getInformationIcon(),
+            "",
+            object : InputValidator {
+                override fun checkInput(inputString: String?): Boolean {
+                    return true
+                }
+
+                override fun canClose(inputString: String?): Boolean {
+                    if (inputString == null || inputString.trim().isEmpty()) {
+                        return true
+                    }
+                    return !inputString.contains("\'")
+                }
+            }
+        ) ?: return
+        if (sdk.trim().isEmpty()) {
+            return
+        }
+        var createDirs = sdk.split(File.separator)
+        var startDir = wFile.absoluteFilePath
+        ThreadUtils.submit {
+            try {
+                for (dir in createDirs) {
+                    startDir = startDir + File.separator + dir
+                    DeviceManager.executeCmd(
+                        project,
+                        AdbCommand(RunAsAction(codeLocatorWindow.currentApplication?.packageName ?: "", "mkdir", startDir)),
+                        StringResponse::class.java
+                    )
+                }
+                ThreadUtils.runOnUIThread {
+                    NotificationUtils.showNotifyInfoShort(
+                        project,
+                        ResUtils.getString("file_upload_success"),
+                        3000
+                    )
+                    codeLocatorWindow.getScreenPanel()
+                        ?.getFileInfo(codeLocatorWindow!!.currentApplication, true)
+                }
+            } catch (t: Throwable) {
+                ThreadUtils.runOnUIThread {
+                    Messages.showMessageDialog(
+                        project,
+                        StringUtils.getErrorTip(t),
+                        "CodeLocator",
+                        Messages.getInformationIcon()
+                    )
+                }
+            }
+        }
+    }
+
     private fun uploadFile() {
         val windowAncestor = SwingUtilities.getWindowAncestor(codeLocatorWindow)
         System.setProperty("apple.awt.fileDialogForDirectories", "true")
@@ -434,6 +547,7 @@ class FileOperateAction(
                 return
             }
         }
+        fileDialog.isMultipleMode = true
         val loadConfig = CodeLocatorUserConfig.loadConfig()
         var file: File? = null
         if (!loadConfig.lastOpenFilePath.isNullOrEmpty() && File(loadConfig.lastOpenFilePath).exists()) {
@@ -441,13 +555,12 @@ class FileOperateAction(
             fileDialog.directory = file.parent
         }
         fileDialog.isVisible = true
-        var selectFileName = fileDialog.file ?: return
-        var selectDirPath = fileDialog.directory
-        if (selectDirPath != null) {
-            selectFileName = selectDirPath + selectFileName
+        var selectFileNames: Array<out File> = fileDialog.files ?: return
+        if (selectFileNames.isEmpty()) {
+            return
         }
-        val selectFile = File(selectFileName)
-        if (selectFile.isDirectory) {
+
+        if (selectFileNames.all { it.isDirectory }) {
             Messages.showMessageDialog(
                 codeLocatorWindow.project,
                 ResUtils.getString("file_upload_dir_not_support"),
@@ -457,7 +570,7 @@ class FileOperateAction(
             return
         }
 
-        loadConfig.lastOpenFilePath = selectFile.absolutePath
+        loadConfig.lastOpenFilePath = selectFileNames[0].absolutePath
         CodeLocatorUserConfig.updateConfig(loadConfig)
 
         val codelocatorFile = FileUtils.getCodeLocatorFile(
@@ -475,49 +588,63 @@ class FileOperateAction(
             return
         }
 
-        DeviceManager.enqueueCmd(
-            project,
-            AdbCommand(
-                PushFileAction(
-                    selectFile.absolutePath,
-                    codelocatorFile.absoluteFilePath + File.separator + selectFile.name
-                )
-            ),
-            StringResponse::class.java,
-            object : DeviceManager.OnExecutedListener<StringResponse> {
-                override fun onExecSuccess(device: Device, response: StringResponse) {
-                    val response = DeviceManager.executeCmd(
-                        project, AdbCommand(
-                            BroadcastAction(
-                                ACTION_DEBUG_FILE_OPERATE
-                            )
-                                .args(
-                                    KEY_PROCESS_SOURCE_FILE_PATH,
-                                    codelocatorFile.absoluteFilePath + File.separator + selectFile.name
+        var hasError = false
+        for ((index, selectFile) in selectFileNames.withIndex()) {
+            if (hasError) {
+                break
+            }
+            DeviceManager.enqueueCmd(
+                project,
+                AdbCommand(
+                    PushFileAction(
+                        selectFile.absolutePath,
+                        codelocatorFile.absoluteFilePath + File.separator + selectFile.name
+                    )
+                ),
+                StringResponse::class.java,
+                object : DeviceManager.OnExecutedListener<StringResponse> {
+                    override fun onExecSuccess(device: Device, response: StringResponse) {
+                        val response = DeviceManager.executeCmd(
+                            project, AdbCommand(
+                                BroadcastAction(
+                                    ACTION_DEBUG_FILE_OPERATE
                                 )
-                                .args(KEY_PROCESS_TARGET_FILE_PATH, wFile.absoluteFilePath)
-                                .args(KEY_PROCESS_FILE_OPERATE, KEY_ACTION_MOVE)
-                                .args(KEY_SAVE_TO_FILE, DeviceManager.isNeedSaveFile(project))
-                        ), FilePathResponse::class.java
-                    )
-                    if (response.msg != null) {
-                        throw ExecuteException(response.msg)
+                                    .args(
+                                        KEY_PROCESS_SOURCE_FILE_PATH,
+                                        codelocatorFile.absoluteFilePath + File.separator + selectFile.name
+                                    )
+                                    .args(KEY_PROCESS_TARGET_FILE_PATH, wFile.absoluteFilePath)
+                                    .args(KEY_PROCESS_FILE_OPERATE, KEY_ACTION_MOVE)
+                                    .args(KEY_SAVE_TO_FILE, DeviceManager.isNeedSaveFile(project))
+                            ), FilePathResponse::class.java
+                        )
+                        if (response.msg != null) {
+                            throw ExecuteException(response.msg)
+                        }
+                        if (index == (selectFileNames.size - 1)) {
+                            ThreadUtils.runOnUIThread {
+                                NotificationUtils.showNotifyInfoShort(
+                                    project,
+                                    ResUtils.getString("file_upload_success"),
+                                    3000
+                                )
+                                codeLocatorWindow.getScreenPanel()
+                                    ?.getFileInfo(codeLocatorWindow!!.currentApplication, true)
+                            }
+                        }
                     }
-                    ThreadUtils.runOnUIThread {
-                        NotificationUtils.showNotifyInfoShort(project, ResUtils.getString("file_upload_success"), 3000)
-                        codeLocatorWindow.getScreenPanel()?.getFileInfo(codeLocatorWindow!!.currentApplication, true)
-                    }
-                }
 
-                override fun onExecFailed(t: Throwable) {
-                    Messages.showMessageDialog(
-                        project,
-                        StringUtils.getErrorTip(t),
-                        "CodeLocator",
-                        Messages.getInformationIcon()
-                    )
-                }
-            })
+                    override fun onExecFailed(t: Throwable) {
+                        hasError = true
+                        Messages.showMessageDialog(
+                            project,
+                            StringUtils.getErrorTip(t),
+                            "CodeLocator",
+                            Messages.getInformationIcon()
+                        )
+                    }
+                })
+        }
         Mob.mob(Mob.Action.CLICK, Mob.Button.UPLOAD_FILE)
     }
 
@@ -552,7 +679,12 @@ class FileOperateAction(
                 }
 
                 override fun onExecFailed(t: Throwable) {
-                    Messages.showMessageDialog(project, StringUtils.getErrorTip(t), "CodeLocator", Messages.getInformationIcon())
+                    Messages.showMessageDialog(
+                        project,
+                        StringUtils.getErrorTip(t),
+                        "CodeLocator",
+                        Messages.getInformationIcon()
+                    )
                 }
             })
         Mob.mob(Mob.Action.CLICK, Mob.Button.DELETE_FILE)

@@ -134,7 +134,7 @@ public class CodeLocatorLayoutInflator extends LayoutInflater {
             mLayoutInflaterField.set(activity, codeLocatorLayoutInflator);
             hookInflater(activity.getWindow());
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "Hook inflater error, stackTrace: " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "Hook inflater error, stackTrace: " + Log.getStackTraceString(t));
         }
     }
 
@@ -148,7 +148,7 @@ public class CodeLocatorLayoutInflator extends LayoutInflater {
             final CodeLocatorLayoutInflator codeLocatorLayoutInflator = new CodeLocatorLayoutInflator(inflater.getContext(), inflater);
             mLayoutInflaterField.set(window, codeLocatorLayoutInflator);
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "Hook inflater error, stackTrace: " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "Hook inflater error, stackTrace: " + Log.getStackTraceString(t));
         }
     }
 

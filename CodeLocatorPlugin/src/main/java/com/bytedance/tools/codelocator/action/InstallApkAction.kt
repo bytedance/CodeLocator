@@ -17,7 +17,7 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import java.io.File
 
-class InstallApkAction() : BaseAction(
+class InstallApkAction : BaseAction(
     ResUtils.getString("install_project_new_apk"),
     ResUtils.getString("install_project_new_apk"),
     ImageUtils.loadIcon("install_apk")

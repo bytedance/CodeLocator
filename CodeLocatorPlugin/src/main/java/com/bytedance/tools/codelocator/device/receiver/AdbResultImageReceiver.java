@@ -26,6 +26,10 @@ public class AdbResultImageReceiver implements IShellOutputReceiver {
         return mImage;
     }
 
+    public void setResult(BufferedImage bufferedImage) {
+        mImage = bufferedImage;
+    }
+
     @Nullable
     private static String getProfileName(RawImage image) {
         switch (image.colorSpace) {

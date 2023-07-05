@@ -1,12 +1,10 @@
 package com.bytedance.tools.codelocator.utils;
 
 import com.bytedance.tools.codelocator.action.AddSourceCodeAction;
-import com.bytedance.tools.codelocator.model.CodeLocatorInfo;
-import com.bytedance.tools.codelocator.model.ProjectConfig;
-import com.bytedance.tools.codelocator.model.WApplication;
-import com.bytedance.tools.codelocator.model.WFile;
+import com.bytedance.tools.codelocator.model.*;
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow;
 import com.bytedance.tools.codelocator.panels.ScreenPanel;
+import com.google.gson.reflect.TypeToken;
 import com.intellij.dvcs.repo.Repository;
 import com.intellij.dvcs.repo.VcsRepositoryManager;
 import com.intellij.ide.plugins.PluginManager;
@@ -53,6 +51,8 @@ public class FileUtils {
 
     public static final String SAVE_IMAGE_FILE_NAME = "screenCap.png";
 
+    public static final String SAVE_QR_IMAGE_FILE_NAME = "qrCode.png";
+
     public static final String SAVE_GRAPH_FILE_NAME = "runTimeInfo.txt";
 
     public static final String GRAPH_COMMAND_FILE_NAME = "commandData.txt";
@@ -60,6 +60,10 @@ public class FileUtils {
     public static final String DUMP_COMMAND_FILE_NAME = "dump.txt";
 
     public static final String GRAPH_COLOR_DATA_FILE_NAME = "colorData.txt";
+
+    public static final String EXEC_LIST_FILE_NAME = "exec.txt";
+
+    public static final String TEMP_UIX_FILE_NAME = "codeLocator_temp.uix";
 
     public static final String CONFIG_INFO_FILE_NAME = "codeLocator_project_config.txt";
 
@@ -247,6 +251,47 @@ public class FileUtils {
         return result;
     }
 
+    public static ExecInfo getVersionExecInfo(String version) {
+        final File file = new File(sCodeLocatorMainDirPath, EXEC_LIST_FILE_NAME);
+        if (!file.exists()) {
+            return null;
+        }
+        try {
+            final String fileContent = FileUtils.getFileContent(file);
+            final List<ExecInfo> execInfos = GsonUtils.sGson.fromJson(fileContent, new TypeToken<List<ExecInfo>>() {
+            }.getType());
+            if (execInfos == null || execInfos.isEmpty()) {
+                return null;
+            }
+            for (ExecInfo info : execInfos) {
+                if (info.version.equals(version)) {
+                    return info;
+                }
+            }
+            return null;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    public static void saveExec(ExecInfo execInfo) {
+        if (execInfo == null) {
+            return;
+        }
+        final File file = new File(sCodeLocatorMainDirPath, EXEC_LIST_FILE_NAME);
+        List<ExecInfo> execInfos = null;
+        if (file.exists()) {
+            final String fileContent = FileUtils.getFileContent(file);
+            execInfos = GsonUtils.sGson.fromJson(fileContent, new TypeToken<List<ExecInfo>>() {}.getType());
+        }
+        if (execInfos == null) {
+            execInfos = new LinkedList<>();
+        }
+        execInfos.remove(execInfo);
+        execInfos.add(execInfo);
+        FileUtils.saveContentToFile(file, GsonUtils.sGson.toJson(execInfos));
+    }
+
     public static boolean saveContentToFile(File file, byte[] contents) {
         try {
             if (!file.getParentFile().exists()) {
@@ -293,7 +338,10 @@ public class FileUtils {
         final File file = new File(userHomePath, ".codeLocator_main");
         sCodeLocatorMainDirPath = file.getPath();
         if (!file.exists()) {
-            file.mkdirs();
+            final boolean mkdirs = file.mkdirs();
+            if (!mkdirs && sUserDesktopPath.equals(userHomePath)) {
+                initMainFileDir(sUserDesktopPath);
+            }
         } else if (!file.isDirectory()) {
             file.delete();
             file.mkdirs();

@@ -35,14 +35,19 @@ class NewWindowAction(
     private fun showChooseList(e: AnActionEvent) {
         val actionGroup: DefaultActionGroup =
             DefaultActionGroup("listGroup", true)
-        actionGroup.add(SimpleAction(ResUtils.getString("normal_model"), object : OnActionListener {
+        actionGroup.add(SimpleAction(ResUtils.getString("normal_mode"), object : OnActionListener {
             override fun actionPerformed(e: AnActionEvent) {
                 openNewWindow(false)
             }
         }))
-        actionGroup.add(SimpleAction(ResUtils.getString("link_model"), object : OnActionListener {
+        actionGroup.add(SimpleAction(ResUtils.getString("link_mode"), object : OnActionListener {
             override fun actionPerformed(e: AnActionEvent) {
                 openNewWindow(true)
+            }
+        }))
+        actionGroup.add(SimpleAction(ResUtils.getString("diff_mode"), object : OnActionListener {
+            override fun actionPerformed(e: AnActionEvent) {
+                openNewWindow(isLinkMode = true, isDiffMode = true)
             }
         }))
         val factory = JBPopupFactory.getInstance()
@@ -57,7 +62,7 @@ class NewWindowAction(
         pop.show(RelativePoint(e.inputEvent.component, point))
     }
 
-    private fun openNewWindow(isLinkMode: Boolean = false) {
+    private fun openNewWindow(isLinkMode: Boolean = false, isDiffMode: Boolean = false) {
         val codelocatorInfo =
             CodeLocatorInfo(codeLocatorWindow.currentApplication, codeLocatorWindow.getScreenPanel()!!.screenCapImage)
         val codelocatorBytes = codelocatorInfo.toBytes()
@@ -68,7 +73,8 @@ class NewWindowAction(
             project,
             codeLocatorWindow,
             CodeLocatorInfo.fromCodeLocatorInfo(codelocatorBytes),
-            isLinkMode
+            isLinkMode,
+            isDiffMode
         )
     }
 }

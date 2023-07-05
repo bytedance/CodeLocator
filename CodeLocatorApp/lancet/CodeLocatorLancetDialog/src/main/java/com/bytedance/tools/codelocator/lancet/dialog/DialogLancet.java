@@ -39,15 +39,15 @@ public class DialogLancet {
                 final Window window = dialog.getWindow();
                 String keyword = null;
                 if (window == null) {
-                    Log.e(CodeLocator.TAG, "dialog window is null");
+                    Log.d(CodeLocator.TAG, "dialog window is null");
                 } else {
-                    Log.e(CodeLocator.TAG, "dialog window is not null");
+                    Log.d(CodeLocator.TAG, "dialog window is not null");
                     final View decorView = window.getDecorView();
                     keyword = ViewUtils.getKeyword(decorView);
                 }
                 CodeLocator.notifyShowDialog(Thread.currentThread().getStackTrace(), keyword);
             } catch (Throwable t) {
-                Log.e(CodeLocator.TAG, "notify dialog create info error " + Log.getStackTraceString(t));
+                Log.d(CodeLocator.TAG, "notify dialog create info error " + Log.getStackTraceString(t));
             }
         }
         return dialog;
@@ -78,7 +78,7 @@ public class DialogLancet {
                     }
                 }
             } catch (Throwable t) {
-                Log.e(CodeLocator.TAG, "notify fragmentTransaction add info error " + Log.getStackTraceString(t));
+                Log.d(CodeLocator.TAG, "notify fragmentTransaction add info error " + Log.getStackTraceString(t));
             }
         }
         return (FragmentTransaction) Origin.call();
@@ -108,7 +108,7 @@ public class DialogLancet {
                     }
                 }
             } catch (Throwable t) {
-                Log.e(CodeLocator.TAG, "notify show info error " + Log.getStackTraceString(t));
+                Log.d(CodeLocator.TAG, "notify show info error " + Log.getStackTraceString(t));
             }
         }
     }
@@ -137,7 +137,7 @@ public class DialogLancet {
                     }
                 }
             } catch (Throwable t) {
-                Log.e(CodeLocator.TAG, "notify show info error " + Log.getStackTraceString(t));
+                Log.d(CodeLocator.TAG, "notify show info error " + Log.getStackTraceString(t));
             }
         }
     }

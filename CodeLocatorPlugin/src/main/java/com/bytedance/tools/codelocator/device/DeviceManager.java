@@ -13,8 +13,7 @@ import com.bytedance.tools.codelocator.device.receiver.AdbResultStringReceiver;
 import com.bytedance.tools.codelocator.device.response.BytesResponse;
 import com.bytedance.tools.codelocator.device.response.ImageResponse;
 import com.bytedance.tools.codelocator.exception.*;
-import com.bytedance.tools.codelocator.model.CodeLocatorUserConfig;
-import com.bytedance.tools.codelocator.model.WApplication;
+import com.bytedance.tools.codelocator.model.*;
 import com.bytedance.tools.codelocator.response.*;
 import com.bytedance.tools.codelocator.utils.*;
 import com.bytedance.tools.codelocator.utils.Log;
@@ -27,13 +26,20 @@ import com.intellij.openapi.wm.ex.ToolWindowManagerEx;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentManager;
 import com.pty4j.util.Pair;
+import org.jetbrains.android.sdk.AndroidSdkUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.imageio.ImageIO;
+import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -66,6 +72,8 @@ public class DeviceManager {
 
     private static HashMap<String, IDevice> sProjectSelectDevice = new HashMap<>();
 
+    private static String sProjectAdbPath = "";
+
     private static final String PHYSICAL_SIZE = "Physical size:";
 
     private static final String OVERRIDE_SIZE = "Override size:";
@@ -81,12 +89,32 @@ public class DeviceManager {
     }
 
     public static Device getCurrentDevice(Project project) {
+        return getCurrentDevice(project, false);
+    }
+
+    public static Device getCurrentDevice(Project project, boolean isProjectFinish) {
         try {
             return getUseDevice(project);
         } catch (Throwable t) {
-            Log.e("获取设备失败", t);
+            if (!isProjectFinish) {
+                Log.e("获取设备失败", t);
+            }
         }
         return null;
+    }
+
+    public static void initAdbPath(Project project) {
+        try {
+            if (sProjectAdbPath == null || sProjectAdbPath.isEmpty()) {
+                final File adbFile = AndroidSdkUtils.getAdb(project);
+                if (adbFile != null && adbFile.exists()) {
+                    sProjectAdbPath = adbFile.getAbsolutePath().replace(" ", "\\ ");
+                }
+            }
+            Log.d("initAdbPath: " + sProjectAdbPath);
+        } catch (Throwable t) {
+            Log.e("init adb path error", t);
+        }
     }
 
     public static IDevice onProjectClose(Project project) {
@@ -142,11 +170,34 @@ public class DeviceManager {
                             sProjectSelectDevice.remove(project.getName());
                         });
                         return deviceContext.getSelectedDevice();
+                    } else if (content != null && content.getComponent().getClass().getName().contains("SplittingPanel")) {
+                        if (content.getComponent().getComponentCount() > 0
+                            && content.getComponent().getComponent(0) instanceof JComponent
+                            && content.getComponent().getComponent(0).getClass().getName().contains("LogcatMain")) {
+                            final JComponent logcatMainComponent = (JComponent) content.getComponent().getComponent(0);
+                            if (logcatMainComponent.getComponentCount() > 0 && logcatMainComponent.getComponent(0).getClass().getName().contains("LogcatHeaderPanel")) {
+                                final Component logcatHeadComponent = logcatMainComponent.getComponent(0);
+                                final Method getSelectedDevice = ReflectUtils.getClassMethod(logcatHeadComponent.getClass(), "getSelectedDevice");
+                                final Object device = getSelectedDevice.invoke(logcatHeadComponent);
+                                final Field serialNumberField = ReflectUtils.getClassField(device.getClass(), "serialNumber");
+                                final String serialNumber = (String) serialNumberField.get(device);
+                                final IDevice[] devices = AndroidDebugBridge.getBridge().getDevices();
+                                if (devices != null) {
+                                    for (IDevice d : devices) {
+                                        if (serialNumber.equals(d.getSerialNumber())) {
+                                            return d;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             } catch (Throwable t) {
-                Log.e("获取Logcat设备错误", t);
+                Log.d("获取Logcat设备错误", t);
             }
+        } else {
+            Log.d("获取Logcat设备window为null");
         }
         final String lastDevice = CodeLocatorUserConfig.loadConfig().getLastDevice();
         if (lastDevice != null && !lastDevice.trim().isEmpty() && AndroidDebugBridge.getBridge() != null) {
@@ -190,7 +241,7 @@ public class DeviceManager {
     private static Pair<String, String> getCurrentApkPkgName(Project project) throws IOException, InstantiationException, NoDeviceException, TimeoutException, IllegalAccessException, InstallException, SyncException, ExecuteException, AdbCommandRejectedException, ShellCommandUnresponsiveException, DeviceUnLockException, NoSDKException, SDKNotInitException {
         final StringResponse response = executeCmd(project, new AdbCommand(new GetCurrentPkgNameAction()), StringResponse.class);
         final String lineResult = response.getData();
-        final String mResumedActivityStr = StringUtils.grepLine(lineResult, "mResumedActivity");
+        final String mResumedActivityStr = StringUtils.grepLine(lineResult, "ResumedActivity");
         if (mResumedActivityStr != null) {
             final int indexOfSplit = mResumedActivityStr.indexOf("/");
             if (indexOfSplit > -1) {
@@ -226,7 +277,7 @@ public class DeviceManager {
             } else {
                 try {
                     final AdbResultStringReceiver adbResultStringReceiver = new AdbResultStringReceiver();
-                    device.executeShellCommand("wm density", adbResultStringReceiver, FileUtils.getConfig().getAdbCommandTimeOut(), TimeUnit.SECONDS);
+                    executeShellCommand(device, adbResultStringReceiver, "wm density", FileUtils.getConfig().getAdbCommandTimeOut());
                     final String result = adbResultStringReceiver.getResult();
                     if (!result.isEmpty()) {
                         analysisDeviceDensity(currentDevice, result);
@@ -241,6 +292,13 @@ public class DeviceManager {
         WApplication wApplication = null;
         if (client == null) {
             wApplication = DataUtils.buildApplicationForNoSDKRelease(project, pkgName, activityName);
+            WView tmpView = DataUtils.buildViewInfoFromUix(project);
+            if (wApplication != null
+                && wApplication.getActivity() != null
+                && wApplication.getActivity().getDecorViews() != null
+                && wApplication.getActivity().getDecorViews().size() > 0) {
+                ViewUtils.fillViewInfo(wApplication.getActivity().getDecorViews().get(0), tmpView);
+            }
         } else {
             wApplication = DataUtils.buildApplicationForNoSDKDebug(project, pkgName, activityName, client);
         }
@@ -279,6 +337,7 @@ public class DeviceManager {
         int start = result.indexOf(filePathStart);
         int end = -1;
         String needDecodeResult = null;
+        ThreadUtils.submit(() -> FileUtils.saveCommandData(result));
         if (start > -1) {
             start += filePathStart.length();
             end = result.lastIndexOf("\"");
@@ -294,7 +353,7 @@ public class DeviceManager {
                 if (compressDataFile.exists()) {
                     compressDataFile.delete();
                 }
-                device.getDevice().pullFile(dataFilePath, compressDataFile.getAbsolutePath());
+                pullFileToDevice(device.getDevice(), new PullFileAction(dataFilePath, compressDataFile.getAbsolutePath()));
                 if (compressDataFile.exists()) {
                     needDecodeResult = FileUtils.getFileContent(compressDataFile);
                 }
@@ -357,19 +416,19 @@ public class DeviceManager {
             Log.e("解压数据失败", e);
         }
         final T t = GsonUtils.sGson.fromJson(decodeResult, clz);
+        String finalDecodeResult = decodeResult;
+        ThreadUtils.submit(() -> FileUtils.saveRuntimeInfo(finalDecodeResult));
         if (clz == ApplicationResponse.class) {
-            String finalDecodeResult = decodeResult;
-            ThreadUtils.submit(() -> {
-                FileUtils.saveCommandData(result);
-                FileUtils.saveRuntimeInfo(finalDecodeResult);
-            });
-            final WApplication wApplication = ((ApplicationResponse) t).getData();
+            WApplication wApplication = null;
+            if (t != null) {
+                wApplication = ((ApplicationResponse) t).getData();
+            }
             if (wApplication != null) {
                 DataUtils.restoreAllStructInfo(wApplication, false);
                 final float density = wApplication.getDensity();
                 device.setDensity(density);
             }
-            if (wApplication == null && t.getMsg() != null) {
+            if (wApplication == null && t != null && t.getMsg() != null) {
                 try {
                     final Pair<String, String> pkgAndActivityName = getCurrentApkPkgName(project);
                     final ApplicationResponse applicationWhenBroadcastEmpty = getApplicationWhenBroadcastEmpty(project, pkgAndActivityName);
@@ -418,7 +477,7 @@ public class DeviceManager {
             if (compressDataFile.exists()) {
                 compressDataFile.delete();
             }
-            device.getDevice().pullFile(pullFilePath, compressDataFile.getAbsolutePath());
+            pullFileToDevice(device.getDevice(), new PullFileAction(pullFilePath, compressDataFile.getAbsolutePath()));
             if (compressDataFile.exists()) {
                 return FileUtils.getFileContent(compressDataFile);
             }
@@ -447,6 +506,9 @@ public class DeviceManager {
     @NotNull
     private static <T extends BaseResponse> T executeCommandInternal(Project project, AdbCommand adbCommand, Class<T> resultClz, Thread thread) throws NoDeviceException, TimeoutException, AdbCommandRejectedException, ShellCommandUnresponsiveException, IOException, SyncException, InstallException, InstantiationException, IllegalAccessException, ExecuteException, DeviceUnLockException, NoSDKException, SDKNotInitException {
         final Device useDevice = getUseDevice(project);
+        if (useDevice == null) {
+            return null;
+        }
         final IDevice device = useDevice.getDevice();
         final List<AdbAction> actions = adbCommand.getCommands();
         AdbAction adbAction = null;
@@ -467,27 +529,26 @@ public class DeviceManager {
                 final String type = adbAction.getType();
                 if (type == ACTION.SCREENCAP) {
                     if (adbAction.getArgs().equalsIgnoreCase("-p")) {
-                        final RawImage screenshot = device.getScreenshot(FileUtils.getConfig().getScreenCapTimeOut(), TimeUnit.SECONDS);
-                        ((AdbResultImageReceiver) receiver).setData(screenshot);
+                        getImageFromDevice(project, device, (AdbResultImageReceiver) receiver);
+                        Mob.mob(Mob.Action.EXEC, "" + adbAction);
                     } else {
                         final String cmd = adbAction.buildCmd();
-                        device.executeShellCommand(cmd, receiver, FileUtils.getConfig().getScreenCapTimeOut(), TimeUnit.SECONDS);
+                        executeShellCommand(device, receiver, cmd, FileUtils.getConfig().getScreenCapTimeOut());
                     }
                 } else if (type == ACTION.PULL_FILE) {
-                    device.pullFile(((PullFileAction) adbAction).getSourcePath(), ((PullFileAction) adbAction).getTargetPath());
+                    pullFileToDevice(device, (PullFileAction) adbAction);
                 } else if (type == ACTION.PUSH_FILE) {
-                    device.pushFile(((PushFileAction) adbAction).getSourcePath(), ((PushFileAction) adbAction).getTargetPath());
+                    pushFileToDevice(device, (PushFileAction) adbAction);
                 } else if (type == ACTION.INSTALL) {
                     receiver = new InstallReceiver();
-                    device.installPackage(adbAction.getArgs(), true, (InstallReceiver) receiver, "-t", "-d");
+                    installApkToDevice(device, adbAction, (InstallReceiver) receiver);
                 } else if (type == ACTION.UNINSTALL) {
-                    device.uninstallPackage(adbAction.getArgs());
+                    uninstallApkFromDevice(device, adbAction);
                 }
             } else {
                 final String cmd = adbAction.buildCmd();
-                device.executeShellCommand(cmd, receiver, FileUtils.getConfig().getAdbCommandTimeOut(), TimeUnit.SECONDS);
+                executeShellCommand(device, receiver, cmd, FileUtils.getConfig().getAdbCommandTimeOut());
             }
-            Mob.mob(Mob.Action.EXEC, "" + adbAction);
         }
         if (receiver instanceof AdbResultImageReceiver) {
             final Image image = ((AdbResultImageReceiver) receiver).getResult();
@@ -507,7 +568,7 @@ public class DeviceManager {
                     return t;
                 }
                 if (t != null) {
-                    throw new ExecuteException(t.getMsg());
+                    throw new ExecuteException(t.getMsg(), t.getObj());
                 }
             }
             if (resultClz != StringResponse.class
@@ -527,6 +588,132 @@ public class DeviceManager {
         throw new ExecuteException(ResUtils.getString("unknown_error_feedback"));
     }
 
+    private static void uninstallApkFromDevice(IDevice device, AdbAction adbAction) throws InstallException {
+        if (!CodeLocatorUserConfig.loadConfig().isUseDefaultAdb() && sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
+            OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " uninstall " + adbAction.getArgs());
+        } else {
+            device.uninstallPackage(adbAction.getArgs());
+            Mob.mob(Mob.Action.EXEC, "" + adbAction);
+        }
+    }
+
+    private static void installApkToDevice(IDevice device, AdbAction adbAction, InstallReceiver receiver) throws InstallException {
+        if (!CodeLocatorUserConfig.loadConfig().isUseDefaultAdb() && sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
+            ExecResult execResult = null;
+            if (device.getVersion().getApiLevel() >= 30) {
+                execResult = OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " install --incremental -r -t -d '" + adbAction.getArgs() + "'");
+            } else {
+                execResult = OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " install -r -t -d '" + adbAction.getArgs() + "'");
+            }
+            if (execResult.getResultCode() == 0) {
+                receiver.processNewLines(new String[]{execResult.getResultMsg()});
+            } else {
+                receiver.processNewLines(new String[]{execResult.getErrorMsg()});
+            }
+        } else {
+            device.installPackage(adbAction.getArgs(), true, receiver, "-t", "-d");
+            Mob.mob(Mob.Action.EXEC, "" + adbAction);
+        }
+    }
+
+    private static void getImageFromDevice(Project project, IDevice device, AdbResultImageReceiver receiver) throws TimeoutException, AdbCommandRejectedException, IOException, InstantiationException, NoDeviceException, NoSDKException, IllegalAccessException, DeviceUnLockException, SyncException, ExecuteException, SDKNotInitException, InstallException, ShellCommandUnresponsiveException {
+        if (!CodeLocatorUserConfig.loadConfig().isUseDefaultAdb() && sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
+            final ExecResult execResult = OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " shell screencap -p");
+            if (execResult.getResultCode() == 0) {
+                final BufferedImage read = ImageIO.read(new ByteArrayInputStream(execResult.getResultMsg().getBytes(StandardCharsets.UTF_8)));
+                receiver.setResult(read);
+            }
+        } else {
+            try {
+                final RawImage screenshot = device.getScreenshot(FileUtils.getConfig().getScreenCapTimeOut(), TimeUnit.SECONDS);
+                receiver.setData(screenshot);
+            } catch (Throwable t) {
+                if ("eof".equalsIgnoreCase(t.getMessage())) {
+                    final String editCommand = new EditActivityBuilder(null).edit(new GetActivityImageModel()).builderEditCommand();
+                    final AdbCommand adbCommand = new AdbCommand(new BroadcastAction(CodeLocatorConstants.ACTION_CHANGE_VIEW_INFO).args(CodeLocatorConstants.KEY_CHANGE_VIEW, editCommand));
+                    final OperateResponse operateResponse = executeCmd(project, adbCommand, OperateResponse.class);
+                    ResultData data = operateResponse.getData();
+                    String errorMsg = data.getResult(CodeLocatorConstants.ResultKey.ERROR);
+                    if (errorMsg != null) {
+                        throw new ExecuteException(errorMsg, data.getResult(ResultKey.STACK_TRACE));
+                    }
+                    String pkgName = data.getResult(CodeLocatorConstants.ResultKey.PKG_NAME);
+                    String imgPath = data.getResult(CodeLocatorConstants.ResultKey.FILE_PATH);
+                    if (pkgName == null || imgPath == null) {
+                        throw new ExecuteException(ResUtils.getString("get_image_failed_msg"));
+                    }
+                    File viewImageFile = new File(FileUtils.sCodeLocatorMainDirPath, CodeLocatorConstants.TMP_IMAGE_FILE_NAME);
+                    if (viewImageFile.exists()) {
+                        viewImageFile.delete();
+                    }
+                    final BytesResponse bytesResponse = executeCmd(project, new AdbCommand(new CatFileAction(imgPath)), BytesResponse.class);
+                    Image viewImage = ImageIO.read(new ByteArrayInputStream(bytesResponse.getData()));
+                    if (viewImage == null) {
+                        executeCmd(project, new AdbCommand(new PullFileAction(imgPath, viewImageFile.getAbsolutePath())), BaseResponse.class);
+                        if (viewImageFile.exists()) {
+                            viewImage = ImageIO.read(viewImageFile);
+                        }
+                        if (viewImage == null) {
+                            throw new ExecuteException(ResUtils.getString("get_image_failed_msg"));
+                        }
+                    }
+                    receiver.setResult((BufferedImage) viewImage);
+                } else {
+                    throw t;
+                }
+            }
+        }
+    }
+
+    private static void pushFileToDevice(IDevice device, PushFileAction adbAction) throws IOException, AdbCommandRejectedException, TimeoutException, SyncException {
+        if (!CodeLocatorUserConfig.loadConfig().isUseDefaultAdb() && sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
+            OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " push " + adbAction.getSourcePath() + " " + adbAction.getTargetPath());
+        } else {
+            device.pushFile(adbAction.getSourcePath(), adbAction.getTargetPath());
+            Mob.mob(Mob.Action.EXEC, "" + adbAction);
+        }
+    }
+
+    private static void pullFileToDevice(IDevice device, PullFileAction adbAction) throws IOException, AdbCommandRejectedException, TimeoutException, SyncException {
+        if (!CodeLocatorUserConfig.loadConfig().isUseDefaultAdb() && sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
+            OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " pull " + adbAction.getSourcePath() + " " + adbAction.getTargetPath());
+        } else {
+            device.pullFile(adbAction.getSourcePath(), adbAction.getTargetPath());
+            Mob.mob(Mob.Action.EXEC, "" + adbAction);
+        }
+    }
+
+    private static void executeShellCommand(IDevice device, IShellOutputReceiver receiver, String cmd, int adbCommandTimeOut) throws TimeoutException, AdbCommandRejectedException, ShellCommandUnresponsiveException, IOException {
+        if (!CodeLocatorUserConfig.loadConfig().isUseDefaultAdb() && sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
+            final String serialNumber = device.getSerialNumber();
+            final ExecResult execResult = OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + serialNumber + " shell " + cmd);
+            if (receiver instanceof AdbResultStringReceiver) {
+                if (execResult.getResultCode() == 0) {
+                    ((AdbResultStringReceiver) receiver).processNewLines(new String[]{execResult.getResultMsg()});
+                } else {
+                    ((AdbResultStringReceiver) receiver).processNewLines(new String[]{execResult.getErrorMsg()});
+                }
+            } else if (receiver instanceof AdbResultBytesReceiver) {
+                if (execResult.getResultCode() == 0) {
+                    final byte[] bytes = execResult.getResultMsg().getBytes(StandardCharsets.UTF_8);
+                    receiver.addOutput(bytes, 0, bytes.length);
+                } else {
+                    final byte[] bytes = execResult.getErrorMsg().getBytes(StandardCharsets.UTF_8);
+                    receiver.addOutput(bytes, 0, bytes.length);
+                }
+            } else if (receiver instanceof AdbResultImageReceiver) {
+                if (execResult.getResultCode() == 0) {
+                    final byte[] bytes = execResult.getResultMsg().getBytes(StandardCharsets.UTF_8);
+                    final BufferedImage read = ImageIO.read(new ByteArrayInputStream(bytes));
+                    ((AdbResultImageReceiver) receiver).setResult(read);
+                }
+            }
+        } else {
+            device.executeShellCommand(cmd, receiver, adbCommandTimeOut, TimeUnit.SECONDS);
+            Mob.mob(Mob.Action.EXEC, "" + cmd);
+        }
+    }
+
     public static <T extends BaseResponse> T executeCmd(Project project, AdbCommand adbCommand, Class<T> resultClz) throws NoDeviceException, ExecuteException, TimeoutException, AdbCommandRejectedException, ShellCommandUnresponsiveException, IOException, IllegalAccessException, InstantiationException, InstallException, SyncException, DeviceUnLockException, NoSDKException, SDKNotInitException {
         return executeCmd(project, adbCommand, resultClz, null);
     }
@@ -536,7 +723,7 @@ public class DeviceManager {
         Device cacheDevice = sAllConnectedDevices.get(iDevice);
         if (cacheDevice == null && iDevice != null) {
             final AdbResultStringReceiver adbResultStringReceiver = new AdbResultStringReceiver();
-            iDevice.executeShellCommand("wm size", adbResultStringReceiver, FileUtils.getConfig().getAdbCommandTimeOut(), TimeUnit.SECONDS);
+            executeShellCommand(iDevice, adbResultStringReceiver, "wm size", FileUtils.getConfig().getAdbCommandTimeOut());
             final String result = adbResultStringReceiver.getResult();
             final Device device = new Device();
             if (!result.isEmpty()) {

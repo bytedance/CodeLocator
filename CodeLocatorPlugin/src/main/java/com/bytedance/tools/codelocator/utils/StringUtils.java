@@ -306,20 +306,20 @@ public class StringUtils {
                 return ResUtils.getString("op_not_support");
             } else if (FILE_NOT_EXIST.equals(message)) {
                 if (((ExecuteException) t).getExtra() != null) {
-                    return ResUtils.getString("file_not_exist_format", ((ExecuteException) t).getExtra());
+                    return ResUtils.getString("file_not_exist_format", getExtra((ExecuteException) t));
                 } else {
                     return ResUtils.getString("file_not_exist");
                 }
             } else if (DELETE_FILE_FAILED.equals(message)) {
                 if (((ExecuteException) t).getExtra() != null) {
-                    return ResUtils.getString("file_not_exist_format", ((ExecuteException) t).getExtra());
+                    return ResUtils.getString("file_not_exist_format", getExtra((ExecuteException) t));
                 } else {
                     return ResUtils.getString("file_not_exist");
                 }
             } else if (ERROR_WITH_STACK_TRACE.equals(message)) {
                 if (((ExecuteException) t).getExtra() != null) {
-                    Log.e("executeException, stacktrace" + ((ExecuteException) t).getExtra());
-                    return ResUtils.getString("internal_error_format", ((ExecuteException) t).getExtra());
+                    Log.e("executeException, stacktrace" + getExtra((ExecuteException) t));
+                    return ResUtils.getString("internal_error_format", getExtra((ExecuteException) t));
                 } else {
                     return ResUtils.getString("internal_error_feedback");
                 }
@@ -331,9 +331,28 @@ public class StringUtils {
                 return ResUtils.getString("args_empty");
             }
         }
+        String result = null;
         if (t.getMessage() != null) {
-            return t.getMessage();
+            result = t.getMessage();
+        } else {
+            result = t.toString();
         }
-        return t.toString();
+        result = getResult(result);
+        return result;
+    }
+
+    private static Object getExtra(ExecuteException t) {
+        final Object extra = t.getExtra();
+        if (extra instanceof String) {
+            return getResult((String) extra);
+        }
+        return extra;
+    }
+
+    private static String getResult(String result) {
+        if (result.length() > FileUtils.getConfig().getMaxMsgLength()) {
+            return result.substring(0, FileUtils.getConfig().getMaxMsgLength() / 2) + result.substring(result.length() - FileUtils.getConfig().getMaxMsgLength() / 2);
+        }
+        return result;
     }
 }

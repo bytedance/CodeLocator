@@ -5,6 +5,7 @@ import com.google.gson.annotations.SerializedName;
 
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -228,6 +229,61 @@ public class WView implements Serializable {
 
     @SerializedName("dg")
     private float mPivotY;
+
+    @SerializedName("dk")
+    private int mSlopBoundLeft;
+
+    @SerializedName("dl")
+    private int mSlopBoundRight;
+
+    @SerializedName("dm")
+    private int mSlopBoundUp;
+
+    @SerializedName("dn")
+    private int mSlopBoundBottom;
+
+    @SerializedName("do")
+    private boolean mLayoutRequested;
+
+    public boolean isLayoutRequested() {
+        return mLayoutRequested;
+    }
+
+    public void setLayoutRequested(boolean mLayoutRequest) {
+        this.mLayoutRequested = mLayoutRequest;
+    }
+
+    public int getSlopBoundLeft() {
+        return mSlopBoundLeft;
+    }
+
+    public void setSlopBoundLeft(int mSlopBoundLeft) {
+        this.mSlopBoundLeft = mSlopBoundLeft;
+    }
+
+    public int getSlopBoundRight() {
+        return mSlopBoundRight;
+    }
+
+    public void setSlopBoundRight(int mSlopBoundRight) {
+        this.mSlopBoundRight = mSlopBoundRight;
+    }
+
+    public int getSlopBoundUp() {
+        return mSlopBoundUp;
+    }
+
+    public void setSlopBoundUp(int mSlopBoundUp) {
+        this.mSlopBoundUp = mSlopBoundUp;
+    }
+
+    public int getSlopBoundBottom() {
+        return mSlopBoundBottom;
+    }
+
+    public void setSlopBoundBottom(int mSlopBoundBottom) {
+        this.mSlopBoundBottom = mSlopBoundBottom;
+    }
 
     private transient float mRealScaleX;
 
@@ -965,6 +1021,22 @@ public class WView implements Serializable {
         }
         for (int i = 0; i < getChildCount(); i++) {
             final WView sameView = getChildAt(i).findViewById(viewId);
+            if (sameView != null) {
+                return sameView;
+            }
+        }
+        return null;
+    }
+
+    public WView justFindViewById(String viewId, HashSet<String> ignoreView) {
+        if (viewId == null) {
+            return null;
+        }
+        if (this.getIdStr() != null && this.getIdStr().equals(viewId) && !ignoreView.contains(this.getMemAddr())) {
+            return this;
+        }
+        for (int i = 0; i < getChildCount(); i++) {
+            final WView sameView = getChildAt(i).justFindViewById(viewId, ignoreView);
             if (sameView != null) {
                 return sameView;
             }

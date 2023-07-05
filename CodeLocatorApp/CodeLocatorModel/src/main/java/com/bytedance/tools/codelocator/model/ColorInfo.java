@@ -13,6 +13,9 @@ public class ColorInfo implements Serializable {
     @SerializedName("d2")
     private int mColor;
 
+    @SerializedName("dj")
+    private String mColorStr;
+
     @SerializedName("d3")
     private String mColorMode;
 
@@ -20,6 +23,7 @@ public class ColorInfo implements Serializable {
         this.mColor = color;
         this.mColorName = colorName;
         this.mColorMode = colorMode;
+        this.mColorStr = CodeLocatorUtils.toHexStr(mColor);
     }
 
     @Override
@@ -52,6 +56,7 @@ public class ColorInfo implements Serializable {
 
     public void setColor(int color) {
         this.mColor = color;
+        this.mColorStr = CodeLocatorUtils.toHexStr(mColor);
     }
 
     public String getColorMode() {
@@ -60,5 +65,9 @@ public class ColorInfo implements Serializable {
 
     public void setColorMode(String colorMode) {
         this.mColorMode = colorMode;
+    }
+
+    public String getColorStr() {
+        return mColorStr;
     }
 }

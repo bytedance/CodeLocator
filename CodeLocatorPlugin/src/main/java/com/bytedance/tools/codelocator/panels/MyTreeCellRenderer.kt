@@ -108,7 +108,7 @@ class MyTreeCellRenderer(val codeLocatorWindow: CodeLocatorWindow, val type: Int
                 val lastDotIndex = className.lastIndexOf(".")
                 if (lastDotIndex > -1) {
                     if (TYPE_VIEW_TREE == type) {
-                        className = "(${activity.decorViews.size}) ${className.substring(lastDotIndex + 1)}"
+                        className = "(${activity.decorViews?.size ?: 0}) ${className.substring(lastDotIndex + 1)}"
                     } else {
                         className = "(${activity.fragmentCount}) ${className.substring(lastDotIndex + 1)}"
                     }

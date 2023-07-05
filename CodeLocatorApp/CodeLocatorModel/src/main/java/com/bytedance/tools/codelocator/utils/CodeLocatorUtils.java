@@ -19,6 +19,9 @@ public class CodeLocatorUtils {
     }
 
     public static String getObjectMemAddr(Object obj) {
+        if (obj == null) {
+            return toHexStr(0);
+        }
         return toHexStr(System.identityHashCode(obj));
     }
 
@@ -28,7 +31,7 @@ public class CodeLocatorUtils {
 
     public static String formatHexStr(String hexStr) {
         return String.format("%8s", hexStr)
-            .replace(" ", "0").toUpperCase();
+                .replace("-", "0").replace(" ", "0").toUpperCase();
     }
 
     public static byte[] compress(String content) throws IOException {

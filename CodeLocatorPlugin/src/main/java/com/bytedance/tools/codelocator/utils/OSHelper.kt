@@ -61,6 +61,8 @@ abstract class OSHelper {
 
     abstract fun downloadDependenciesSource(projectPath: String): ExecResult
 
+    abstract fun execCommand(vararg command: String): ExecResult
+
     open fun getAndroidSdkFile(): File? {
         try {
             val androidSdkData = AndroidSdks.getInstance().tryToChooseAndroidSdk() ?: return null

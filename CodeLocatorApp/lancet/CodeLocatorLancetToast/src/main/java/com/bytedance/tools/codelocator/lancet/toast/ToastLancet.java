@@ -28,7 +28,7 @@ public class ToastLancet {
             }
             CodeLocator.notifyShowToast(Thread.currentThread().getStackTrace(), keyword);
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "getToast info Error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "getToast info Error " + Log.getStackTraceString(t));
         }
         Origin.callVoid();
     }
@@ -47,7 +47,7 @@ public class ToastLancet {
             }
             CodeLocator.notifyShowToast(Thread.currentThread().getStackTrace(), keyword);
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "getToast info Error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "getToast info Error " + Log.getStackTraceString(t));
         }
         Origin.callVoid();
     }

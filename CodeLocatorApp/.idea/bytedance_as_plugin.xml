@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="mboxProjectView">
+    <option name="contentRoots">
+      <list>
+        <option value="$PROJECT_DIR$" />
+        <option value="$PROJECT_DIR$/lancet/CodeLocatorLancetPopup" />
+        <option value="$PROJECT_DIR$/lancet/CodeLocatorLancetToast" />
+        <option value="$PROJECT_DIR$/lancet/CodeLocatorLancetActivity" />
+        <option value="$PROJECT_DIR$/lancet/CodeLocatorLancetAll" />
+        <option value="$PROJECT_DIR$/lancet/CodeLocatorLancetView" />
+        <option value="$PROJECT_DIR$/lancet/CodeLocatorLancetDialog" />
+        <option value="$PROJECT_DIR$/CodeLocatorModel/src/main/java" />
+        <option value="$PROJECT_DIR$/app" />
+        <option value="$PROJECT_DIR$/lancet/CodeLocatorLancetXml" />
+        <option value="$PROJECT_DIR$/CodeLocatorCore" />
+      </list>
+    </option>
+  </component>
+</project>

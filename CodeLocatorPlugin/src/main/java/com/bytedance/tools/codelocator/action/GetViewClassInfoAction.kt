@@ -53,7 +53,7 @@ class GetViewClassInfoAction(
                         throw ExecuteException(errorMsg, result.getResult(ResultKey.STACK_TRACE))
                     }
                     val viewClassInfo = result.getResult(ResultKey.DATA, ViewClassInfo::class.java)
-                    Log.e(
+                    Log.d(
                         "CodeLocator fieldInfoList: " + (viewClassInfo?.fieldInfoList?.size
                             ?: 0) + ", methodInfoList: " + (viewClassInfo?.methodInfoList?.size ?: 0)
                     )

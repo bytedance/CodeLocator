@@ -24,13 +24,10 @@ import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_ACTION_CLE
 import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_CODELOCATOR_ACTION
 import com.bytedance.tools.codelocator.utils.NetUtils
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.InputValidator
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.wm.ex.WindowManagerEx
 import java.awt.Dimension
 import java.awt.Font
-import java.awt.event.ActionEvent
-import java.awt.event.ActionListener
 import java.awt.event.ItemEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -85,6 +82,8 @@ class EditSettingsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: 
         addAdjustPanelHeightBox()
         addShowViewLevelBox()
         addDrawViewSizeBox()
+        addDrawViewPaddingBox()
+        addOpenCharlesBox()
         addMouseWheelBox()
         addPreviewColorBox()
 
@@ -94,12 +93,13 @@ class EditSettingsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: 
 
         addAsyncBroadcastBox()
         addTinyPng()
+        addSystemAdb()
+        addSystemImageEditor()
         addAutoTinyCheck()
         if (IdeaUtils.getVersionStr() != null && IdeaUtils.getVersionInt() >= 2021001001) {
             addUseSupportLibraryCheck()
         }
         addEnableVoiceBox()
-        addSetMinSdkButton()
         clearConfigListBox()
         addConfigButton()
 
@@ -249,6 +249,36 @@ class EditSettingsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: 
         dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
     }
 
+    private fun addDrawViewPaddingBox() {
+        val jCheckBox = JCheckBox(ResUtils.getString("draw_view_padding"))
+        jCheckBox.font = Font(jCheckBox.font.name, jCheckBox.font.style, 15)
+        jCheckBox.isSelected = config.isDrawViewPadding
+        jCheckBox.addItemListener {
+            config.isDrawViewPadding = (it.stateChange == ItemEvent.SELECTED)
+            Mob.mob(
+                Mob.Action.CLICK,
+                if (config.isDrawViewPadding) "open_draw_padding" else "close_draw_padding"
+            )
+        }
+        dialogContentPanel.add(jCheckBox)
+        dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
+    }
+
+    private fun addOpenCharlesBox() {
+        val jCheckBox = JCheckBox(ResUtils.getString("auto_open_charles"))
+        jCheckBox.font = Font(jCheckBox.font.name, jCheckBox.font.style, 15)
+        jCheckBox.isSelected = config.isAutoOpenCharles
+        jCheckBox.addItemListener {
+            config.isAutoOpenCharles = (it.stateChange == ItemEvent.SELECTED)
+            Mob.mob(
+                Mob.Action.CLICK,
+                if (config.isAutoOpenCharles) "auto_open_charles" else "close_auto_open"
+            )
+        }
+        dialogContentPanel.add(jCheckBox)
+        dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
+    }
+
     private fun addMouseWheelBox() {
         val jCheckBox = JCheckBox(ResUtils.getString("set_scroll"))
         jCheckBox.font = Font(jCheckBox.font.name, jCheckBox.font.style, 15)
@@ -355,6 +385,36 @@ class EditSettingsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: 
         dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
     }
 
+    private fun addSystemAdb() {
+        val jCheckBox = JCheckBox(ResUtils.getString("use_default_adb"))
+        jCheckBox.font = Font(jCheckBox.font.name, jCheckBox.font.style, 15)
+        jCheckBox.isSelected = config.isUseDefaultAdb
+        jCheckBox.addItemListener {
+            config.isUseDefaultAdb = (it.stateChange == ItemEvent.SELECTED)
+            Mob.mob(
+                Mob.Action.CLICK,
+                if (config.isUseDefaultAdb) "OPEN_DEFAULT_ADB" else "CLOSE_DEFAULT_ADB"
+            )
+        }
+        dialogContentPanel.add(jCheckBox)
+        dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
+    }
+
+    private fun addSystemImageEditor() {
+        val jCheckBox = JCheckBox(ResUtils.getString("opens_pic_with_editor"))
+        jCheckBox.font = Font(jCheckBox.font.name, jCheckBox.font.style, 15)
+        jCheckBox.isSelected = config.isUseImageEditor
+        jCheckBox.addItemListener {
+            config.isUseImageEditor = (it.stateChange == ItemEvent.SELECTED)
+            Mob.mob(
+                Mob.Action.CLICK,
+                if (config.isUseImageEditor) "OPEN_IMAGE_EDITOR" else "CLOSE_IMAGE_EDITOR"
+            )
+        }
+        dialogContentPanel.add(jCheckBox)
+        dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
+    }
+
     private fun addEnableVoiceBox() {
         val jCheckBox = JCheckBox(ResUtils.getString("enable_install_voice"))
         jCheckBox.font = Font(jCheckBox.font.name, jCheckBox.font.style, 15)
@@ -367,57 +427,6 @@ class EditSettingsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: 
             )
         }
         dialogContentPanel.add(jCheckBox)
-        dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
-    }
-
-    private fun addSetMinSdkButton() {
-        val minSdk = CodeLocatorUserConfig.loadConfig().getMinSdk(project)
-        var currentSDk = ""
-        if (minSdk > 0) {
-            currentSDk = ResUtils.getString("lint_current_sdk_format", minSdk)
-        }
-        val setSdkButton = JButton(ResUtils.getString("lint_min_sdk_format", currentSDk))
-
-        setSdkButton.font = Font(setSdkButton.font.name, setSdkButton.font.style, 15)
-        setSdkButton.addActionListener(object : ActionListener {
-            override fun actionPerformed(e: ActionEvent?) {
-                hide()
-                Mob.mob(Mob.Action.CLICK, "setSdk")
-                val sdk = Messages.showInputDialog(
-                    project,
-                    ResUtils.getString("lint_sdk_set_title"),
-                    "CodeLocator",
-                    Messages.getInformationIcon(),
-                    if (minSdk > 0) minSdk.toString() else "",
-                    object : InputValidator {
-                        override fun checkInput(inputString: String?): Boolean {
-                            return true
-                        }
-
-                        override fun canClose(inputString: String?): Boolean {
-                            if (inputString?.trim()?.isEmpty() == true) {
-                                return true
-                            }
-                            val sdkInt = inputString?.trim()?.toIntOrNull() ?: return false
-                            if (sdkInt >= 0) {
-                                return true
-                            }
-                            return false
-                        }
-                    }
-                )
-                if (sdk == null) {
-                    return
-                }
-                if (sdk.trim().isEmpty()) {
-                    CodeLocatorUserConfig.loadConfig().setMinSdk(project, 0)
-                } else {
-                    CodeLocatorUserConfig.loadConfig().setMinSdk(project, sdk.trim().toInt())
-                }
-                CodeLocatorUserConfig.updateConfig(CodeLocatorUserConfig.loadConfig())
-            }
-        })
-        dialogContentPanel.add(setSdkButton)
         dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
     }
 

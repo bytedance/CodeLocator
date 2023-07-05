@@ -22,8 +22,13 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.impl.compiled.ClsClassImpl;
 import com.intellij.psi.search.EverythingGlobalScope;
 import com.intellij.psi.search.FilenameIndex;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.apache.http.util.TextUtils;
 import org.jetbrains.android.facet.AndroidFacet;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.psi.KtClass;
 
 import javax.annotation.Nullable;
@@ -139,7 +144,7 @@ public class IdeaUtils {
             matchFiles.add(f);
         }
         if (matchFiles.size() != 0) {
-            final PsiFile selfProjectFile = getSelfProjectFile(buildVariant, matchFiles, pkgName);
+            final PsiFile selfProjectFile = getSelfProjectFile(buildVariant, matchFiles, pkgName, name);
             if (selfProjectFile != null) {
                 return selfProjectFile;
             }
@@ -152,7 +157,7 @@ public class IdeaUtils {
             }
         }
         if (matchFiles.size() != 0) {
-            final PsiFile selfProjectFile = getSelfProjectFile(buildVariant, matchFiles, pkgName);
+            final PsiFile selfProjectFile = getSelfProjectFile(buildVariant, matchFiles, pkgName, name);
             if (selfProjectFile != null) {
                 return selfProjectFile;
             }
@@ -163,7 +168,7 @@ public class IdeaUtils {
             matchFiles.add(f);
         }
         if (matchFiles.size() != 0) {
-            final PsiFile selfProjectFile = getSelfProjectFile(buildVariant, matchFiles, pkgName);
+            final PsiFile selfProjectFile = getSelfProjectFile(buildVariant, matchFiles, pkgName, name);
             if (selfProjectFile != null) {
                 return selfProjectFile;
             }
@@ -188,7 +193,7 @@ public class IdeaUtils {
                     return null;
                 }
             }
-            return getSelfProjectFile(buildVariant, Arrays.asList(files), pkName);
+            return getSelfProjectFile(buildVariant, Arrays.asList(files), pkName, name);
         } else {
             return findMatchedCodeFile(project, name, pkName);
         }
@@ -297,10 +302,10 @@ public class IdeaUtils {
                     }
                 }
             }
-            line = line > 0 ? line - 1 : Math.max(line, 0);
-            editor.getScrollingModel().scrollTo(new LogicalPosition(line, 0), ScrollType.CENTER);
-            doEditEffect(editor, line, realSearchStr);
-            return true;
+            int scrollLine = line > 0 ? line - 1 : Math.max(line, 0);
+            editor.getScrollingModel().scrollTo(new LogicalPosition(scrollLine, 0), ScrollType.CENTER);
+            doEditEffect(editor, scrollLine, realSearchStr);
+            return line > -1;
         }
         if (findAndOpenClassFile(project, name, searchStr, -1, pkName)) {
             return true;
@@ -328,7 +333,7 @@ public class IdeaUtils {
                         new EverythingGlobalScope(project));
                 }
                 if (!isArrayEmpty(candidateFiles)) {
-                    candidateFile = getSelfProjectFile(buildVariant, Arrays.asList(candidateFiles), pkName);
+                    candidateFile = getSelfProjectFile(buildVariant, Arrays.asList(candidateFiles), pkName, name);
                     if (candidateFile != null) {
                         String searchFileContent = FileUtils.getFileContent(candidateFile.getVirtualFile());
                         if (searchFileContent.contains(searchStr)) {
@@ -340,11 +345,11 @@ public class IdeaUtils {
             if (psiFile == null) {
                 files = FilenameIndex.getFilesByName(project, name + ".class", new EverythingGlobalScope(project));
                 if (!isArrayEmpty(files)) {
-                    psiFile = getSelfProjectFile(buildVariant, Arrays.asList(files), pkName);
+                    psiFile = getSelfProjectFile(buildVariant, Arrays.asList(files), pkName, name);
                 }
             }
         } else {
-            psiFile = getSelfProjectFile(buildVariant, Arrays.asList(files), pkName);
+            psiFile = getSelfProjectFile(buildVariant, Arrays.asList(files), pkName, name);
         }
         if (psiFile != null) {
             Log.d("psiFile" + psiFile + ", search " + searchStr);
@@ -487,7 +492,7 @@ public class IdeaUtils {
                         } else if (line.contains(")")) {
                             isMultiLine = false;
                         }
-                    } else if (line.contains(pre)) {
+                    } else if (!pre.isEmpty() && line.contains(pre)) {
                         if (isRealContains(text, line)) {
                             finded = true;
                             break;
@@ -530,24 +535,30 @@ public class IdeaUtils {
         return true;
     }
 
-    public static void navigateByJumpInfo(CodeLocatorWindow codeLocatorWindow, Project project, JumpInfo jumpInfo,
+    public static boolean navigateByJumpInfo(CodeLocatorWindow codeLocatorWindow, Project project, JumpInfo jumpInfo,
                                           boolean isMatch, String pre, String seachText, boolean withSuffix) {
         if (jumpInfo == null) {
             Log.e("jumpInfo == null");
-            return;
+            return false;
         }
         String pkName = getPackageNameHasSuffix(jumpInfo.getFileName());
         try {
             if (!jumpInfo.needJumpById()) {
                 int lineCount = Math.max(jumpInfo.getLineCount() - 1, 0);
-                goSourceCodeLines(codeLocatorWindow, project, jumpInfo.getSimpleFileName(), lineCount, withSuffix, pkName, 0);
+                return goSourceCodeLines(codeLocatorWindow, project, jumpInfo.getSimpleFileName(), lineCount, withSuffix, pkName, 0);
             } else {
-                goSourceCodeAndSearch(codeLocatorWindow, project, jumpInfo.getSimpleFileName(), pre, seachText, isMatch,
+                final boolean jumpSuccess = goSourceCodeAndSearch(codeLocatorWindow, project, jumpInfo.getSimpleFileName(), pre, seachText, isMatch,
                     withSuffix, pkName, 0);
+                if (!jumpSuccess && jumpInfo.isIsViewBinding()) {
+                    int lineCount = Math.max(jumpInfo.getLineCount() - 1, 0);
+                    return goSourceCodeLines(codeLocatorWindow, project, jumpInfo.getSimpleFileName(), lineCount, withSuffix, pkName, 0);
+                }
+                return jumpSuccess;
             }
         } catch (Exception e) {
             Log.e("跳转代码失败", e);
         }
+        return false;
     }
 
     public static String getRemovePackageFileName(String fullClassName) {
@@ -561,8 +572,7 @@ public class IdeaUtils {
         return fullClassName;
     }
 
-    public static void openBrowser(String webSite) throws URISyntaxException,
-        IOException {
+    public static void openBrowser(Project project, String webSite) throws URISyntaxException, IOException {
         Desktop desktop = Desktop.getDesktop();
         if (Desktop.isDesktopSupported() && desktop.isSupported(Desktop.Action.BROWSE)) {
             URI uri = new URI(webSite);
@@ -593,10 +603,10 @@ public class IdeaUtils {
         return "";
     }
 
-    public static PsiFile getSelfProjectFile(String buildVariant, List<PsiFile> files, String selfPackageName) {
+    public static PsiFile getSelfProjectFile(String buildVariant, List<PsiFile> files, String selfPackageName, String fileName) {
         ArrayList<PsiFile> psiFiles = new ArrayList<>();
         for (PsiFile file : files) {
-            if (file.getViewProvider().getVirtualFile().getPresentableUrl().replace(File.separator, ".").contains(selfPackageName)) {
+            if (file.getViewProvider().getVirtualFile().getPresentableUrl().replace(File.separator, ".").contains(selfPackageName + "." + fileName)) {
                 psiFiles.add(file);
             }
         }

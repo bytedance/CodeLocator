@@ -9,10 +9,12 @@ import com.intellij.openapi.project.Project
 
 class CopyInfoAction(
     val project: Project,
-    val dataToCopy: String
+    val dataToCopy: String,
+    val title: String? = null,
+    val mob: String = Mob.Button.COPY_TO_CLIPBORAD
 ) : BaseAction(
-    ResUtils.getString("copy"),
-    ResUtils.getString("copy"),
+    title ?: ResUtils.getString("copy"),
+    title ?: ResUtils.getString("copy"),
     ImageUtils.loadIcon("copy")
 ) {
 
@@ -21,7 +23,7 @@ class CopyInfoAction(
     override fun actionPerformed(e: AnActionEvent) {
         ClipboardUtils.copyContentToClipboard(project, dataToCopy)
 
-        Mob.mob(Mob.Action.CLICK, Mob.Button.COPY_TO_CLIPBORAD)
+        Mob.mob(Mob.Action.CLICK, mob)
     }
 
 }

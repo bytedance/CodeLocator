@@ -1,5 +1,6 @@
 package com.bytedance.tools.codelocator.panels
 
+import com.bytedance.tools.codelocator.action.FinishActivityAction
 import com.bytedance.tools.codelocator.action.OpenClassAction
 import com.bytedance.tools.codelocator.model.WActivity
 import com.bytedance.tools.codelocator.model.WFragment
@@ -99,6 +100,15 @@ class ActivityTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
                 selectNode.userObject
             )
         )
+        if (selectNode.userObject is WActivity) {
+            actionGroup.add(
+                FinishActivityAction(
+                    codeLocatorWindow.project,
+                    codeLocatorWindow,
+                    selectNode.userObject as WActivity
+                )
+            )
+        }
 
         val factory = JBPopupFactory.getInstance()
         val pop = factory.createActionGroupPopup(

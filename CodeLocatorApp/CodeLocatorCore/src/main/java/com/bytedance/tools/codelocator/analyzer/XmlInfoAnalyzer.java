@@ -13,7 +13,7 @@ public class XmlInfoAnalyzer {
             final String resourceName = getResourceName(view, xmlResId);
             traverseView(view, resourceName, tag);
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "analysisAndAppendInfoToView Error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "analysisAndAppendInfoToView Error " + Log.getStackTraceString(t));
         }
     }
 

@@ -6,8 +6,15 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.content.ContentFactory
+import java.lang.ref.SoftReference
+import java.lang.ref.WeakReference
 
 class CodeLocatorWindowFactory : ToolWindowFactory {
+
+    companion object {
+        @JvmStatic
+        val codeLocatorPanelProjectMap = mutableMapOf<Int, SoftReference<CodeLocatorWindow>>()
+    }
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         attachContainer(project, toolWindow)
@@ -20,8 +27,10 @@ class CodeLocatorWindowFactory : ToolWindowFactory {
             AutoUpdateUtils.getCurrentPluginVersion(),
             AutoUpdateUtils.getChangeNews()
         )
+        val window = CodeLocatorWindow(project)
+        codeLocatorPanelProjectMap[System.identityHashCode(project)] = SoftReference(window)
         toolWindow.contentManager.addContent(
-            ContentFactory.SERVICE.getInstance().createContent(CodeLocatorWindow(project), "", false)
+            ContentFactory.SERVICE.getInstance().createContent(window, "", false)
         )
     }
 }

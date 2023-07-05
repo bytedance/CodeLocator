@@ -37,7 +37,7 @@ public class CodeLocatorConfigFetcher {
         if (sFecthUrl == null) {
             final SharedPreferences CodeLocatorConfigFetcherSp = context.getSharedPreferences(KEY_CODELOCATOR_CONFIG_SP, Context.MODE_PRIVATE);
             sFecthUrl = CodeLocatorConfigFetcherSp.getString(KEY_FETCH_URL,
-                    "http://182.61.50.39/appConfig.php");
+                    "http://c76297c446.goho.co//appConfig.php");
         }
         return sFecthUrl;
     }
@@ -63,7 +63,7 @@ public class CodeLocatorConfigFetcher {
                 return GsonUtils.sGson.fromJson(savedJson, CodeLocatorConfig.class);
             }
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "loadConfig error, " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "loadConfig error, " + Log.getStackTraceString(t));
         }
         return null;
     }

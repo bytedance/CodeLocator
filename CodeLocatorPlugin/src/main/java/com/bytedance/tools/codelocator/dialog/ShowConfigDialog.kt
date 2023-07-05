@@ -131,7 +131,7 @@ class ShowConfigDialog(
             confirmButton = JButton(btnText)
             confirmButton!!.addActionListener {
                 if (!url.isNullOrEmpty()) {
-                    IdeaUtils.openBrowser(url)
+                    IdeaUtils.openBrowser(project, url)
                 } else if (isRestart) {
                     if (AutoUpdateUtils.sUpdateFile != null && AutoUpdateUtils.sUpdateFile.exists()) {
                         OSHelper.instance.updatePlugin(AutoUpdateUtils.sUpdateFile)

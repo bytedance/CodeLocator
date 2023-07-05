@@ -1,11 +1,40 @@
 package com.bytedance.tools.codelocator.utils
 
 import android.app.Activity
+import android.app.Application
 import android.app.Fragment
 import android.view.View
+import com.bytedance.tools.codelocator.action.CloseActivityAction
+import com.bytedance.tools.codelocator.action.GetActivityArgAction
+import com.bytedance.tools.codelocator.action.GetActivityBitmapAction
+import com.bytedance.tools.codelocator.action.GetAllViewClassInfo
+import com.bytedance.tools.codelocator.action.GetClassInfoAction
+import com.bytedance.tools.codelocator.action.GetFragmentArgAction
+import com.bytedance.tools.codelocator.action.GetViewBitmap
+import com.bytedance.tools.codelocator.action.GetViewData
+import com.bytedance.tools.codelocator.action.GetViewDrawLayerBitmap
+import com.bytedance.tools.codelocator.action.InvokeViewAction
+import com.bytedance.tools.codelocator.action.SetAlphaAction
+import com.bytedance.tools.codelocator.action.SetBackgroundColorAction
+import com.bytedance.tools.codelocator.action.SetLayoutAction
+import com.bytedance.tools.codelocator.action.SetMarginAction
+import com.bytedance.tools.codelocator.action.SetMinimumHeightAction
+import com.bytedance.tools.codelocator.action.SetMinimumWidthAction
+import com.bytedance.tools.codelocator.action.SetPaddingAction
+import com.bytedance.tools.codelocator.action.SetPivotAction
+import com.bytedance.tools.codelocator.action.SetScaleAction
+import com.bytedance.tools.codelocator.action.SetScrollAction
+import com.bytedance.tools.codelocator.action.SetTextAction
+import com.bytedance.tools.codelocator.action.SetTextColorAction
+import com.bytedance.tools.codelocator.action.SetTextLineSpacingAction
+import com.bytedance.tools.codelocator.action.SetTextShadowAction
+import com.bytedance.tools.codelocator.action.SetTextShadowColorAction
+import com.bytedance.tools.codelocator.action.SetTextShadowRadiusAction
+import com.bytedance.tools.codelocator.action.SetTextSizeAction
+import com.bytedance.tools.codelocator.action.SetTranslationAction
+import com.bytedance.tools.codelocator.action.SetViewFlagAction
 import com.bytedance.tools.codelocator.model.EditData
 import com.bytedance.tools.codelocator.model.ResultData
-import com.bytedance.tools.codelocator.action.*
 
 object ActionUtils {
 
@@ -41,7 +70,13 @@ object ActionUtils {
     )
 
     val allActivityAction = setOf(
-        GetActivityArgAction()
+        GetActivityArgAction(),
+        GetActivityBitmapAction(),
+        CloseActivityAction()
+    )
+
+    val allApplicationAction = setOf(
+        GetClassInfoAction()
     )
 
     @JvmStatic
@@ -78,6 +113,21 @@ object ActionUtils {
         for (action in allActivityAction) {
             if (operaData.type == action.getActionType()) {
                 action.processActivity(activity, operaData.args, result)
+                return
+            }
+        }
+    }
+
+    @JvmStatic
+    fun changeApplicationByAction(
+        application: Application,
+        activity: Activity,
+        operaData: EditData,
+        result: ResultData
+    ) {
+        for (action in allApplicationAction) {
+            if (operaData.type == action.getActionType()) {
+                action.processApplicationAction(application, activity, operaData.args, result)
                 return
             }
         }

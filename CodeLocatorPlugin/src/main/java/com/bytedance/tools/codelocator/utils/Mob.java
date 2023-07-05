@@ -240,6 +240,8 @@ public class Mob {
 
         String TOOLS_UNIT_CONVERT = "tools_unit_convert";
 
+        String TOOLS_COLOR_SEARCH = "tools_color_search";
+
         String CONVERT_TO_PX = "convert_to_px";
 
         String CONVERT_TO_DP = "convert_to_dp";
@@ -362,6 +364,7 @@ public class Mob {
             RequestBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("file", zipFile.getName(), RequestBody.create(MediaType.parse("multipart/form-data"), zipFile))
+                .addFormDataPart("type", "log")
                 .addFormDataPart("user", DataUtils.getUserName())
                 .addFormDataPart("version", AutoUpdateUtils.getCurrentPluginVersion())
                 .addFormDataPart("project", DataUtils.getCurrentProjectName())

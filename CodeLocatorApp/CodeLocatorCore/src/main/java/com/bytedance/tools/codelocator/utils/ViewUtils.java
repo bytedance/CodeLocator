@@ -26,7 +26,7 @@ public class ViewUtils {
             Field onClickListenerFiled = ReflectUtils.getClassField(mListenerInfo.getClass(), "mOnClickListener");
             return (View.OnClickListener) onClickListenerFiled.get(mListenerInfo);
         } catch (Exception e) {
-            Log.e(CodeLocator.TAG, "getViewOnClickListener Failed " + Log.getStackTraceString(e));
+            Log.d(CodeLocator.TAG, "getViewOnClickListener Failed " + Log.getStackTraceString(e));
         }
         return null;
     }
@@ -42,7 +42,7 @@ public class ViewUtils {
             int labelRes = packageInfo.applicationInfo.labelRes;
             sAppName = context.getResources().getString(labelRes);
         } catch (Exception e) {
-            Log.e(CodeLocator.TAG, "getAppName Failed " + Log.getStackTraceString(e));
+            Log.d(CodeLocator.TAG, "getAppName Failed " + Log.getStackTraceString(e));
         }
         return sAppName;
     }

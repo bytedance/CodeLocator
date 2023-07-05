@@ -2,21 +2,21 @@ package com.bytedance.tools.codelocator.utils;
 
 import com.bytedance.tools.codelocator.model.WApplication;
 
+import java.awt.*;
+
 public class CoordinateUtils {
-
-    public static final int SCALE_TO_HEIGHT = 700;
-
-    public static final int SCALE_TO_LAND_PANEL_HEIGHT = 540;
 
     public static final int SCALE_TO_LAND_HEIGHT = 300;
 
     public static final int PANEL_WIDTH = 420;
 
-    public static int TREE_PANEL_HEIGHT = 370;
-
     public static int TABLE_RIGHT_MARGIN = 5;
 
     public static int DEFAULT_BORDER = 10;
+
+    public static int getDefaultHeight() {
+        return Toolkit.getDefaultToolkit().getScreenSize().getHeight() >= 800 ? 800 : 680;
+    }
 
     public static int convertPanelXToPhoneX(WApplication application, int panelX, float scale, int transX) {
         if (application == null) {

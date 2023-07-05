@@ -4,6 +4,7 @@ import com.bytedance.tools.codelocator.model.AppConfig;
 import com.bytedance.tools.codelocator.model.CodeLocatorUserConfig;
 import com.bytedance.tools.codelocator.model.ProjectConfig;
 import com.google.gson.JsonObject;
+import com.intellij.openapi.util.SystemInfoRt;
 import okhttp3.*;
 
 import java.io.IOException;
@@ -14,13 +15,13 @@ public class NetUtils {
 
     public static final String SEARCH_CODE_URL = "";
 
-    public static final String FEEDBACK_URL = "https://github.com/bytedance/CodeLocator#%E8%81%94%E7%B3%BB%E6%88%91%E4%BB%AC";
+    public static final String FEEDBACK_URL = "mailto://liujian.android@bytedance.com";
 
-    public static final String DOC_URL = "https://github.com/bytedance/CodeLocator/blob/main/how_to_use_codelocator.md";
+    public static final String DOC_URL = "https://github.com/bytedance/CodeLocator/blob/main/how_to_use_codelocator_zh.md";
 
-    public static final String SERVER_URL = "http://182.61.50.39/log.php";
+    public static final String SERVER_URL = "https://c76297c446.goho.co/log.php";
 
-    public static final String FILE_SERVER_URL = "http://182.61.50.39/uploadLog.php";
+    public static final String FILE_SERVER_URL = "https://c76297c446.goho.co/upload.php";
 
     public static OkHttpClient sOkHttpClient = new OkHttpClient.Builder().addInterceptor(chain -> {
         Request request = chain.request();
@@ -36,6 +37,7 @@ public class NetUtils {
             urlBuilder.addEncodedQueryParameter("sdkVersion", DataUtils.getCurrentSDKVersion());
             urlBuilder.addEncodedQueryParameter("project", DataUtils.getCurrentProjectName());
             urlBuilder.addEncodedQueryParameter("lang", ResUtils.currentRes);
+            urlBuilder.addEncodedQueryParameter("os", SystemInfoRt.OS_NAME);
             requestBuilder.url(urlBuilder.build());
         } else if (request.body() instanceof FormBody) {
             MediaType JSON = MediaType.parse("application/json; charset=utf-8");
@@ -53,6 +55,7 @@ public class NetUtils {
             json.addProperty("pkgName", DataUtils.getCurrentApkName());
             json.addProperty("ideVersion", IdeaUtils.getVersionStr());
             json.addProperty("sdkVersion", DataUtils.getCurrentSDKVersion());
+            json.addProperty("os", SystemInfoRt.OS_NAME);
             requestBuilder.post(RequestBody.create(JSON, String.valueOf(json)));
         }
         request = requestBuilder.build();
@@ -116,4 +119,5 @@ public class NetUtils {
             }
         });
     }
+
 }

@@ -112,6 +112,7 @@ class ShowSearchDialog(
                     lines
                 }
                 IdeaUtils.openBrowser(
+                    project,
                     StringUtils.appendArgToUrl(
                         NetUtils.SEARCH_CODE_URL,
                         "file=$className&line=$searchLine&project=$projectStr&fullName=$pkName.$className"

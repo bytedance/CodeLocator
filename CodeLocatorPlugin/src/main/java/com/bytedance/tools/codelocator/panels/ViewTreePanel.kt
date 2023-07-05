@@ -216,7 +216,7 @@ class ViewTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
     }
 
     fun buildSelectView(activity: WActivity, keyWord: String) {
-        activity.decorViews.forEach { buildSelectView(it, keyWord) }
+        activity.decorViews?.forEach { buildSelectView(it, keyWord) }
     }
 
     fun buildSelectView(view: WView, keyWord: String) {
@@ -471,8 +471,8 @@ class ViewTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
 
     private fun createTreeNodeByActivity(activity: WActivity): DefaultMutableTreeNode {
         val activityNode = DefaultMutableTreeNode(activity)
-        for (i in 0 until activity.decorViews.size) {
-            activityNode.add(createTreeNodeByView(activity.decorViews.get(i)))
+        for (i in 0 until (activity.decorViews?.size ?: 0)) {
+            activityNode.add(createTreeNodeByView(activity.decorViews[i]))
         }
         return activityNode
     }

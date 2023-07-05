@@ -22,7 +22,7 @@ class ActivityOperate : Operate() {
         result: ResultData
     ): Boolean {
         val activityMemId = operateData.itemId
-        if (System.identityHashCode(activity) != activityMemId) {
+        if (System.identityHashCode(activity) != activityMemId && activityMemId != 0) {
             result.addResultItem(ERROR, Error.ACTIVITY_NOT_FOUND)
             return false
         }

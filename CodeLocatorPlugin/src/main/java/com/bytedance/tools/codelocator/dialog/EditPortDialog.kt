@@ -6,6 +6,7 @@ import com.bytedance.tools.codelocator.device.action.AdbAction
 import com.bytedance.tools.codelocator.device.action.AdbCommand
 import com.bytedance.tools.codelocator.device.action.AdbCommand.ACTION
 import com.bytedance.tools.codelocator.listener.OnClickListener
+import com.bytedance.tools.codelocator.model.CodeLocatorUserConfig
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.utils.*
 import com.bytedance.tools.codelocator.views.JTextHintField
@@ -114,7 +115,7 @@ class EditPortDialog(val codeLocatorWindow: CodeLocatorWindow, val project: Proj
         label.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent?) {
                 super.mouseClicked(e)
-                IdeaUtils.openBrowser("https://bytedance.feishu.cn/docs/doccnSHglhjJHlwQplJHuYToW3f")
+                IdeaUtils.openBrowser(project, "https://bytedance.feishu.cn/docs/doccnSHglhjJHlwQplJHuYToW3f")
             }
         })
         val horizontalBox = Box.createHorizontalBox()
@@ -237,7 +238,9 @@ class EditPortDialog(val codeLocatorWindow: CodeLocatorWindow, val project: Proj
                 BaseResponse::class.java,
                 null
             )
-            OSHelper.instance.openCharles()
+            if (CodeLocatorUserConfig.loadConfig().isAutoOpenCharles) {
+                OSHelper.instance.openCharles()
+            }
             if (openCharlesPage) {
                 DeviceManager.enqueueCmd(
                     project,

@@ -18,12 +18,16 @@ import com.bytedance.tools.codelocator.response.OperateResponse
 import com.bytedance.tools.codelocator.response.StringResponse
 import com.bytedance.tools.codelocator.utils.CodeLocatorConstants
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.vfs.LocalFileSystem
 import java.awt.Image
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.Transferable
 import java.awt.datatransfer.UnsupportedFlavorException
+import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.File
 import javax.imageio.ImageIO
@@ -73,13 +77,35 @@ class CopyImageAction(
     }
 
     private fun copyImageToClipboard(image: Image) {
+        val file = File(FileUtils.sCodeLocatorMainDirPath, CodeLocatorConstants.TMP_IMAGE_FILE_NAME)
+        if (file.exists()) {
+            file.delete()
+        }
+        (image as? BufferedImage)?.run {
+            ImageIO.write(this, "png", file)
+        }
         ThreadUtils.runOnUIThread {
-            ShowImageDialog(
-                codeLocatorWindow.project,
-                codeLocatorWindow,
-                image,
-                setTitle = getTitleByType()
-            ).show()
+            if (file.exists() && CodeLocatorUserConfig.loadConfig().isUseImageEditor) {
+                val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(file)
+                if (virtualFile != null) {
+                    virtualFile.refresh(false, false)
+                    FileEditorManager.getInstance(project).openFile(virtualFile, true)
+                } else {
+                    ShowImageDialog(
+                        codeLocatorWindow.project,
+                        codeLocatorWindow,
+                        image,
+                        setTitle = getTitleByType()
+                    ).show()
+                }
+            } else {
+                ShowImageDialog(
+                    codeLocatorWindow.project,
+                    codeLocatorWindow,
+                    image,
+                    setTitle = getTitleByType()
+                ).show()
+            }
         }
         if (commandType == null) {
             ClipboardUtils.copyImageToClipboard(image)
@@ -127,16 +153,22 @@ class CopyImageAction(
                 viewImageFile.delete()
             }
             val bytesResponse =
-                DeviceManager.executeCmd(project, AdbCommand(
-                    CatFileAction(
-                        imgPath
-                    )
-                ), BytesResponse::class.java)
+                DeviceManager.executeCmd(
+                    project, AdbCommand(
+                        CatFileAction(
+                            imgPath
+                        )
+                    ), BytesResponse::class.java
+                )
             var viewImage = ImageIO.read(ByteArrayInputStream(bytesResponse.data))
             if (viewImage == null) {
-                DeviceManager.executeCmd(project, AdbCommand(PullFileAction(imgPath, viewImageFile.absolutePath)), BaseResponse::class.java)
+                DeviceManager.executeCmd(
+                    project,
+                    AdbCommand(PullFileAction(imgPath, viewImageFile.absolutePath)),
+                    BaseResponse::class.java
+                )
                 if (viewImageFile.exists()) {
-                    viewImage = ImageIO.read(viewImageFile);
+                    viewImage = ImageIO.read(viewImageFile)
                 }
                 if (viewImage == null) {
                     Log.e("创建图片失败 bytesize: " + (bytesResponse.data?.size ?: 0))

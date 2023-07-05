@@ -42,6 +42,10 @@ class FindClickLinkAction(
                         throw ExecuteException(ResUtils.getString("get_view_list_error_tip"))
                     }
                     ThreadUtils.runOnUIThread {
+                        if (findViewList.size > 0) {
+                            codeLocatorWindow.getScreenPanel()?.clearMark(null)
+                            codeLocatorWindow.getScreenPanel()?.markViewChain(findViewList[findViewList.size - 1])
+                        }
                         codeLocatorWindow.getScreenPanel()?.notifyFindClickViewList(findViewList)
                     }
                 }

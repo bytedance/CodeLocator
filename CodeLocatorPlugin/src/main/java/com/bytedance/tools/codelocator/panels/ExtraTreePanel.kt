@@ -102,7 +102,7 @@ class ExtraTreePanel(val codeLocatorWindow: CodeLocatorWindow, val extraInfo: Ex
         mJTree!!.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
                 if (e.button != MouseEvent.BUTTON3) {
-                    Mob.mob(Mob.Action.CLICK, Mob.Button.EXTRA)
+                    Mob.mob(Mob.Action.CLICK, Mob.Button.EXTRA + "_" + extraInfo.tag)
                     return
                 }
                 val path: TreePath = mJTree!!.getPathForLocation(e.x, e.y) ?: return

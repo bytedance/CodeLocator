@@ -213,7 +213,7 @@ class WindowsHelper : OSHelper() {
     }
 
     @Throws(java.lang.Exception::class)
-    fun execCommand(vararg command: String): ExecResult {
+    override fun execCommand(vararg command: String): ExecResult {
         return execCommand(false, false, *command)
     }
 

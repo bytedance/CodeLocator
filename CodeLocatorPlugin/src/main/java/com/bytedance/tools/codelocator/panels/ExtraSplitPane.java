@@ -1,11 +1,10 @@
 package com.bytedance.tools.codelocator.panels;
 
+import com.bytedance.tools.codelocator.listener.OnSelectExtraListener;
 import com.bytedance.tools.codelocator.model.ExtraAction;
 import com.bytedance.tools.codelocator.model.ExtraInfo;
 import com.bytedance.tools.codelocator.model.WActivity;
 import com.bytedance.tools.codelocator.model.WView;
-import com.bytedance.tools.codelocator.listener.OnSelectExtraListener;
-import com.bytedance.tools.codelocator.utils.CoordinateUtils;
 import com.bytedance.tools.codelocator.utils.StringUtils;
 
 import javax.swing.*;
@@ -34,7 +33,7 @@ public class ExtraSplitPane extends JSplitPane {
         }
 
         setDividerSize(4);
-        setDividerLocation(CoordinateUtils.TREE_PANEL_HEIGHT);
+        setDividerLocation(codeLocatorWindow.getTreePanelHeight());
         setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
         mExtraTreePanel = new ExtraTreePanel(codeLocatorWindow, mExtra);

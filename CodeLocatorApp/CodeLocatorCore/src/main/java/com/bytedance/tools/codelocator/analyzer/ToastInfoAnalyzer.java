@@ -44,7 +44,7 @@ public class ToastInfoAnalyzer {
             }
             return getTagInfoByElement(findElement);
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "analysisShowToastInfo Error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "analysisShowToastInfo Error " + Log.getStackTraceString(t));
         }
         return null;
     }

@@ -41,7 +41,7 @@ class CodeLocatorDropTargetAdapter(val project: Project, val codeLocatorWindow: 
                                 codeLocatorWindow,
                                 file.absolutePath
                             )
-                        } else if (file.exists() && file.name.endsWith(FileUtils.CODE_LOCATOR_FILE_SUFFIX)) {
+                        } else if (file.exists() && file.length() < 10_000_000) {
                             canProcess = true
                             val fileContentBytes = FileUtils.getFileContentBytes(file)
                             val codelocatorInfo = CodeLocatorInfo.fromCodeLocatorInfo(fileContentBytes)

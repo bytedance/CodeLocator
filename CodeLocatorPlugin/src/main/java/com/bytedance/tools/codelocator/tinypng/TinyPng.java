@@ -2,9 +2,9 @@ package com.bytedance.tools.codelocator.tinypng;
 
 import com.bytedance.tools.codelocator.tinypng.model.UploadInfo;
 import com.bytedance.tools.codelocator.utils.FileUtils;
+import com.bytedance.tools.codelocator.utils.GsonUtils;
 import com.bytedance.tools.codelocator.utils.Log;
 import com.bytedance.tools.codelocator.utils.MD5Utils;
-import com.bytedance.tools.codelocator.utils.GsonUtils;
 import okhttp3.*;
 
 import javax.net.ssl.*;
@@ -12,6 +12,7 @@ import java.io.*;
 import java.security.KeyStore;
 import java.security.cert.CertificateException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
 public class TinyPng {
@@ -82,15 +83,26 @@ public class TinyPng {
         }
         String fileType = sourceFile.getName().substring(sourceFile.getName().lastIndexOf(".") + 1);
         final String type = "image/" + ("jpg".equals(fileType) ? "jpeg" : fileType);
-        Request request = new Request.Builder()
-            .addHeader("content-length", String.valueOf(sourceFile.length()))
-            .addHeader("Content-Type", type)
-            .addHeader("referer", "https://tinypng.com/")
-            .addHeader("origin", "https://tinypng.com")
-            .addHeader("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36")
-            .url("https://tinypng.com/web/shrink")
-            .post(RequestBody.create(MediaType.parse(type), sourceFile))
-            .build();
+        HashMap<String, String> head = new HashMap<>();
+        head.put("content-length", String.valueOf(sourceFile.length()));
+        head.put("Content-Type", type);
+        head.put("referer", "https://tinypng.com/");
+        head.put("origin", "https://tinypng.com");
+        head.put("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36");
+        Request.Builder requestBuilder = new Request.Builder()
+            .url(FileUtils.getConfig().getTinyUrl())
+            .post(RequestBody.create(MediaType.parse(type), sourceFile));
+        if (FileUtils.getConfig().getTinyHeadName() != null
+            && FileUtils.getConfig().getTinyHeadValue() != null
+            && (FileUtils.getConfig().getTinyHeadName().size() == FileUtils.getConfig().getTinyHeadValue().size())) {
+            for (int i = 0; i < FileUtils.getConfig().getTinyHeadValue().size(); i++) {
+                head.put(FileUtils.getConfig().getTinyHeadName().get(i), FileUtils.getConfig().getTinyHeadValue().get(i));
+            }
+        }
+        for (String key : head.keySet()) {
+            requestBuilder.addHeader(key, head.get(key));
+        }
+        Request request = requestBuilder.build();
         final Response response = sOkHttpClient.newCall(request).execute();
         if (!response.isSuccessful()) {
             throw new IllegalAccessException(response.message());

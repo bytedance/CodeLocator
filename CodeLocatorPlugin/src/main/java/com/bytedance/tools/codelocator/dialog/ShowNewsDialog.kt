@@ -22,7 +22,7 @@ class ShowNewsDialog(val project: Project, val msg: String, val version: String)
 
         @JvmStatic
         fun checkAndShowDialog(project: Project, version: String, msg: String) {
-            if (!logNeedShowDialog(version)) {
+            if (!logNeedShowDialog(version) || true) {
                 return
             }
             ThreadUtils.runOnUIThread {

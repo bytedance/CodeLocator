@@ -84,7 +84,7 @@ public class XmlLancet {
         try {
             CodeLocator.notifySetImageResource((ImageView) This.get(), resId);
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "setImageResource Error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "setImageResource Error " + Log.getStackTraceString(t));
         }
         Origin.callVoid();
     }
@@ -95,7 +95,7 @@ public class XmlLancet {
         try {
             CodeLocator.notifySetImageResource((ImageView) This.get(), resId);
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "setImageResource Error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "setImageResource Error " + Log.getStackTraceString(t));
         }
         Origin.callVoid();
     }

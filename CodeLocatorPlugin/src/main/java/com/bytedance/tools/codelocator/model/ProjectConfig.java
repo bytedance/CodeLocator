@@ -10,6 +10,14 @@ public class ProjectConfig {
 
     private List<AppConfig> appConfigs;
 
+    private String tinyUrl;
+
+    private String uploadHost;
+
+    private List<String> tinyHeadName;
+
+    private List<String> tinyHeadValue;
+
     private int autoTinyCount = 3;
 
     private int maxHistoryCount = 30;
@@ -18,15 +26,78 @@ public class ProjectConfig {
 
     private long autoTinySize = 1_000_000;
 
+    private int maxMsgLength = 3_000;
+
     private double sleepTime = 0.5;
 
     private long exitTime = 5000;
 
+    private String adText = "";
+
+    public int getMaxMsgLength() {
+        return maxMsgLength;
+    }
+
+    public String getUploadHost() {
+        return uploadHost;
+    }
+
+    public List<String> getTinyHeadName() {
+        return tinyHeadName;
+    }
+
+    public List<String> getTinyHeadValue() {
+        return tinyHeadValue;
+    }
+
+    public String getTinyUrl() {
+        if (tinyUrl == null || tinyUrl.isEmpty()) {
+            tinyUrl = "https://tinypng.com/backend/opt/shrink";
+        }
+        return tinyUrl;
+    }
+
+    public String getAdText() {
+        if (adText == null) {
+            return "";
+        }
+        return adText;
+    }
+
+    public void setAdText(String adText) {
+        this.adText = adText;
+    }
+
+    public String getAdLink() {
+        if (adLink == null) {
+            return "";
+        }
+        return adLink;
+    }
+
+    public void setAdLink(String adLink) {
+        this.adLink = adLink;
+    }
+
+    private String adLink = "";
+
     private boolean drawPowerBy = false;
+
+    private String drawPowerStr = "";
+
+    private boolean disableRemoveImport = false;
 
     private int screenCapTimeOut = 10;
 
     private int adbCommandTimeOut = 10;
+
+    public String getDrawPowerStr() {
+        return drawPowerStr;
+    }
+
+    public void setDrawPowerStr(String drawPowerStr) {
+        this.drawPowerStr = drawPowerStr;
+    }
 
     private List<String> filterGroup = new ArrayList<String>() {
         {
@@ -45,6 +116,14 @@ public class ProjectConfig {
 
     public void setAppConfigs(List<AppConfig> appConfigs) {
         this.appConfigs = appConfigs;
+    }
+
+    public boolean isDisableRemoveImport() {
+        return disableRemoveImport;
+    }
+
+    public void setDisableRemoveImport(boolean disableRemoveImport) {
+        this.disableRemoveImport = disableRemoveImport;
     }
 
     public int getAutoTinyCount() {
@@ -112,9 +191,15 @@ public class ProjectConfig {
         return filterGroup;
     }
 
+
     public AppConfig getConfigByGitUrl(String url) {
         if (url == null || appConfigs == null) {
             return null;
+        }
+        for (AppConfig config : appConfigs) {
+            if (url.equals(config.getAppGitUrl())) {
+                return config;
+            }
         }
         for (AppConfig config : appConfigs) {
             if (url.equals(config.getAppGitUrl())) {

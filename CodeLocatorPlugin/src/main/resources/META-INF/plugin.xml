@@ -2,7 +2,7 @@
     <id>com.bytedance.tools.codelocator</id>
     <idea-version since-build="191.0"/>
     <name>CodeLocator</name>
-    <vendor email="liujian.android@bytedance.com" url="https://github.com/bytedance/codelocator"></vendor>
+    <vendor email="liujian.android@bytedance.com" url="https://github.com/bytedance/codelocator">liujian.android</vendor>
 
     <description><![CDATA[
         CodeLocator is a powerful set of Android tools, which supports a variety of functions and needs to be integrated with the codelocator-sdk for use.<br />
@@ -10,6 +10,8 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <h3>2.0.1: Support ViewBinding</h3>
+
         <h3>2.0.0: Support Windows system</h3>
 
         <h3>1.2.3: Fix search view anr & Fix edit view flag error</h3>
@@ -63,11 +65,6 @@
                     factoryClass="com.bytedance.tools.codelocator.panels.CodeLocatorWindowFactory">
         </toolWindow>
 
-        <globalInspection hasStaticDescription="true"
-                          shortName="AndroidLintNewApiCodeLocator"
-                          displayName="CodeLocatorAndroidLintNewApi Calling new methods on older versions"
-                          bundle="messages.AndroidBundle" enabledByDefault="true" level="ERROR"
-                          implementationClass="com.bytedance.tools.codelocator.lint.CodeLocatorAndroidLintNewApiInspection"/>
     </extensions>
 
     <actions>

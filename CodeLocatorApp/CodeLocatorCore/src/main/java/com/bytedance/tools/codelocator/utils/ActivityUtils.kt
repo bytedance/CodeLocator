@@ -12,6 +12,7 @@ import android.os.SystemClock
 import android.text.Spanned
 import android.util.Log
 import android.view.MotionEvent
+import android.view.TouchDelegate
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -26,6 +27,7 @@ import androidx.fragment.app.FragmentManager
 import com.bytedance.tools.codelocator.BuildConfig
 import com.bytedance.tools.codelocator.CodeLocator
 import com.bytedance.tools.codelocator.R
+import com.bytedance.tools.codelocator.config.AppInfoProvider
 import com.bytedance.tools.codelocator.config.CodeLocatorConfigFetcher
 import com.bytedance.tools.codelocator.model.WActivity
 import com.bytedance.tools.codelocator.model.WApplication
@@ -34,6 +36,7 @@ import com.bytedance.tools.codelocator.model.WFragment
 import com.bytedance.tools.codelocator.model.WView
 import com.bytedance.tools.codelocator.operate.ViewOperate
 import java.io.File
+import java.lang.Math.abs
 import java.lang.reflect.Field
 
 object ActivityUtils {
@@ -104,10 +107,7 @@ object ActivityUtils {
         try {
             buildFragmentInfo(wApplication, activity, isMainThread)
         } catch (t: Throwable) {
-            Log.e(
-                CodeLocator.TAG,
-                "buildFragmentInfo error, stackTrace: " + Log.getStackTraceString(t)
-            )
+            Log.d(CodeLocator.TAG, "buildFragmentInfo error, stackTrace: " + Log.getStackTraceString(t))
         }
         buildViewInfo(wApplication, activity)
         return wApplication
@@ -118,6 +118,7 @@ object ActivityUtils {
         activity: Activity
     ) {
         wApplication.grabTime = System.currentTimeMillis()
+        wApplication.className = activity.application.javaClass.name
         wApplication.isIsDebug = isApkInDebug(activity)
         wApplication.androidVersion = Build.VERSION.SDK_INT
         wApplication.deviceInfo =
@@ -146,7 +147,7 @@ object ActivityUtils {
                 try {
                     processor?.processApplication(wApplication, activity)
                 } catch (t: Throwable) {
-                    Log.e(CodeLocator.TAG, "Process Error " + Log.getStackTraceString(t))
+                    Log.d(CodeLocator.TAG, "Process Error " + Log.getStackTraceString(t))
                 }
             }
         }
@@ -163,7 +164,7 @@ object ActivityUtils {
         try {
             return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         } catch (t: Throwable) {
-            Log.e(CodeLocator.TAG, "检测是否Debug错误 " + Log.getStackTraceString(t))
+            Log.d(CodeLocator.TAG, "检测是否Debug错误 " + Log.getStackTraceString(t))
             return false
         }
     }
@@ -183,7 +184,7 @@ object ActivityUtils {
                 try {
                     processor?.processActivity(wActivity, activity)
                 } catch (t: Throwable) {
-                    Log.e(CodeLocator.TAG, "Process Error " + Log.getStackTraceString(t))
+                    Log.d(CodeLocator.TAG, "Process Error " + Log.getStackTraceString(t))
                 }
             }
         }
@@ -297,7 +298,7 @@ object ActivityUtils {
                                 )
                             )
                         } catch (t: Throwable) {
-                            Log.e(
+                            Log.d(
                                 CodeLocator.TAG,
                                 "convertFragmentToWFragment error, stackTrace: " + Log.getStackTraceString(
                                     t
@@ -314,7 +315,7 @@ object ActivityUtils {
             } else {
                 try {
                     val classField = ReflectUtils.getClassField(it.javaClass, "mAdded")
-                    classField.get(it) as? List<android.app.Fragment>
+                    classField?.get(it) as? List<android.app.Fragment>
                 } catch (t: Throwable) {
                     mutableListOf<android.app.Fragment>()
                 }
@@ -324,7 +325,7 @@ object ActivityUtils {
                     try {
                         childFragments.add(convertFragmentToWFragment(f, isMainThread))
                     } catch (t: Throwable) {
-                        Log.e(
+                        Log.d(
                             CodeLocator.TAG,
                             "convertFragmentToWFragment error, stackTrace: " + Log.getStackTraceString(
                                 t
@@ -350,6 +351,12 @@ object ActivityUtils {
             wApplication.colorInfo =
                 CodeLocator.sGlobalConfig?.appInfoProvider?.providerColorInfo(activity)
         }
+        if (wApplication.appInfo != null) {
+            wApplication.appInfo[AppInfoProvider.CODELOCATOR_KEY_DEBUGGABLE] = "" + wApplication.isIsDebug
+        } else {
+            wApplication.appInfo = HashMap()
+            wApplication.appInfo[AppInfoProvider.CODELOCATOR_KEY_DEBUGGABLE] = "" + wApplication.isIsDebug
+        }
     }
 
     private fun convertViewToWViewInternal(
@@ -364,12 +371,14 @@ object ActivityUtils {
             convertedView = convertViewToWView(androidView, winFrameRect)
         }
         val extras = CodeLocator.sGlobalConfig.appInfoProvider.processViewExtra(
-            CodeLocator.sCurrentActivity,
+            CodeLocator.getCurrentActivity(),
             androidView,
             convertedView
         )
         if (extras != null) {
-            convertedView.extraInfos = mutableListOf()
+            if (convertedView.extraInfos == null) {
+                convertedView.extraInfos = mutableListOf()
+            }
             convertedView.extraInfos.addAll(extras)
         }
         return convertedView
@@ -494,6 +503,7 @@ object ActivityUtils {
         wView.touchTag = androidView.getTag(R.id.codeLocator_ontouch_tag_id) as? String
         wView.viewHolderTag = androidView.getTag(R.id.codeLocator_viewholder_tag_id) as? String
         wView.adapterTag = androidView.getTag(R.id.codeLocator_viewholder_adapter_tag_id) as? String
+        wView.isLayoutRequested = androidView.isLayoutRequested
 
         when (androidView) {
             is TextView -> {
@@ -525,12 +535,36 @@ object ActivityUtils {
             }
         }
 
+        val touchDelegateField = ReflectUtils.getClassField(androidView.javaClass,"mTouchDelegate")
+        val touchDelegate = touchDelegateField?.get(androidView)
+        touchDelegate?.run {
+            val boundsField = ReflectUtils.getClassField((touchDelegate as TouchDelegate).javaClass,"mBounds")
+            val bounds = boundsField?.get(touchDelegate) as? Rect
+
+            val touchDelegateViewField = ReflectUtils.getClassField(touchDelegate.javaClass,"mDelegateView")
+            val touchDelegateView = touchDelegateViewField?.get(touchDelegate) as? View
+
+            val childOriginalBounds = Rect()
+            touchDelegateView?.isEnabled = true
+            touchDelegateView?.getHitRect(childOriginalBounds)
+
+            val view = wView.findSameView(CodeLocatorUtils.getObjectMemAddr(touchDelegateView))
+            view?.apply {
+                bounds?.run {
+                    slopBoundLeft = UIUtils.px2dp(abs(bounds.left - childOriginalBounds.left))
+                    slopBoundUp = UIUtils.px2dp(abs(bounds.top - childOriginalBounds.top))
+                    slopBoundBottom = UIUtils.px2dp(abs(bounds.bottom - childOriginalBounds.bottom))
+                    slopBoundRight = UIUtils.px2dp(abs(bounds.right - childOriginalBounds.right))
+                }
+            }
+        }
+
         CodeLocator.sGlobalConfig.codeLocatorProcessors?.let {
             for (processor in it) {
                 try {
                     processor?.processView(wView, androidView)
                 } catch (t: Throwable) {
-                    Log.e(CodeLocator.TAG, "Process Error " + Log.getStackTraceString(t))
+                    Log.d(CodeLocator.TAG, "Process Error " + Log.getStackTraceString(t))
                 }
             }
         }
@@ -562,7 +596,7 @@ object ActivityUtils {
                     mChildFragmentManagerField.get(fragment) as? FragmentManager?
                 childFragments = mChildFragmentManager?.fragments
             } catch (t: Throwable) {
-                Log.e(
+                Log.d(
                     CodeLocator.TAG,
                     "get childFragmentManager fragments error, stackTrace: " + Log.getStackTraceString(
                         t
@@ -613,10 +647,7 @@ object ActivityUtils {
                     childFragmentManager =
                         childFragmentManagerField.get(fragment) as? android.app.FragmentManager?
                 } catch (t: Throwable) {
-                    Log.e(
-                        CodeLocator.TAG,
-                        "get mChildFragmentManager error, stackTrace: " + Log.getStackTraceString(t)
-                    )
+                    Log.d(CodeLocator.TAG, "get mChildFragmentManager error, stackTrace: " + Log.getStackTraceString(t))
                 }
             }
         }
@@ -652,36 +683,33 @@ object ActivityUtils {
             val windowManager = activity.getSystemService(Context.WINDOW_SERVICE)
             val currentWindowToken = activity.window.attributes.token
             val mGlobal = ReflectUtils.getClassField(windowManager.javaClass, "mGlobal")
-            val mWindowManagerGlobal = mGlobal[windowManager]
+            val mWindowManagerGlobal = mGlobal?.get(windowManager) ?: return dialogViews
             val mRoots = ReflectUtils.getClassField(mWindowManagerGlobal.javaClass, "mRoots")
-            val list = mRoots.get(mWindowManagerGlobal) as List<Any>
+            val list = mRoots?.get(mWindowManagerGlobal) as? List<Any>
             val activityDecorView = activity.window.decorView
-            if (list.isNotEmpty()) {
+            if (list?.isNotEmpty() == true) {
                 for (element in list) {
                     val viewRoot = element
-                    val mAttrFiled: Field =
-                        ReflectUtils.getClassField(viewRoot.javaClass, "mWindowAttributes")
+                    val mAttrFiled: Field? = ReflectUtils.getClassField(viewRoot.javaClass, "mWindowAttributes")
                     val layoutParams: WindowManager.LayoutParams? =
-                        mAttrFiled.get(viewRoot) as? WindowManager.LayoutParams
+                        mAttrFiled?.get(viewRoot) as? WindowManager.LayoutParams
                     if (layoutParams?.token != currentWindowToken && (layoutParams?.type != WindowManager.LayoutParams.FIRST_SUB_WINDOW
-                                && layoutParams?.type != WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
-                    ) {
+                            && layoutParams?.type != WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)) {
                         continue
                     }
-                    val viewFiled: Field = ReflectUtils.getClassField(viewRoot.javaClass, "mView")
-                    var view: View = viewFiled.get(viewRoot) as View
+                    val viewFiled: Field? = ReflectUtils.getClassField(viewRoot.javaClass, "mView")
+                    var view: View = viewFiled?.get(viewRoot) as? View ?: continue
                     if (activityDecorView == view) {
                         continue
                     }
-                    val winFrameRectField =
-                        ReflectUtils.getClassField(viewRoot.javaClass, "mWinFrame")
-                    val winFrameRect: Rect = winFrameRectField.get(viewRoot) as Rect
+                    val winFrameRectField = ReflectUtils.getClassField(viewRoot.javaClass, "mWinFrame")
+                    val winFrameRect: Rect? = winFrameRectField?.get(viewRoot) as? Rect
                     val decorView = convertViewToWView(view, winFrameRect)
                     dialogViews.add(decorView)
                 }
             }
         } catch (e: Exception) {
-            Log.e(CodeLocator.TAG, "getDialogWindow Fail $e")
+            Log.d(CodeLocator.TAG, "getDialogWindow Fail $e")
         }
         return dialogViews
     }
@@ -759,7 +787,7 @@ object ActivityUtils {
                 try {
                     processor?.processFile(wFile, file)
                 } catch (t: Throwable) {
-                    Log.e(CodeLocator.TAG, "Process Error " + Log.getStackTraceString(t))
+                    Log.d(CodeLocator.TAG, "Process Error " + Log.getStackTraceString(t))
                 }
             }
         }

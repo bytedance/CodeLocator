@@ -12,8 +12,8 @@ class MacHelper : OSHelper() {
 
     override fun init() {
         sCodeLocatorPluginShellPath =
-            FileUtils.sCodeLocatorMainDirPath.replace(" ", "\\ ")
-        if (!File(FileUtils.sCodeLocatorMainDirPath, "imgcopy").exists()) {
+            FileUtils.sCodeLocatorPluginDir.replace(" ", "\\ ")
+        if (!File(FileUtils.sCodeLocatorPluginDir, "imgcopy").exists()) {
             try {
                 execCommand("gcc -Wall -g -O3 -ObjC -framework Foundation -framework AppKit -o $sCodeLocatorPluginShellPath/imgcopy $sCodeLocatorPluginShellPath/imgcopy.m")
             } catch (ignore: Exception) {
@@ -145,8 +145,7 @@ class MacHelper : OSHelper() {
         if (file.exists() && file.length() > 0) {
             try {
                 val imgcopy = execCommand(
-                    File(sCodeLocatorPluginShellPath, "imgcopy")
-                        .absolutePath.replace(" ", "\\ ") + " '" + file.absolutePath + "'"
+                    File(FileUtils.sCodeLocatorPluginDir, "imgcopy").absolutePath.replace(" ", "\\ ") + " '" + file.absolutePath + "'"
                 )
                 file.delete()
                 return imgcopy.resultCode == 0
@@ -197,7 +196,7 @@ class MacHelper : OSHelper() {
                     "\\ "
                 )} dump badging '$apkFilePath' | grep package"
             )
-            val line = execCommand.resultMsg!!
+            val line = execCommand.resultMsg ?: ""
             val indexOfStart = line.indexOf("name='")
             if (indexOfStart > -1) {
                 val indexOfEnd = line.indexOf("'", indexOfStart + "name='".length)
@@ -258,7 +257,7 @@ class MacHelper : OSHelper() {
     }
 
     @Throws(java.lang.Exception::class)
-    fun execCommand(vararg command: String): ExecResult {
+    override fun execCommand(vararg command: String): ExecResult {
         return execCommand(false, *command)
     }
 

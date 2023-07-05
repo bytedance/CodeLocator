@@ -232,9 +232,9 @@ class ClipboardDialog(
                     "${BroadcastAction.BROADCAST} -a codeLocator_action_set_clipboard$appendArg"
                 )
             ),
-            StringResponse::class.java,
-            object : DeviceManager.OnExecutedListener<StringResponse> {
-                override fun onExecSuccess(device: Device, response: StringResponse) {
+            NotEncodeStringResponse::class.java,
+            object : DeviceManager.OnExecutedListener<NotEncodeStringResponse> {
+                override fun onExecSuccess(device: Device, response: NotEncodeStringResponse) {
                     enable = true
                     val result = response.data
                     var indexOfStart = result.indexOf(DATA_START)

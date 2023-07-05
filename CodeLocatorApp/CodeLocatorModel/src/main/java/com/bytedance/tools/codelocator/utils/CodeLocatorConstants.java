@@ -90,6 +90,10 @@ public class CodeLocatorConstants {
 
     public static final String TYPE_TOAST_IGNORE = "toast_ignore";
 
+    public static final String TYPE_ENABLE_CODELOCATOR = "enable_codelocator";
+
+    public static final String TYPE_ENABLE_CODELOCATOR_LANCET = "enable_codelocator_lancet";
+
     public static final String COMMAND_UPDATE_ACTIVITY = "command_update_activity";
 
     public static final String TMP_DATA_FILE_NAME = "codeLocator_data.txt";
@@ -109,6 +113,8 @@ public class CodeLocatorConstants {
         String ACTIVITY = "A";
 
         String FRAGMENT = "F";
+
+        String APPLICATION = "P";
 
     }
 
@@ -168,6 +174,8 @@ public class CodeLocatorConstants {
 
         String GET_INTENT = "GI";
 
+        String CLOSE_ACTIVITY = "CA";
+
         String INVOKE = "IK";
 
         String IGNORE = "X";
@@ -175,6 +183,8 @@ public class CodeLocatorConstants {
         String FECTH_URL = "FU";
 
         String ASYNC_BROADCAST = "AB";
+
+        String GET_CLASS_INFO = "GCI";
     }
 
     public interface ResultKey {

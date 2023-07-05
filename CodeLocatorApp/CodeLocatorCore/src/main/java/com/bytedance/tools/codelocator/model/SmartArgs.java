@@ -15,6 +15,13 @@ public class SmartArgs {
 
     private HashMap<String, String> args;
 
+    @Override
+    public String toString() {
+        return "SmartArgs{" +
+                "args=" + args +
+                '}';
+    }
+
     public SmartArgs(String argsStr) {
         if (argsStr == null) {
             return;

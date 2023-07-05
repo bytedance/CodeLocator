@@ -1,17 +1,29 @@
 package com.bytedance.tools.codelocator.action
 
 import android.app.Activity
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Rect
 import android.os.Bundle
 import android.os.Parcelable
 import android.util.Log
+import android.view.View
+import android.view.WindowManager
 import com.bytedance.tools.codelocator.CodeLocator
-import com.bytedance.tools.codelocator.utils.CodeLocatorUtils
 import com.bytedance.tools.codelocator.model.ResultData
-import com.bytedance.tools.codelocator.utils.CodeLocatorConstants
-import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.*
-import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.*
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTIVITY_START_STACK_INFO
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.DATA
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.ERROR
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.FILE_PATH
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.PKG_NAME
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.STACK_TRACE
+import com.bytedance.tools.codelocator.utils.FileUtils
 import com.bytedance.tools.codelocator.utils.GsonUtils
+import com.bytedance.tools.codelocator.utils.ReflectUtils
 import java.io.Serializable
+import java.lang.reflect.Field
 
 /**
  * Activity操作协议
@@ -79,7 +91,7 @@ class GetActivityArgAction : ActivityAction() {
                         map.put(key, GsonUtils.sGson.toJson(value))
                     } catch (t: Throwable) {
                         map.put(key, value.toString())
-                        Log.e(CodeLocator.TAG, "put value error " + Log.getStackTraceString(t))
+                        Log.d(CodeLocator.TAG, "put value error " + Log.getStackTraceString(t))
                     }
                 }
                 is Parcelable -> {
@@ -87,7 +99,7 @@ class GetActivityArgAction : ActivityAction() {
                         map.put(key, GsonUtils.sGson.toJson(value))
                     } catch (t: Throwable) {
                         map.put(key, value.toString())
-                        Log.e(CodeLocator.TAG, "put value error " + Log.getStackTraceString(t))
+                        Log.d(CodeLocator.TAG, "put value error " + Log.getStackTraceString(t))
                     }
                 }
                 else -> {
@@ -104,7 +116,90 @@ class GetActivityArgAction : ActivityAction() {
         } catch (t: Throwable) {
             result.addResultItem(ERROR, Error.ERROR_WITH_STACK_TRACE)
             result.addResultItem(STACK_TRACE, Log.getStackTraceString(t))
-            Log.e(CodeLocator.TAG, "put value error " + Log.getStackTraceString(t))
+            Log.d(CodeLocator.TAG, "put value error " + Log.getStackTraceString(t))
+        }
+    }
+
+}
+
+class GetActivityBitmapAction : ActivityAction() {
+
+    override fun getActionType() = EditType.VIEW_BITMAP
+
+    override fun processActivityAction(
+        activity: Activity,
+        data: String,
+        result: ResultData
+    ) {
+        val windowManager = activity.getSystemService(Context.WINDOW_SERVICE)
+        val currentWindowToken = activity.window.attributes.token
+        val mGlobal = ReflectUtils.getClassField(windowManager.javaClass, "mGlobal")
+        val mWindowManagerGlobal = mGlobal[windowManager]
+        val mRoots = ReflectUtils.getClassField(mWindowManagerGlobal.javaClass, "mRoots")
+        val list = mRoots.get(mWindowManagerGlobal) as List<Any>
+        val activityDecorView = activity.window.decorView
+        activityDecorView.destroyDrawingCache()
+        activityDecorView.buildDrawingCache()
+        val drawingCache = activityDecorView.drawingCache
+        if (drawingCache != null) {
+            val canvas = Canvas(drawingCache)
+            if (list.isNotEmpty()) {
+                for (element in list) {
+                    val viewRoot = element
+                    val mAttrFiled: Field? =
+                        ReflectUtils.getClassField(viewRoot.javaClass, "mWindowAttributes")
+                    val layoutParams: WindowManager.LayoutParams? =
+                        mAttrFiled?.get(viewRoot) as? WindowManager.LayoutParams
+                    if (layoutParams?.token != currentWindowToken && (layoutParams?.type != WindowManager.LayoutParams.FIRST_SUB_WINDOW
+                                && layoutParams?.type != WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)) {
+                        continue
+                    }
+                    val viewFiled: Field = ReflectUtils.getClassField(viewRoot.javaClass, "mView")
+                    val view: View = viewFiled.get(viewRoot) as View
+                    if (activityDecorView == view) {
+                        continue
+                    }
+                    val winFrameRectField =
+                        ReflectUtils.getClassField(viewRoot.javaClass, "mWinFrame")
+                    val winFrameRect: Rect = winFrameRectField.get(viewRoot) as Rect
+                    canvas.save()
+                    val drawBgAlpha: Float = layoutParams?.dimAmount ?: 0f
+                    canvas.translate(winFrameRect.left.toFloat(), winFrameRect.top.toFloat())
+                    if (drawBgAlpha != 0f && layoutParams?.type != WindowManager.LayoutParams.FIRST_SUB_WINDOW) {
+                        canvas.drawARGB((255 * drawBgAlpha).toInt(), 0, 0, 0)
+                    }
+                    view.draw(canvas)
+                    canvas.restore()
+                }
+            }
+            val saveBitmapPath = FileUtils.saveBitmap(CodeLocator.sApplication, drawingCache)
+            if (saveBitmapPath != null) {
+                result.addResultItem(PKG_NAME, CodeLocator.sApplication.packageName)
+                result.addResultItem(FILE_PATH, saveBitmapPath)
+            }
+        } else {
+            Log.d(CodeLocator.TAG, "drawing cache is null")
+        }
+    }
+
+}
+
+class CloseActivityAction : ActivityAction() {
+
+    override fun getActionType() = EditType.CLOSE_ACTIVITY
+
+    override fun processActivityAction(
+        activity: Activity,
+        data: String,
+        result: ResultData
+    ) {
+        try {
+            activity.finish()
+            result.addResultItem(DATA, "OK")
+        } catch (t: Throwable) {
+            result.addResultItem(ERROR, Error.ERROR_WITH_STACK_TRACE)
+            result.addResultItem(STACK_TRACE, Log.getStackTraceString(t))
+            Log.d(CodeLocator.TAG, "put value error " + Log.getStackTraceString(t))
         }
     }
 

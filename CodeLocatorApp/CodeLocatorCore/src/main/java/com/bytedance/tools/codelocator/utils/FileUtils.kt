@@ -81,34 +81,45 @@ object FileUtils {
             if (saveImageInAndroidQ(CodeLocatorConstants.TMP_IMAGE_FILE_NAME, bitmap)) {
                 return CodeLocatorConstants.TMP_TRANS_IMAGE_FILE_PATH
             }
-            Log.e(CodeLocator.TAG, "save image failed $t")
+            Log.d(CodeLocator.TAG, "save image failed $t")
         }
         return null
     }
 
     @JvmStatic
     fun getFile(context: Context, fileName: String): File {
-        var fileStreamPath = File(
-            context.externalCacheDir,
-            CodeLocatorConstants.BASE_DIR_NAME + File.separator + fileName
-        )
+        var fileStreamPath = File(context.externalCacheDir, CodeLocatorConstants.BASE_DIR_NAME + File.separator + fileName)
         if (Build.VERSION.SDK_INT >= CodeLocatorConstants.USE_TRANS_FILE_SDK_VERSION) {
-            verifyStoragePermissions(CodeLocator.sCurrentActivity)
+            verifyStoragePermissions(CodeLocator.getCurrentActivity())
             fileStreamPath = File(codeLocatorTmpDir, fileName)
         }
         return fileStreamPath
     }
 
     @JvmStatic
-    fun copyFileTo(sourceFile: File, targetFile: File) {
+    fun copyFileTo(sourceFile: File, targetFile: File): File {
         var input: FileChannel? = null
         var output: FileChannel? = null
         try {
+            if (targetFile.exists()) {
+                targetFile.delete()
+            }
+            targetFile.createNewFile()
             input = FileInputStream(sourceFile).channel
             output = FileOutputStream(targetFile).channel
             output.transferFrom(input, 0, input.size())
+            return targetFile
         } catch (e: Exception) {
-            Log.e(CodeLocator.TAG, "Copy file failed, " + Log.getStackTraceString(e))
+            try {
+                if (copyFileInAndroidQ(sourceFile)) {
+                    val file = File(CodeLocatorConstants.TMP_TRANS_DATA_DIR_PATH + sourceFile.name)
+                    if (file.exists()) {
+                        return file
+                    }
+                }
+            } catch (t: Throwable) {
+                Log.d(CodeLocator.TAG, "Copy file failed, " + Log.getStackTraceString(t))
+            }
             throw e
         } finally {
             input?.close()
@@ -174,7 +185,7 @@ object FileUtils {
             if (saveContentInAndroidQ(file, content)) {
                 return CodeLocatorConstants.TMP_TRANS_DATA_DIR_PATH + file.name
             }
-            Log.e(CodeLocator.TAG, "save content to ${file.absolutePath} failed $t")
+            Log.d(CodeLocator.TAG, "save content to ${file.absolutePath} failed $t")
         }
         return null
     }
@@ -182,7 +193,7 @@ object FileUtils {
     private fun saveImageInAndroidQ(fileName: String, bitmap: Bitmap?): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
-                val cursor: Cursor? = CodeLocator.sCurrentActivity.getContentResolver()
+                val cursor: Cursor? = CodeLocator.getCurrentActivity().getContentResolver()
                     .query(MediaStore.Downloads.EXTERNAL_CONTENT_URI, null, null, null, null)
                 if (cursor != null && cursor.moveToFirst()) {
                     do {
@@ -195,7 +206,7 @@ object FileUtils {
                                 MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                                 id
                             )
-                            CodeLocator.sCurrentActivity.getContentResolver()
+                            CodeLocator.getCurrentActivity().getContentResolver()
                                 .delete(deleteUri, null, null)
                         }
                     } while (cursor.moveToNext())
@@ -203,11 +214,11 @@ object FileUtils {
                 }
                 val contentValues = ContentValues()
                 contentValues.put(MediaStore.DownloadColumns.DISPLAY_NAME, fileName)
-                val insert: Uri? = CodeLocator.sCurrentActivity.getContentResolver()
+                val insert: Uri? = CodeLocator.getCurrentActivity().getContentResolver()
                     .insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
                 insert?.run {
                     val outputStream: OutputStream? =
-                        CodeLocator.sCurrentActivity.getContentResolver().openOutputStream(insert)
+                        CodeLocator.getCurrentActivity().getContentResolver().openOutputStream(insert)
                     outputStream?.run {
                         bitmap?.compress(Bitmap.CompressFormat.PNG, 100, this)
                         flush()
@@ -216,7 +227,7 @@ object FileUtils {
                     return true
                 }
             } catch (ignore: Throwable) {
-                Log.e(CodeLocator.TAG, "ignore $ignore")
+                Log.d(CodeLocator.TAG, "ignore $ignore")
             }
         }
         return false
@@ -225,7 +236,7 @@ object FileUtils {
     private fun saveContentInAndroidQ(textFile: File, content: String?): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
-                val cursor: Cursor? = CodeLocator.sCurrentActivity.getContentResolver()
+                val cursor: Cursor? = CodeLocator.getCurrentActivity().getContentResolver()
                     .query(MediaStore.Downloads.EXTERNAL_CONTENT_URI, null, null, null, null)
                 if (cursor != null && cursor.moveToFirst()) {
                     do {
@@ -238,7 +249,7 @@ object FileUtils {
                                 MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                                 id
                             )
-                            CodeLocator.sCurrentActivity.getContentResolver()
+                            CodeLocator.getCurrentActivity().getContentResolver()
                                 .delete(deleteUri, null, null)
                         }
                     } while (cursor.moveToNext())
@@ -246,11 +257,11 @@ object FileUtils {
                 }
                 val contentValues = ContentValues()
                 contentValues.put(MediaStore.DownloadColumns.DISPLAY_NAME, textFile.name)
-                val insert: Uri? = CodeLocator.sCurrentActivity.contentResolver
+                val insert: Uri? = CodeLocator.getCurrentActivity().contentResolver
                     .insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
                 insert?.run {
                     val outputStream: OutputStream? =
-                        CodeLocator.sCurrentActivity.contentResolver.openOutputStream(insert)
+                        CodeLocator.getCurrentActivity().contentResolver.openOutputStream(insert)
                     outputStream?.run {
                         write(content?.toByteArray())
                         flush()
@@ -259,7 +270,50 @@ object FileUtils {
                     return true
                 }
             } catch (ignore: Throwable) {
-                Log.e(CodeLocator.TAG, "ignore $ignore")
+                Log.d(CodeLocator.TAG, "ignore $ignore")
+            }
+        }
+        return false
+    }
+
+    private fun copyFileInAndroidQ(sourceFile: File): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val cursor: Cursor? = CodeLocator.getCurrentActivity().getContentResolver()
+                    .query(MediaStore.Downloads.EXTERNAL_CONTENT_URI, null, null, null, null)
+                if (cursor != null && cursor.moveToFirst()) {
+                    do {
+                        val displayName =
+                            cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.DownloadColumns.DISPLAY_NAME))
+                        if (displayName != null && displayName.contains(sourceFile.name)) {
+                            val id =
+                                cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.DownloadColumns._ID))
+                            val deleteUri = ContentUris.withAppendedId(
+                                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                                id
+                            )
+                            CodeLocator.getCurrentActivity().getContentResolver()
+                                .delete(deleteUri, null, null)
+                        }
+                    } while (cursor.moveToNext())
+                    cursor.close()
+                }
+                val contentValues = ContentValues()
+                contentValues.put(MediaStore.DownloadColumns.DISPLAY_NAME, sourceFile.name)
+                val insert: Uri? = CodeLocator.getCurrentActivity().contentResolver
+                    .insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                insert?.run {
+                    val outputStream: OutputStream? =
+                        CodeLocator.getCurrentActivity().contentResolver.openOutputStream(insert)
+                    outputStream?.run {
+                        write(sourceFile.readBytes())
+                        flush()
+                        close()
+                    }
+                    return true
+                }
+            } catch (ignore: Throwable) {
+                Log.d(CodeLocator.TAG, "ignore $ignore")
             }
         }
         return false

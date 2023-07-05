@@ -115,6 +115,17 @@ public class WApplication implements Serializable {
     @SerializedName("c0")
     private String mFetchUrl;
 
+    @SerializedName("ag")
+    private String mClassName;
+
+    public String getClassName() {
+        return mClassName;
+    }
+
+    public void setClassName(String className) {
+        this.mClassName = className;
+    }
+
     public boolean isIsMainThread() {
         return mIsMainThread;
     }
@@ -460,31 +471,30 @@ public class WApplication implements Serializable {
             for (int i = 0; i < extraInfos.size(); i++) {
                 final ExtraInfo extraInfo = extraInfos.get(i);
                 extraInfo.setView(wView);
-                if (extraInfo == null || extraInfo.isTableMode()) {
-                    return;
-                }
-                final String extraTag = extraInfo.getTag();
-                final ExtraInfo parentExtra = currentMap.get(extraTag);
-                if (parentExtra == null) {
-                    currentMap.put(extraTag, extraInfo);
-                    if (mExtraMap == null) {
-                        mExtraMap = new HashMap<>();
+                if (!extraInfo.isTableMode()) {
+                    final String extraTag = extraInfo.getTag();
+                    final ExtraInfo parentExtra = currentMap.get(extraTag);
+                    if (parentExtra == null) {
+                        currentMap.put(extraTag, extraInfo);
+                        if (mExtraMap == null) {
+                            mExtraMap = new HashMap<>();
+                        }
+                        List<ExtraInfo> currentTagList = mExtraMap.get(extraTag);
+                        if (currentTagList == null) {
+                            currentTagList = new LinkedList<>();
+                            mExtraMap.put(extraTag, currentTagList);
+                        }
+                        currentTagList.add(extraInfo);
+                    } else {
+                        extraInfo.setParentExtraInfo(parentExtra);
+                        List<ExtraInfo> children = parentExtra.getChildren();
+                        if (children == null) {
+                            children = new LinkedList<>();
+                            parentExtra.setChildren(children);
+                        }
+                        children.add(extraInfo);
+                        currentMap.put(extraTag, extraInfo);
                     }
-                    List<ExtraInfo> currentTagList = mExtraMap.get(extraTag);
-                    if (currentTagList == null) {
-                        currentTagList = new LinkedList<>();
-                        mExtraMap.put(extraTag, currentTagList);
-                    }
-                    currentTagList.add(extraInfo);
-                } else {
-                    extraInfo.setParentExtraInfo(parentExtra);
-                    List<ExtraInfo> children = parentExtra.getChildren();
-                    if (children == null) {
-                        children = new LinkedList<>();
-                        parentExtra.setChildren(children);
-                    }
-                    children.add(extraInfo);
-                    currentMap.put(extraTag, extraInfo);
                 }
             }
         }

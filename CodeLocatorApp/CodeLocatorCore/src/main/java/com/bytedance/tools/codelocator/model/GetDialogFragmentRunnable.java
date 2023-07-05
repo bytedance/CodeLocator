@@ -37,7 +37,7 @@ public class GetDialogFragmentRunnable implements Runnable {
             }
             CodeLocator.notifyShowDialog(stackTraceElements, keyword);
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "showDialog error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "showDialog error " + Log.getStackTraceString(t));
         }
     }
 }

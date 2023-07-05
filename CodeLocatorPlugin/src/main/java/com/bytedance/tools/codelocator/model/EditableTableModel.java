@@ -59,6 +59,29 @@ public class EditableTableModel extends AbstractTableModel {
         return sb.toString();
     }
 
+    public String buildOriginArgsStr() {
+        StringBuilder sb = new StringBuilder();
+        for (ArgInfo argInfo : argInfos) {
+            if (argInfo.isEnabled() && argInfo.getKey() != null && !argInfo.getKey().isEmpty() && argInfo.getValue() != null) {
+                if (sb.length() > 0) {
+                    sb.append("&");
+                }
+                sb.append(argInfo.getKey());
+                sb.append("=");
+                try {
+                    sb.append(argInfo.getValue());
+                } catch (Throwable t) {
+                    sb.append(argInfo.getValue());
+                    Log.e("Encode arg error " + argInfo.getValue(), t);
+                }
+            }
+        }
+        if (sb.length() > 0) {
+            sb.insert(0, "?");
+        }
+        return sb.toString();
+    }
+
     public void addArgs(String key, String value) {
         for (int i = 0; i < argInfos.size(); i++) {
             ArgInfo info = argInfos.get(i);

@@ -7,6 +7,7 @@ import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,10 @@ public class CodeLocatorUserConfig {
 
     private boolean drawViewSize = true;
 
+    private boolean drawViewPadding = true;
+
+    private boolean autoOpenCharles = true;
+
     private boolean asyncBroadcast = false;
 
     private boolean mouseWheelDirection = false;
@@ -61,6 +66,10 @@ public class CodeLocatorUserConfig {
 
     private long autoTinySize = 1_000_000;
 
+    private boolean useDefaultAdb = true;
+
+    private boolean useImageEditor = true;
+
     private Map<String, Integer> minSdkMap = null;
 
     private Map<String, Boolean> supportLibraryMap = null;
@@ -69,14 +78,60 @@ public class CodeLocatorUserConfig {
 
     private List<String> drawAttrs = null;
 
+    public boolean isAutoOpenCharles() {
+        return autoOpenCharles;
+    }
+
+    public void setAutoOpenCharles(boolean autoOpenCharles) {
+        this.autoOpenCharles = autoOpenCharles;
+    }
+
+    @NotNull
+    public List<String> getTopFieldList() {
+        if (topFieldList == null) {
+            topFieldList = new ArrayList<>();
+        }
+        return topFieldList;
+    }
+
+    public void setTopFieldList(List<String> topFieldList) {
+        this.topFieldList = topFieldList;
+    }
+
+    private List<String> topFieldList = null;
+
     private static Map<String, String> projectGitUrlMap = null;
 
     public boolean getCreateMrAfterPush() {
         return createMrAfterPush;
     }
 
+    public boolean isUseImageEditor() {
+        return useImageEditor;
+    }
+
+    public void setUseImageEditor(boolean useImageEditor) {
+        this.useImageEditor = useImageEditor;
+    }
+
+    public boolean isUseDefaultAdb() {
+        return useDefaultAdb;
+    }
+
+    public void setUseDefaultAdb(boolean useDefaultAdb) {
+        this.useDefaultAdb = useDefaultAdb;
+    }
+
     public void setCreateMrAfterPush(boolean createMrAfterPush) {
         this.createMrAfterPush = createMrAfterPush;
+    }
+
+    public boolean isDrawViewPadding() {
+        return drawViewPadding;
+    }
+
+    public void setDrawViewPadding(boolean drawViewPadding) {
+        this.drawViewPadding = drawViewPadding;
     }
 
     public int getMaxAsyncTryCount() {

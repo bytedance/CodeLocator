@@ -12,6 +12,8 @@
     <option name="filePathToZoomLevelMap">
       <map>
         <entry key="../../../../../../layout/custom_preview.xml" value="0.1" />
+        <entry key="../../../.gradle/caches/transforms-3/87da958c447f63596083f2967497cc44/transformed/appcompat-1.2.0/res/layout/abc_screen_toolbar.xml" value="0.11458333333333333" />
+        <entry key="app/src/main/res/layout/activity_main.xml" value="0.11458333333333333" />
       </map>
     </option>
   </component>

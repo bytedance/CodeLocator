@@ -5,10 +5,12 @@ import android.os.Bundle
 import android.os.Parcelable
 import android.util.Log
 import com.bytedance.tools.codelocator.CodeLocator
-import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.ERROR
-import com.bytedance.tools.codelocator.utils.CodeLocatorUtils
 import com.bytedance.tools.codelocator.model.ResultData
-import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.*
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTIVITY_START_STACK_INFO
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.ERROR
 import com.bytedance.tools.codelocator.utils.GsonUtils
 import java.io.Serializable
 
@@ -91,7 +93,7 @@ class GetFragmentArgAction : FragmentAction() {
                         map.put(key, GsonUtils.sGson.toJson(value))
                     } catch (t: Throwable) {
                         map.put(key, value.toString())
-                        Log.e(CodeLocator.TAG, "put value error " + Log.getStackTraceString(t))
+                        Log.d(CodeLocator.TAG, "put value error " + Log.getStackTraceString(t))
                     }
                 }
                 is Parcelable -> {
@@ -99,7 +101,7 @@ class GetFragmentArgAction : FragmentAction() {
                         map.put(key, GsonUtils.sGson.toJson(value))
                     } catch (t: Throwable) {
                         map.put(key, value.toString())
-                        Log.e(CodeLocator.TAG, "put value error " + Log.getStackTraceString(t))
+                        Log.d(CodeLocator.TAG, "put value error " + Log.getStackTraceString(t))
                     }
                 }
                 else -> {
@@ -114,7 +116,7 @@ class GetFragmentArgAction : FragmentAction() {
         try {
             result.addResultItem(ResultKey.DATA, GsonUtils.sGson.toJson(map))
         } catch (t: Throwable) {
-            Log.e(CodeLocator.TAG, "put value error " + Log.getStackTraceString(t))
+            Log.d(CodeLocator.TAG, "put value error " + Log.getStackTraceString(t))
         }
     }
 

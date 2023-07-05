@@ -128,7 +128,7 @@ class TabContainerPanel(val codeLocatorWindow: CodeLocatorWindow) : JTabbedPane(
     fun adjustForLandscape() {
         val splitPane = panelMap["View"] as? JSplitPane ?: return
         if (splitPane.height <= 0) {
-            splitPane.dividerLocation = 200
+            splitPane.dividerLocation = (height - splitPane.y) / 2
         } else {
             val paneHeight = height - splitPane.y
             if (paneHeight - splitPane.dividerLocation > 20) {
@@ -145,7 +145,7 @@ class TabContainerPanel(val codeLocatorWindow: CodeLocatorWindow) : JTabbedPane(
     fun adjustForPortrait() {
         val splitPane = panelMap["View"] as? JSplitPane ?: return
         if (splitPane.height <= 0) {
-            splitPane.dividerLocation = CoordinateUtils.TREE_PANEL_HEIGHT
+            splitPane.dividerLocation = codeLocatorWindow.treePanelHeight
         } else {
             val paneHeight = height - splitPane.y
             if (paneHeight - splitPane.dividerLocation > 20) {
@@ -162,7 +162,7 @@ class TabContainerPanel(val codeLocatorWindow: CodeLocatorWindow) : JTabbedPane(
     private fun createCommonTabPanel(): JSplitPane {
         val panel = JSplitPane(JSplitPane.VERTICAL_SPLIT, true)
         panel.dividerSize = 4
-        panel.dividerLocation = CoordinateUtils.TREE_PANEL_HEIGHT
+        panel.dividerLocation = codeLocatorWindow.treePanelHeight
         panel.border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
         return panel
     }

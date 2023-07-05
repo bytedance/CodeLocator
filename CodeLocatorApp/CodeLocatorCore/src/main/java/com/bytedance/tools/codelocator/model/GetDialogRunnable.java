@@ -40,7 +40,7 @@ public class GetDialogRunnable implements Runnable {
             }
             CodeLocator.notifyShowDialog(stackTraceElements, keyword);
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "showDialog error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "showDialog error " + Log.getStackTraceString(t));
         }
     }
 
@@ -59,7 +59,7 @@ public class GetDialogRunnable implements Runnable {
                 return (View) decorField.get(window);
             }
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "getDialog View error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "getDialog View error " + Log.getStackTraceString(t));
         }
         return null;
     }

@@ -11,9 +11,13 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bytedance.tools.codelocator.CodeLocator
 import com.bytedance.tools.codelocator.config.AppInfoProvider
 import com.bytedance.tools.codelocator.config.CodeLocatorConfig
-import com.bytedance.tools.codelocator.model.*
+import com.bytedance.tools.codelocator.model.ColorInfo
+import com.bytedance.tools.codelocator.model.ExtraAction
+import com.bytedance.tools.codelocator.model.ExtraInfo
+import com.bytedance.tools.codelocator.model.JumpInfo
+import com.bytedance.tools.codelocator.model.SchemaInfo
+import com.bytedance.tools.codelocator.model.WView
 import com.bytedance.tools.codelocator.utils.ActivityUtils
-import java.util.*
 
 class MainApplication : Application() {
 
@@ -98,11 +102,15 @@ class MainApplication : Application() {
                                 this@MainApplication,
                                 "Get Mock Schema",
                                 Toast.LENGTH_SHORT
-                            )
-                                .show()
+                            ).show()
                             return true
                         } else if (schema == "codelocator://testActivity") {
-                            CodeLocator.sCurrentActivity.startActivity(Intent(CodeLocator.sCurrentActivity, TestActivity::class.java))
+                            CodeLocator.getCurrentActivity().startActivity(
+                                Intent(
+                                    CodeLocator.getCurrentActivity(),
+                                    TestActivity::class.java
+                                )
+                            )
                             return true
                         }
                         return false

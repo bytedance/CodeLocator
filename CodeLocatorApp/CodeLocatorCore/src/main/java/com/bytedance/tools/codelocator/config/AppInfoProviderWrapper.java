@@ -1,7 +1,9 @@
 package com.bytedance.tools.codelocator.config;
 
 import android.app.Activity;
+import android.app.Service;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
@@ -13,12 +15,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.bytedance.tools.codelocator.CodeLocator;
+import com.bytedance.tools.codelocator.R;
 import com.bytedance.tools.codelocator.model.ColorInfo;
 import com.bytedance.tools.codelocator.model.ExtraAction;
 import com.bytedance.tools.codelocator.model.ExtraInfo;
 import com.bytedance.tools.codelocator.model.SchemaInfo;
 import com.bytedance.tools.codelocator.model.WView;
 import com.bytedance.tools.codelocator.utils.ActivityUtils;
+import com.bytedance.tools.codelocator.utils.GsonUtils;
 import com.bytedance.tools.codelocator.utils.ReflectUtils;
 
 import java.lang.reflect.Field;
@@ -41,16 +45,6 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
     @Override
     public HashMap<String, String> providerAppInfo(Context context) {
         final HashMap<String, String> appInfoMap = new HashMap<>();
-        if (mOutAppInfoProvider != null) {
-            try {
-                final HashMap<String, String> outAppInfoMap = mOutAppInfoProvider.providerAppInfo(context);
-                if (outAppInfoMap != null) {
-                    appInfoMap.putAll(outAppInfoMap);
-                }
-            } catch (Throwable t) {
-                Log.e(CodeLocator.TAG, "获取应用AppInfo失败, " + Log.getStackTraceString(t));
-            }
-        }
         appInfoMap.put(AppInfoProvider.CODELOCATOR_KEY_DPI, String.valueOf(context.getResources().getDisplayMetrics().densityDpi));
         appInfoMap.put(AppInfoProvider.CODELOCATOR_KEY_DENSITY, String.valueOf(context.getResources().getDisplayMetrics().density));
         appInfoMap.put(AppInfoProvider.CODELOCATOR_KEY_PKG_NAME, String.valueOf(context.getPackageName()));
@@ -65,7 +59,16 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
         if (versionCode != 0) {
             appInfoMap.put(AppInfoProvider.CODELOCATOR_KEY_APP_VERSION_CODE, "" + versionCode);
         }
-
+        if (mOutAppInfoProvider != null) {
+            try {
+                final HashMap<String, String> outAppInfoMap = mOutAppInfoProvider.providerAppInfo(context);
+                if (outAppInfoMap != null) {
+                    appInfoMap.putAll(outAppInfoMap);
+                }
+            } catch (Throwable t) {
+                Log.d(CodeLocator.TAG, "获取应用AppInfo失败, " + Log.getStackTraceString(t));
+            }
+        }
         return appInfoMap;
     }
 
@@ -76,7 +79,7 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
             PackageInfo packageInfo = packageManager.getPackageInfo(context.getPackageName(), 0);
             return packageInfo.versionName;
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "getVersionName error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "getVersionName error " + Log.getStackTraceString(t));
         }
         return null;
     }
@@ -87,7 +90,7 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
             PackageInfo packageInfo = packageManager.getPackageInfo(context.getPackageName(), 0);
             return packageInfo.versionCode;
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "getVersionName error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "getVersionName error " + Log.getStackTraceString(t));
         }
         return 0;
     }
@@ -98,7 +101,7 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
             try {
                 return mOutAppInfoProvider.canProviderData(view);
             } catch (Throwable t) {
-                Log.e(CodeLocator.TAG, "获取View Data失败, " + Log.getStackTraceString(t));
+                Log.d(CodeLocator.TAG, "获取View Data失败, " + Log.getStackTraceString(t));
             }
         }
         return false;
@@ -112,7 +115,7 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
                 Object data = mOutAppInfoProvider.getViewData(viewParent, view);
                 return data;
             } catch (Throwable t) {
-                Log.e(CodeLocator.TAG, "获取View Data失败, " + Log.getStackTraceString(t));
+                Log.d(CodeLocator.TAG, "获取View Data失败, " + Log.getStackTraceString(t));
             }
         }
         return null;
@@ -124,7 +127,7 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
             try {
                 return mOutAppInfoProvider.convertCustomView(view, windowRect);
             } catch (Throwable t) {
-                Log.e(CodeLocator.TAG, "转换自定义View失败, " + Log.getStackTraceString(t));
+                Log.d(CodeLocator.TAG, "转换自定义View失败, " + Log.getStackTraceString(t));
             }
         }
         return null;
@@ -143,7 +146,7 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
                 }
                 return collection;
             } catch (Throwable t) {
-                Log.e(CodeLocator.TAG, "processViewExtra, " + Log.getStackTraceString(t));
+                Log.d(CodeLocator.TAG, "processViewExtra, " + Log.getStackTraceString(t));
             }
         }
         return null;
@@ -189,8 +192,17 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
                     }
                 }
             }
+            if (view != null && view.getTag(R.id.codeLocator_view_extra) != null) {
+                final Object extraInfo = view.getTag(R.id.codeLocator_view_extra);
+                ExtraAction extraAction = new ExtraAction(ExtraAction.ActionType.NONE, extraInfo instanceof String ? extraInfo.toString() : GsonUtils.sGson.toJson(extraInfo), "CodeLocatorExtra", null);
+                ExtraInfo codeLocatorExtraInfo = new ExtraInfo("CodeLocatorExtra", ExtraInfo.ShowType.EXTRA_TABLE, extraAction);
+                if (collection == null) {
+                    collection = new LinkedList<>();
+                }
+                collection.add(codeLocatorExtraInfo);
+            }
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "processViewExtra, " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "processViewExtra, " + Log.getStackTraceString(t));
         }
         return collection;
     }
@@ -202,7 +214,7 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
             try {
                 return mOutAppInfoProvider.providerAllSchema();
             } catch (Throwable t) {
-                Log.e(CodeLocator.TAG, "providerAllSchema error, " + Log.getStackTraceString(t));
+                Log.d(CodeLocator.TAG, "providerAllSchema error, " + Log.getStackTraceString(t));
             }
         }
         return null;
@@ -210,14 +222,30 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
 
     @Override
     public boolean processSchema(String schema) {
+        boolean schemaProcessed = false;
         if (mOutAppInfoProvider != null) {
             try {
-                return mOutAppInfoProvider.processSchema(schema);
+                schemaProcessed = mOutAppInfoProvider.processSchema(schema);
             } catch (Throwable t) {
-                Log.e(CodeLocator.TAG, "processSchema error, " + Log.getStackTraceString(t));
+                Log.d(CodeLocator.TAG, "processSchema error, " + Log.getStackTraceString(t));
             }
         }
-        return false;
+        if (!schemaProcessed) {
+            if (schema != null && schema.contains(".")) {
+                try {
+                    final Class<?> anyClass = Class.forName(schema);
+                    final Intent intent = new Intent(CodeLocator.getCurrentActivity(), anyClass);
+                    if (Activity.class.isAssignableFrom(anyClass)) {
+                        CodeLocator.getCurrentActivity().startActivity(intent);
+                    } else if (Service.class.isAssignableFrom(anyClass)) {
+                        CodeLocator.getCurrentActivity().startService(intent);
+                    }
+                    schemaProcessed = true;
+                } catch (Throwable ignore) {
+                }
+            }
+        }
+        return schemaProcessed;
     }
 
     @Nullable
@@ -237,12 +265,12 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
                     try {
                         colorInfos.add(new ColorInfo(field.getName(), res.getColor((Integer) field.get(null)), ""));
                     } catch (Throwable t) {
-                        Log.e(CodeLocator.TAG, "Error Get " + field + " " + Log.getStackTraceString(t));
+                        Log.d(CodeLocator.TAG, "Error Get " + field + " " + Log.getStackTraceString(t));
                     }
                 }
                 return colorInfos;
             } catch (Throwable t) {
-                Log.e(CodeLocator.TAG, "providerColorInfo error, " + Log.getStackTraceString(t));
+                Log.d(CodeLocator.TAG, "providerColorInfo error, " + Log.getStackTraceString(t));
             }
         }
         return null;

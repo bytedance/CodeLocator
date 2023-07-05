@@ -1,5 +1,6 @@
 package com.bytedance.tools.codelocator.panels
 
+import com.bytedance.tools.codelocator.action.BaseAction
 import com.bytedance.tools.codelocator.action.CopyInfoAction
 import com.bytedance.tools.codelocator.action.DrawAttrAction
 import com.bytedance.tools.codelocator.action.EditViewAction
@@ -8,10 +9,18 @@ import com.bytedance.tools.codelocator.listener.OnClickTableListener
 import com.bytedance.tools.codelocator.model.CommonTableModel
 import com.bytedance.tools.codelocator.model.WView
 import com.bytedance.tools.codelocator.action.OpenDrawableAction
+import com.bytedance.tools.codelocator.action.SimpleAction
+import com.bytedance.tools.codelocator.action.TopItemAction
 import com.bytedance.tools.codelocator.device.DeviceManager
+import com.bytedance.tools.codelocator.listener.OnActionListener
+import com.bytedance.tools.codelocator.listener.OnClickListener
+import com.bytedance.tools.codelocator.model.CodeLocatorUserConfig
+import com.bytedance.tools.codelocator.model.ExtraAction
+import com.bytedance.tools.codelocator.model.ExtraInfo
 import com.bytedance.tools.codelocator.model.WApplication
 import com.bytedance.tools.codelocator.utils.*
 import com.intellij.ide.DataManager
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.awt.RelativePoint
@@ -29,6 +38,8 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
     lateinit var tableColumnAdjuster: TableColumnAdjuster
 
     var mOnClickTableListener: OnClickTableListener? = null
+
+    var mView: WView? = null
 
     val defaultList: ArrayList<String> = arrayListOf(
         "id",
@@ -64,6 +75,8 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
     var tableModel = CommonTableModel("View Detail", map, list)
 
     var firstPaint = true
+
+    val viewAllTypeExtra = mutableMapOf<String, ExtraInfo>()
 
     init {
         initModel()
@@ -161,7 +174,7 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
         name?.run {
             actionGroup.add(DrawAttrAction(codeLocatorWindow.project, this))
         }
-        if (DeviceManager.hasAndroidDevice() && codeLocatorWindow.currentApplication?.isFromSdk == true) {
+        if (DeviceManager.hasAndroidDevice() && codeLocatorWindow.currentApplication?.isFromSdk == true && mView != null) {
             actionGroup.add(
                 EditViewAction(
                     codeLocatorWindow.project,
@@ -169,6 +182,26 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
                     codeLocatorWindow.rootPanel
                 )
             )
+        }
+        for (extraInfo in viewAllTypeExtra.values) {
+            if (extraInfo.extraAction != null && extraInfo.extraAction?.displayTitle == name && extraInfo.extraAction.jumpInfo != null) {
+                actionGroup.add(
+                    SimpleAction(
+                        ResUtils.getString("jump") + extraInfo.tag,
+                        ImageUtils.loadIcon("jump"),
+                        object : OnActionListener {
+                            override fun actionPerformed(e: AnActionEvent) {
+                                OpenClassAction.jumpToClassName(
+                                    codeLocatorWindow,
+                                    codeLocatorWindow.project,
+                                    extraInfo.extraAction.jumpInfo.fileName,
+                                    extraInfo.extraAction.jumpInfo.id
+                                )
+                            }
+                        })
+                )
+                break
+            }
         }
         if ("class" == name) {
             actionGroup.add(
@@ -197,6 +230,22 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
                 )
             )
         }
+
+        if (CodeLocatorUserConfig.loadConfig().topFieldList.indexOf(name) != 0) {
+            actionGroup.add(
+                TopItemAction(object : OnClickListener {
+                    override fun onClick() {
+                        if (CodeLocatorUserConfig.loadConfig().topFieldList.contains(name)) {
+                            CodeLocatorUserConfig.loadConfig().topFieldList.remove(name)
+                        }
+                        CodeLocatorUserConfig.loadConfig().topFieldList.add(0, name)
+                        CodeLocatorUserConfig.updateConfig(CodeLocatorUserConfig.loadConfig())
+                        updateView(mView)
+                    }
+                })
+            )
+        }
+
         val factory = JBPopupFactory.getInstance()
         val pop = factory.createActionGroupPopup(
             "CodeLocator",
@@ -236,6 +285,13 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
         map.clear()
         list.addAll(defaultList)
 
+        mView = view
+
+        viewAllTypeExtra.clear()
+        DataUtils.getViewAllTableTypeExtra(view)?.run {
+            viewAllTypeExtra.putAll(this)
+        }
+
         val application = view?.activity?.application
         if (view?.type == WView.Type.TYPE_IMAGE && view.drawableTag != null) {
             list.add(1, "image")
@@ -262,6 +318,17 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
         }
 
         buildViewMap(view, application, map, list)
+
+        val sortedList = CodeLocatorUserConfig.loadConfig().topFieldList
+        var replaceIndex = 0
+        for (index in sortedList.withIndex()) {
+            if (list.contains(index.value)) {
+                list.remove(index.value)
+                list.add(replaceIndex, index.value)
+                replaceIndex++
+            }
+        }
+
         table.tableChanged(TableModelEvent(tableModel, TableModelEvent.ALL_COLUMNS))
         tableColumnAdjuster.adjustColumns()
     }
@@ -332,7 +399,7 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
             val viewAllTypeExtra = DataUtils.getViewAllTableTypeExtra(view)
             viewAllTypeExtra?.forEach { key, extra ->
                 map[extra.extraAction.displayTitle] = extra.extraAction.displayText
-                list?.add(extra.extraAction.displayText)
+                list?.add(extra.extraAction.displayTitle)
             }
         }
     }

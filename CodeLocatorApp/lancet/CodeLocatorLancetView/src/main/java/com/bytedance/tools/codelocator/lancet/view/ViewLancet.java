@@ -160,13 +160,14 @@ public class ViewLancet {
         try {
             if (viewHolder != null && viewHolder.itemView != null) {
                 viewHolder.itemView.setTag(R.id.codeLocator_viewholder_tag_id, viewHolder.getClass().getName());
+                viewHolder.itemView.setTag(R.id.codeLocator_viewholder_id, viewHolder);
                 final Object adapter = This.get();
                 if (adapter != null) {
                     viewHolder.itemView.setTag(R.id.codeLocator_viewholder_adapter_tag_id, adapter.getClass().getName());
                 }
             }
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "getHolder Error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "getHolder Error " + Log.getStackTraceString(t));
         }
         return viewHolder;
     }
@@ -178,13 +179,14 @@ public class ViewLancet {
         try {
             if (viewHolder != null && viewHolder.itemView != null) {
                 viewHolder.itemView.setTag(R.id.codeLocator_viewholder_tag_id, viewHolder.getClass().getName());
+                viewHolder.itemView.setTag(R.id.codeLocator_viewholder_id, viewHolder);
                 final Object adapter = This.get();
                 if (adapter != null) {
                     viewHolder.itemView.setTag(R.id.codeLocator_viewholder_adapter_tag_id, adapter.getClass().getName());
                 }
             }
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "getHolder Error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "getHolder Error " + Log.getStackTraceString(t));
         }
         return viewHolder;
     }

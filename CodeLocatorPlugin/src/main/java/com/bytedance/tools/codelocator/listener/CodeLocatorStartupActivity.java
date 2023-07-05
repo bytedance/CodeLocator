@@ -75,9 +75,13 @@ public class CodeLocatorStartupActivity implements StartupActivity {
         if (adb == null) {
             return;
         }
+        DeviceManager.initAdbPath(project);
         final AdbService adbService = AdbService.getInstance();
         try {
             final Field myFutureField = ReflectUtils.getClassField(adbService.getClass(), "myFuture");
+            if (myFutureField == null) {
+                return;
+            }
             final Object myFuture = myFutureField.get(adbService);
             if (myFuture == null) {
                 ListenableFuture<AndroidDebugBridge> future = AdbService.getInstance().getDebugBridge(adb);

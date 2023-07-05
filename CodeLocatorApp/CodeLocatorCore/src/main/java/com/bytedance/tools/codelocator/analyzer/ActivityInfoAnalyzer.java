@@ -61,7 +61,7 @@ public class ActivityInfoAnalyzer {
             }
             intent.putExtra(CodeLocatorConstants.ACTIVITY_START_STACK_INFO, className + suffix + ":" + lineNumber);
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "analysisAndAppendInfoToIntent Error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "analysisAndAppendInfoToIntent Error " + Log.getStackTraceString(t));
         }
     }
 }

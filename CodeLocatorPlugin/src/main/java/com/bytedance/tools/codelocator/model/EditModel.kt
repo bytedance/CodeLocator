@@ -50,9 +50,9 @@ class EditFragmentBuilder(fragment: WFragment) : EditBuilder<WFragment>(fragment
 
 }
 
-class EditActivityBuilder(activity: WActivity) : EditBuilder<WActivity>(activity) {
+class EditActivityBuilder(activity: WActivity?) : EditBuilder<WActivity?>(activity) {
 
-    override val editItemId: Int = Integer.parseInt(activity.memAddr, 16)
+    override val editItemId: Int = Integer.parseInt(activity?.memAddr ?: "0", 16)
 
     override val editType: String = OperateType.ACTIVITY
 
@@ -85,6 +85,18 @@ abstract class EditModel(vararg args: Any) {
 
 class GetIntentModel() : EditModel() {
     override fun getEditType(): String = EditType.GET_INTENT
+
+    override fun toEditCommand(): String = EditType.IGNORE
+}
+
+class FinishActivityModel() : EditModel() {
+    override fun getEditType(): String = EditType.CLOSE_ACTIVITY
+
+    override fun toEditCommand(): String = EditType.IGNORE
+}
+
+class GetActivityImageModel() : EditModel() {
+    override fun getEditType(): String = EditType.VIEW_BITMAP
 
     override fun toEditCommand(): String = EditType.IGNORE
 }

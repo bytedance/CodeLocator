@@ -6,13 +6,13 @@ plugins {
 
 group 'com.bytedance.tools'
 
-version '2.0.0'
+version '2.0.1'
 
 runIde {
     jvmArgs '-Xmx10G'
 }
 
-boolean useSourceCode = false
+boolean useSourceCode = true
 
 repositories {
     mavenCentral()
@@ -44,6 +44,7 @@ dependencies {
         implementation "com.bytedance.tools.codelocator:codelocator-model:2.0.0"
     }
     implementation "io.reactivex.rxjava3:rxjava:3.1.4"
+    implementation "com.google.zxing:core:3.5.0"
     implementation fileTree(include: ['*.jar'], dir: 'libs')
 }
 

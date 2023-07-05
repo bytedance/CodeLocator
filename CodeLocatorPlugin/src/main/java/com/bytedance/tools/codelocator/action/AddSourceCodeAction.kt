@@ -33,7 +33,7 @@ class AddSourceCodeAction(
     if (isUpdate) {
         ImageUtils.loadIcon("update_dependencies.png", 16)
     } else {
-        ImageUtils.loadIcon("add_dependencies.png", 16)
+        ImageUtils.loadIcon("add_dependencies", 16)
     }
 ) {
 

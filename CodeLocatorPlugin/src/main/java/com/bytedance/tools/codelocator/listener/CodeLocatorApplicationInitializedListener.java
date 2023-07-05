@@ -32,21 +32,24 @@ import java.util.*;
 
 public class CodeLocatorApplicationInitializedListener implements ApplicationInitializedListener {
 
-    public static final int HINT_ITEM_HEIGHT = 25;
+    public static final int HINT_ITEM_HEIGHT = 24;
 
     private String lastSelectText = null;
 
     private static List<ColorInfo> sColorInfo;
 
-    private HashSet<ColorInfo> mFindColorSets = new HashSet<>();
+    private static HashSet<ColorInfo> mFindColorSets = new HashSet<>();
 
-    private int maxWidth;
+    private static int maxWidth;
 
     public static void setColorInfo(List<ColorInfo> colorInfo) {
         if (colorInfo == null || colorInfo.isEmpty()) {
             return;
         }
         sColorInfo = colorInfo;
+        for (ColorInfo c : colorInfo) {
+            c.setColor(c.getColor());
+        }
         ThreadUtils.submit(() -> {
             try {
                 FileUtils.saveContentToFile(new File(FileUtils.sCodeLocatorMainDirPath, FileUtils.GRAPH_COLOR_DATA_FILE_NAME), GsonUtils.sGson.toJson(colorInfo));
@@ -70,7 +73,7 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
         ApplicationManager.getApplication().getMessageBus().connect().subscribe(ProjectLifecycleListener.TOPIC, new ProjectLifecycleListener() {
             @Override
             public void afterProjectClosed(@NotNull Project project) {
-                final Device currentDevice = DeviceManager.getCurrentDevice(project);
+                final Device currentDevice = DeviceManager.getCurrentDevice(project, true);
                 if (currentDevice != null && currentDevice.getDevice() != null) {
                     final String serialNumber = currentDevice.getDevice().getSerialNumber();
                     CodeLocatorUserConfig.loadConfig().setLastDevice(serialNumber);
@@ -120,6 +123,9 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
                         return;
                     }
                     final String selectText = e.getEditor().getDocument().getText(e.getNewRange());
+                    if (selectText.contains("\n")) {
+                        return;
+                    }
                     String text = selectText.trim();
                     if (e.getNewRange().getStartOffset() - 8 >= 0) {
                         text = e.getEditor().getDocument().getText(new TextRange(e.getNewRange().getStartOffset() - 8, e.getNewRange().getEndOffset())).trim();
@@ -129,6 +135,12 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
                         colorStr = text.substring(text.indexOf("R.color.") + "R.color.".length()).trim();
                     } else if (text.contains("@color/")) {
                         colorStr = text.substring(text.indexOf("@color/") + "@color/".length()).trim();
+                    } else if (text.contains("name=\"")) {
+                        final int lineNumber = e.getEditor().getDocument().getLineNumber(e.getNewRange().getStartOffset());
+                        final String lineStr = e.getEditor().getDocument().getText(new TextRange(e.getEditor().getDocument().getLineStartOffset(lineNumber), e.getEditor().getDocument().getLineEndOffset(lineNumber)));
+                        if (lineStr.contains("format=\"color\"")) {
+                            colorStr = text.substring(text.indexOf("name=\"") + "name=\"".length()).trim();
+                        }
                     }
                     if (colorStr == null || colorStr.equals(lastSelectText)) {
                         return;
@@ -175,7 +187,7 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
         }
     }
 
-    private JComponent getColorInfosPanel(HashSet<ColorInfo> colorInfos, FontMetrics fontMetrics) {
+    public static JComponent getColorInfosPanel(HashSet<ColorInfo> colorInfos, FontMetrics fontMetrics) {
         maxWidth = 0;
         final int size = colorInfos.size();
         final JPanel jPanel = new JPanel();
@@ -192,17 +204,18 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
                 jPanel.add(getSingleColorInfoPanel(colorInfo, true, fontMetrics));
             }
         }
+        final int panelWidth = maxWidth + 5 * CoordinateUtils.DEFAULT_BORDER / 2 + HINT_ITEM_HEIGHT * 2;
         for (int i = 0; i < jPanel.getComponentCount(); i++) {
             if (jPanel.getComponent(i) instanceof JPanel) {
-                JComponentUtils.setSize((JComponent) jPanel.getComponent(i), maxWidth + 2 * CoordinateUtils.DEFAULT_BORDER + HINT_ITEM_HEIGHT, HINT_ITEM_HEIGHT);
+                JComponentUtils.setSize((JComponent) jPanel.getComponent(i), panelWidth, HINT_ITEM_HEIGHT);
                 JComponentUtils.setSize((JComponent) ((JComponent) jPanel.getComponent(i)).getComponent(1), maxWidth, HINT_ITEM_HEIGHT);
             }
         }
-        JComponentUtils.setMinimumHeight(jPanel, (maxWidth + 2 * CoordinateUtils.DEFAULT_BORDER + HINT_ITEM_HEIGHT), HINT_ITEM_HEIGHT * size + (size - 1) * CoordinateUtils.TABLE_RIGHT_MARGIN);
+        JComponentUtils.setMinimumHeight(jPanel, panelWidth, HINT_ITEM_HEIGHT * size + (size - 1) * CoordinateUtils.TABLE_RIGHT_MARGIN);
         return jPanel;
     }
 
-    private JComponent getSingleColorInfoPanel(ColorInfo colorInfo, boolean needMode, FontMetrics fontMetrics) {
+    public static JComponent getSingleColorInfoPanel(ColorInfo colorInfo, boolean needMode, FontMetrics fontMetrics) {
         final JPanel jPanel = new JPanel();
         jPanel.setLayout(new BoxLayout(jPanel, BoxLayout.X_AXIS));
         final String displayText = (needMode ? colorInfo.getColorMode() + " " : "") + ResUtils.getString("color_value_format", CodeLocatorUtils.toHexStr(colorInfo.getColor()));
@@ -211,17 +224,35 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
         jPanel.add(jLabel);
         final int width = fontMetrics.stringWidth(displayText);
         maxWidth = Math.max(maxWidth, width);
-        final JPanel colorLabel = new JPanel();
+
         jPanel.add(Box.createHorizontalStrut(CoordinateUtils.DEFAULT_BORDER));
-        JComponentUtils.setSize(colorLabel, 20, 20);
-        colorLabel.setAlignmentY(0.5f);
-        colorLabel.setBackground(new Color(colorInfo.getColor(), true));
-        colorLabel.setBorder(BorderFactory.createLineBorder(Color.RED));
-        jPanel.add(colorLabel);
+
+        final JPanel whiteColorPanel = createColorPanel(colorInfo, Color.WHITE);
+        jPanel.add(whiteColorPanel);
+        jPanel.add(Box.createHorizontalStrut(CoordinateUtils.TABLE_RIGHT_MARGIN));
+
+        final JPanel blackColorPanel = createColorPanel(colorInfo, Color.BLACK);
+        jPanel.add(blackColorPanel);
         return jPanel;
     }
 
-    private HashSet<ColorInfo> getColorInfos(String colorStr) {
+    @NotNull
+    private static JPanel createColorPanel(ColorInfo colorInfo, Color black) {
+        JPanel foreGroundPanel = new JPanel();
+        foreGroundPanel.setBackground(new Color(colorInfo.getColor(), true));
+
+        JPanel backGroundPanel = new JPanel();
+        JComponentUtils.setSize(backGroundPanel, HINT_ITEM_HEIGHT, HINT_ITEM_HEIGHT);
+        backGroundPanel.setAlignmentY(0.5f);
+        backGroundPanel.setLayout(null);
+        backGroundPanel.setBackground(black);
+        backGroundPanel.add(foreGroundPanel);
+        foreGroundPanel.setBounds(3, 3, 18, 18);
+        foreGroundPanel.setBorder(BorderFactory.createLineBorder(Color.RED));
+        return backGroundPanel;
+    }
+
+    public static HashSet<ColorInfo> getColorInfos(String colorStr) {
         mFindColorSets.clear();
         for (int i = 0; i < sColorInfo.size(); i++) {
             if (sColorInfo.get(i) != null && colorStr.equals(sColorInfo.get(i).getColorName())) {
@@ -232,4 +263,7 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
         return mFindColorSets;
     }
 
+    public static List<ColorInfo> getColorInfos() {
+        return sColorInfo;
+    }
 }

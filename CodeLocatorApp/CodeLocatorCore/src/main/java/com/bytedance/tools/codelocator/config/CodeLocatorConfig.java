@@ -1,7 +1,8 @@
 package com.bytedance.tools.codelocator.config;
 
-import com.google.gson.annotations.SerializedName;
+import com.bytedance.tools.codelocator.CodeLocator;
 import com.bytedance.tools.codelocator.processer.ICodeLocatorProcessor;
+import com.google.gson.annotations.SerializedName;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -25,6 +26,12 @@ public class CodeLocatorConfig {
 
     @SerializedName("fetchConfig")
     private boolean mFetchConfig = true;
+
+    @SerializedName("enable")
+    private Boolean mEnable = null;
+
+    @SerializedName("enableLancetInfo")
+    private Boolean mEnableLancetInfo = null;
 
     @SerializedName("lazyInit")
     private boolean mLazyInit;
@@ -50,7 +57,11 @@ public class CodeLocatorConfig {
     private transient AppInfoProvider mAppInfoProvider;
 
     @SerializedName("viewIgnoreByClazzs")
-    private Set<String> mViewIgnoreByClazzs = new HashSet<>();
+    private Set<String> mViewIgnoreByClazzs = new HashSet<String>() {
+        {
+            add("androidx.viewbinding.ViewBindings");
+        }
+    };
 
     @SerializedName("dialogIgnoreByClazzs")
     private Set<String> mDialogIgnoreByClazzs = new HashSet<String>() {
@@ -155,6 +166,20 @@ public class CodeLocatorConfig {
         return mMaxBroadcastTransferLength;
     }
 
+    public boolean isEnable() {
+        return (mEnable != null) ? mEnable : true;
+    }
+
+    public boolean isEnableLancetInfo() {
+        return ((mEnableLancetInfo != null) ? mEnableLancetInfo : true) && isEnable();
+    }
+
+    public void setEnable(boolean enable, boolean enableLancetInfo) {
+        mEnable = enable;
+        mEnableLancetInfo = enableLancetInfo;
+        CodeLocator.config(this);
+    }
+
     private CodeLocatorConfig() {
     }
 
@@ -168,6 +193,8 @@ public class CodeLocatorConfig {
         mMaxBroadcastTransferLength = builder.mMaxBroadcastTransferLength <= 0 ? DEFAULT_MAX_BROADCAST_TRANSFER_LENGTH : builder.mMaxBroadcastTransferLength;
 
         mDebug = builder.mDebug;
+        mEnable = builder.mEnable;
+        mEnableLancetInfo = builder.mEnableLancetInfo;
         mLazyInit = builder.mLazyInit;
         mEnableHookInflater = builder.mEnableHookInflater;
         mFetchConfig = builder.mFetchConfig;
@@ -242,6 +269,12 @@ public class CodeLocatorConfig {
         }
         if (config.mMaxBroadcastTransferLength > 0) {
             mMaxBroadcastTransferLength = config.mMaxBroadcastTransferLength;
+        }
+        if (config.mEnable != null) {
+            mEnable = config.mEnable;
+        }
+        if (config.mEnableLancetInfo != null) {
+            mEnableLancetInfo = config.mEnableLancetInfo;
         }
         mDebug = config.mDebug;
         mLazyInit = config.mLazyInit;
@@ -432,6 +465,10 @@ public class CodeLocatorConfig {
 
         private boolean mFetchConfig = true;
 
+        private boolean mEnableLancetInfo = true;
+
+        private boolean mEnable = true;
+
         private boolean mLazyInit;
 
         private boolean mEnableHookInflater;
@@ -499,6 +536,16 @@ public class CodeLocatorConfig {
             return this;
         }
 
+        public Builder enable(boolean enable) {
+            mEnable = enable;
+            return this;
+        }
+
+        public Builder enableLancetInfo(boolean enableLancetInfo) {
+            mEnableLancetInfo = enableLancetInfo;
+            return this;
+        }
+
         public Builder lazyInit(boolean lazyInit) {
             mLazyInit = lazyInit;
             return this;
@@ -526,8 +573,18 @@ public class CodeLocatorConfig {
         }
 
         public Builder codeLocatorProcessors(Collection<ICodeLocatorProcessor> codeLocatorProcessors) {
-            mCodeLocatorProcessors = new HashSet<>();
+            if (mCodeLocatorProcessors == null) {
+                mCodeLocatorProcessors = new HashSet<>();
+            }
             mCodeLocatorProcessors.addAll(codeLocatorProcessors);
+            return this;
+        }
+
+        public Builder codeLocatorProcessor(ICodeLocatorProcessor codeLocatorProcessors) {
+            if (mCodeLocatorProcessors == null) {
+                mCodeLocatorProcessors = new HashSet<>();
+            }
+            mCodeLocatorProcessors.add(codeLocatorProcessors);
             return this;
         }
 

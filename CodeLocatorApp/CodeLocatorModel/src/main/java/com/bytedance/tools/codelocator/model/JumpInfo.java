@@ -36,6 +36,17 @@ public class JumpInfo implements Serializable {
     @SerializedName("ad")
     private String mId;
 
+    @SerializedName("dh")
+    private boolean mIsViewBinding;
+
+    public boolean isIsViewBinding() {
+        return mIsViewBinding;
+    }
+
+    public void setIsViewBinding(boolean isViewBinding) {
+        this.mIsViewBinding = isViewBinding;
+    }
+
     public String getFileName() {
         return mFileName;
     }
@@ -54,7 +65,7 @@ public class JumpInfo implements Serializable {
     }
 
     public boolean needJumpById() {
-        return mLineCount < 0;
+        return mLineCount < 0 || isIsViewBinding();
     }
 
     public int getLineCount() {
@@ -69,8 +80,27 @@ public class JumpInfo implements Serializable {
         return mId;
     }
 
-    public void setId(String mId) {
-        this.mId = mId;
+    public void setId(String id) {
+        this.mId = id;
+    }
+
+    public String getCamelId() {
+        if (mId == null) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder(mId);
+        for (int i = sb.length() - 1; i > -1; i--) {
+            if (sb.charAt(i) == '_') {
+                if (i + 1 < sb.length()) {
+                    final char c = sb.charAt(i + 1);
+                    if (c >= 'a' && c <= 'z') {
+                        sb.setCharAt(i + 1, (char) (c + ('A' - 'a')));
+                    }
+                }
+                sb.deleteCharAt(i);
+            }
+        }
+        return sb.toString();
     }
 
     @Override

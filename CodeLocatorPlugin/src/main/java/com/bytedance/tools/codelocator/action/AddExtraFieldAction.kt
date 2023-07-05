@@ -58,6 +58,7 @@ class AddExtraFieldAction(
             result = result.trim()
         }
         val sendResult = if (result.isEmpty()) "_" else result
+        Mob.mob(Mob.Action.EXEC, "addViewExtra_$result")
         val adbCommand = AdbCommand(
             BroadcastAction(ACTION_PROCESS_CONFIG_LIST)
                 .args(KEY_CODELOCATOR_ACTION, KEY_ACTION_SET)

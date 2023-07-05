@@ -61,7 +61,7 @@ class SearchInWebAction : AnAction() {
                 NotificationUtils.showNotifyInfoShort(e.project!!, ResUtils.getString("error_and_feedback"))
                 return
             }
-            IdeaUtils.openBrowser(searchUrl)
+            IdeaUtils.openBrowser(e.project, searchUrl)
         }
         Mob.mob(Mob.Action.CLICK, Mob.Button.SEARCH_CODE_INDEX)
     }

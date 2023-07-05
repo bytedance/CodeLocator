@@ -10,6 +10,7 @@ import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_
 import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_PROCESS_CONFIG_LIST;
 import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_PROCESS_SCHEMA;
 import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_USE_TOOLS_INFO;
+import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType;
 import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error.ARGS_EMPTY;
 import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error.DELETE_FILE_FAILED;
 import static com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error.ERROR_WITH_STACK_TRACE;
@@ -70,7 +71,6 @@ import com.bytedance.tools.codelocator.response.TouchViewResponse;
 import com.bytedance.tools.codelocator.utils.ActivityUtils;
 import com.bytedance.tools.codelocator.utils.Base64;
 import com.bytedance.tools.codelocator.utils.CodeLocatorConstants;
-import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType;
 import com.bytedance.tools.codelocator.utils.CodeLocatorUtils;
 import com.bytedance.tools.codelocator.utils.FileUtils;
 import com.bytedance.tools.codelocator.utils.GsonUtils;
@@ -157,7 +157,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
                             }
                         } catch (Throwable t) {
                             sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, Log.getStackTraceString(t)));
-                            Log.e(CodeLocator.TAG, "process error " + Log.getStackTraceString(t));
+                            Log.d(CodeLocator.TAG, "process error " + Log.getStackTraceString(t));
                         }
                     }
                 }
@@ -166,12 +166,12 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
     }
 
     private void clearAsyncResult() {
-        AsyncBroadcastHelper.sendResultForAsyncBroadcast(CodeLocator.sCurrentActivity, null);
+        AsyncBroadcastHelper.sendResultForAsyncBroadcast(CodeLocator.getCurrentActivity(), null);
     }
 
     private void processMockTouchViewAction(Context context, SmartArgs smartArgs) {
         try {
-            Activity activity = CodeLocator.sCurrentActivity;
+            Activity activity = CodeLocator.getCurrentActivity();
             if (activity != null) {
                 final int clickX = smartArgs.getInt(KEY_MOCK_CLICK_X, -1);
                 final int clickY = smartArgs.getInt(KEY_MOCK_CLICK_Y, -1);
@@ -194,7 +194,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
             }
         } catch (Throwable t) {
             final String errorMsg = Log.getStackTraceString(t);
-            Log.e(CodeLocator.TAG, "CodeLocator process schema error, stackTrace: " + errorMsg);
+            Log.d(CodeLocator.TAG, "CodeLocator process schema error, stackTrace: " + errorMsg);
             sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
         }
     }
@@ -221,7 +221,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
         } catch (Throwable t) {
             final String errorMsg = Log.getStackTraceString(t);
             sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
-            Log.e(CodeLocator.TAG, "Config SDK错误, StackTrace: " + errorMsg);
+            Log.d(CodeLocator.TAG, "Config SDK错误, StackTrace: " + errorMsg);
         }
     }
 
@@ -233,7 +233,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
 
             if (action == null) {
                 String errorMsg = "type: " + type + ", data: " + data + ", action: " + null;
-                Log.e(CodeLocator.TAG, "调用Config参数错误" + "type: " + type + ", data: " + data + ", action: " + null);
+                Log.d(CodeLocator.TAG, "调用Config参数错误" + "type: " + type + ", data: " + data + ", action: " + null);
                 sendResult(context, smartArgs, new ErrorResponse(ARGS_EMPTY, errorMsg));
                 return;
             }
@@ -260,13 +260,13 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
         } catch (Throwable t) {
             final String errorMsg = Log.getStackTraceString(t);
             sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
-            Log.e(CodeLocator.TAG, "Config SDK 失败, StackTrace: " + errorMsg);
+            Log.d(CodeLocator.TAG, "Config SDK 失败, StackTrace: " + errorMsg);
         }
     }
 
     private void processGetTouchViewAction(Context context, SmartArgs smartArgs) {
         try {
-            Activity activity = CodeLocator.sCurrentActivity;
+            Activity activity = CodeLocator.getCurrentActivity();
             if (activity != null) {
                 sendResult(context, smartArgs, new TouchViewResponse(ActivityUtils.INSTANCE.getCurrentTouchViewInfo(activity)));
                 return;
@@ -276,7 +276,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
         } catch (Throwable t) {
             String errorMsg = Log.getStackTraceString(t);
             sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
-            Log.e(CodeLocator.TAG, "获取TouchView链失败, StackTrace: " + errorMsg);
+            Log.d(CodeLocator.TAG, "获取TouchView链失败, StackTrace: " + errorMsg);
         }
     }
 
@@ -291,7 +291,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
         } catch (Throwable t) {
             final String errorMsg = Log.getStackTraceString(t);
             sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
-            Log.e(CodeLocator.TAG, "执行Tool命令失败, StackTrace: " + errorMsg);
+            Log.d(CodeLocator.TAG, "执行Tool命令失败, StackTrace: " + errorMsg);
         }
     }
 
@@ -300,7 +300,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
             if (CodeLocator.sGlobalConfig.isDebug()) {
                 Log.d(CodeLocator.TAG, "CodeLocator接收到修改View信息广播");
             }
-            final Activity currentActivity = CodeLocator.sCurrentActivity;
+            final Activity currentActivity = CodeLocator.getCurrentActivity();
             final OperateData editData = smartArgs.getData(KEY_CHANGE_VIEW, OperateData.class);
             if (currentActivity != null && editData != null) {
                 ResultData result = new ResultData();
@@ -316,7 +316,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
         } catch (Throwable t) {
             String errorMsg = Log.getStackTraceString(t);
             sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
-            Log.e(CodeLocator.TAG, "处理编辑命令异常, StackTrace: " + errorMsg);
+            Log.d(CodeLocator.TAG, "处理编辑命令异常, StackTrace: " + errorMsg);
         }
     }
 
@@ -329,7 +329,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
         } catch (Throwable t) {
             final String errorMsg = Log.getStackTraceString(t);
             sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, Log.getStackTraceString(t)));
-            Log.e(CodeLocator.TAG, "CodeLocator获取数据异常, StackTrace: " + errorMsg);
+            Log.d(CodeLocator.TAG, "CodeLocator获取数据异常, StackTrace: " + errorMsg);
         }
     }
 
@@ -357,7 +357,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
         } catch (Throwable t) {
             final String errorMsg = Log.getStackTraceString(t);
             sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
-            Log.e(CodeLocator.TAG, "CodeLocator获取文件信息异常, StackTrace: " + errorMsg);
+            Log.d(CodeLocator.TAG, "CodeLocator获取文件信息异常, StackTrace: " + errorMsg);
         }
     }
 
@@ -381,16 +381,12 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
                         if (Build.VERSION.SDK_INT >= CodeLocatorConstants.USE_TRANS_FILE_SDK_VERSION || sourceFile.getAbsolutePath().startsWith(context.getCacheDir().getParentFile().getAbsolutePath())) {
                             try {
                                 targetFile = FileUtils.getFile(context, sourceFile.getName());
-                                if (targetFile.exists()) {
-                                    targetFile.delete();
-                                }
-                                targetFile.createNewFile();
-                                FileUtils.copyFileTo(sourceFile, targetFile);
+                                targetFile = FileUtils.copyFileTo(sourceFile, targetFile);
                                 sendResult(context, smartArgs, new FilePathResponse(targetFile.getAbsolutePath()));
                             } catch (Throwable t) {
                                 final String errorMsg = Log.getStackTraceString(t);
                                 sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
-                                Log.e(CodeLocator.TAG, "CodeLocator拷贝文件失败, 错误信息: " + errorMsg);
+                                Log.d(CodeLocator.TAG, "CodeLocator拷贝文件失败, 错误信息: " + errorMsg);
                             }
                         } else {
                             sendResult(context, smartArgs, new FilePathResponse(targetFile.getAbsolutePath()));
@@ -425,7 +421,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
                                 startLoadFromDisk.invoke(sharedPreferences);
                             }
                         } catch (Throwable t) {
-                            Log.e(CodeLocator.TAG, "反射修改失败 " + t);
+                            Log.d(CodeLocator.TAG, "反射修改失败 " + t);
                         }
                     }
                     sendResult(context, smartArgs, new FilePathResponse(targetFile.getAbsolutePath()));
@@ -452,12 +448,12 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
         } catch (Throwable t) {
             final String errorMsg = Log.getStackTraceString(t);
             sendResult(context, smartArgs, new ErrorResponse(ERROR_WITH_STACK_TRACE, errorMsg));
-            Log.e(CodeLocator.TAG, "错误文件异常, StackTrace: " + errorMsg);
+            Log.d(CodeLocator.TAG, "错误文件异常, StackTrace: " + errorMsg);
         }
     }
 
     private void getFileInfo(Context context, SmartArgs smartArgs) {
-        Activity activity = CodeLocator.sCurrentActivity;
+        Activity activity = CodeLocator.getCurrentActivity();
         if (activity != null) {
             final File codeLocatorDir = new File(context.getExternalCacheDir(), CodeLocatorConstants.BASE_DIR_NAME);
             if (codeLocatorDir.exists() && !codeLocatorDir.isDirectory()) {
@@ -471,7 +467,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
     }
 
     private void getTopActivityLayoutInfo(Context context, SmartArgs smartArgs) {
-        Activity activity = CodeLocator.sCurrentActivity;
+        Activity activity = CodeLocator.getCurrentActivity();
         if (activity != null) {
             long stopAnimTime = smartArgs.getLong(KEY_STOP_ALL_ANIM);
             boolean needColor = smartArgs.getBoolean(KEY_NEED_COLOR);
@@ -485,7 +481,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
                 try {
                     Thread.sleep(Long.valueOf(stopAnimTime));
                 } catch (Throwable t) {
-                    Log.e(CodeLocator.TAG, "CodeLocator stop anim 出现错误 " + Log.getStackTraceString(t));
+                    Log.d(CodeLocator.TAG, "CodeLocator stop anim 出现错误 " + Log.getStackTraceString(t));
                 }
             }
             sendResult(context, smartArgs, new ApplicationResponse(application));
@@ -512,7 +508,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
                 if (filePath != null) {
                     setResultData(FILE_PATH + SPLIT + filePath);
                     if (saveAsync) {
-                        AsyncBroadcastHelper.sendResultForAsyncBroadcast(CodeLocator.sCurrentActivity, FILE_PATH + SPLIT + filePath);
+                        AsyncBroadcastHelper.sendResultForAsyncBroadcast(CodeLocator.getCurrentActivity(), FILE_PATH + SPLIT + filePath);
                     }
                 } else {
                     compressData = Base64.encodeToString(CodeLocatorUtils.compress(GsonUtils.sGson.toJson(new ErrorResponse(FILE_NOT_EXIST, savedFile.getAbsolutePath()))));
@@ -528,11 +524,11 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
                 setResultData(compressData);
             } catch (Throwable ignore) {
             }
-            Log.e(CodeLocator.TAG, "sendResult Error " + stackTraceString);
+            Log.d(CodeLocator.TAG, "sendResult Error " + stackTraceString);
         }
 
         if (baseResponse instanceof ErrorResponse) {
-            Log.e(CodeLocator.TAG, "操作失败, 错误内容: " + baseResponse.getMsg());
+            Log.d(CodeLocator.TAG, "操作失败, 错误内容: " + baseResponse.getMsg());
         } else {
             if (!CodeLocator.sGlobalConfig.isDebug()) {
                 return;

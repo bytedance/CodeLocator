@@ -49,12 +49,20 @@ public class JumpParser {
             return null;
         }
         final String[] split = jumpStr.split(":");
-        if (split.length != 2) {
+        if (split.length < 2) {
             return null;
         }
         JumpInfo jumpInfo = new JumpInfo(split[0]);
         if (split[1].startsWith("id/")) {
             jumpInfo.setId(split[1].substring("id/".length()));
+        } else if (split[1].startsWith("bind_id/")) {
+            jumpInfo.setIsViewBinding(true);
+            jumpInfo.setId(split[1].substring("bind_id/".length()));
+            try {
+                jumpInfo.setLineCount(Integer.valueOf(split[2]));
+            } catch (Exception e) {
+                Log.e("Jump Info 解析失败, Str: " + jumpStr);
+            }
         } else {
             try {
                 jumpInfo.setLineCount(Integer.valueOf(split[1]));

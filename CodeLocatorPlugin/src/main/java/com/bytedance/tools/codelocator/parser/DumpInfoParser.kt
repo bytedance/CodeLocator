@@ -332,6 +332,8 @@ class DumpInfoParser(private val mDumpInfoStr: String?) {
         }
         wView.className = viewClassName
         wView.memAddr = viewMemAddr
+        wView.scaleX = 1f
+        wView.scaleY = 1f
         if (!viewStr.contains("@")) {
             val viewContent = viewStr.substring(viewStr.indexOf("{") + 1, viewStr.indexOf("}")).trim()
             val split = viewContent.split(" ")
@@ -359,8 +361,6 @@ class DumpInfoParser(private val mDumpInfoStr: String?) {
         } else {
             wView.visibility = 'V'
         }
-        wView.scaleX = 1.0f
-        wView.scaleY = 1.0f
         while (nextLine != null) {
             if (getLineStartSpaceCount(nextLine) <= startSpace) {
                 break

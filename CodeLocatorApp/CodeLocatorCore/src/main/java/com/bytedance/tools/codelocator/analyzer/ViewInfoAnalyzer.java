@@ -45,11 +45,12 @@ public class ViewInfoAnalyzer {
             }
             CodeLocator.getOnClickInfoMap().put(onClickListenerMemAddr, findElement.getFileName() + ":" + findElement.getLineNumber());
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "analysisAndAppendInfoToMap Error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "analysisAndAppendInfoToMap Error " + Log.getStackTraceString(t));
         }
     }
 
     public static void analysisAndAppendInfoToView(View view, StackTraceElement[] stackTraceElements, int tag, String type) {
+        boolean isDataBinding = false;
         if (stackTraceElements == null || view == null || CodeLocator.sGlobalConfig == null) {
             return;
         }
@@ -80,13 +81,24 @@ public class ViewInfoAnalyzer {
                         continue;
                     }
                 }
+                if (stackTraceElement.getMethodName() != null
+                        && stackTraceElement.getMethodName().contains("INVOKE")
+                        && stackTraceElement.getMethodName().contains("_")) {
+                    continue;
+                }
+                if (("bind".equals(stackTraceElement.getMethodName()) || "inflate".equals(stackTraceElement.getMethodName()))
+                        && stackTraceElement.getFileName() != null
+                        && (stackTraceElement.getFileName().endsWith("Binding.java") || stackTraceElement.getFileName().endsWith("Binding.kt"))) {
+                    isDataBinding = true;
+                    continue;
+                }
                 findElement = stackTraceElement;
                 break;
             }
             if (findElement == null) {
                 return;
             }
-            final String tagInfoByElement = getTagInfoByElement(findElement, view, type, preClassName);
+            final String tagInfoByElement = getTagInfoByElement(findElement, view, type, preClassName, isDataBinding);
             if (tagInfoByElement == null || tagInfoByElement.isEmpty()) {
                 return;
             }
@@ -100,11 +112,11 @@ public class ViewInfoAnalyzer {
                 }
             }
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "analysisAndAppendInfoToView Error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "analysisAndAppendInfoToView Error " + Log.getStackTraceString(t));
         }
     }
 
-    private static String getTagInfoByElement(StackTraceElement stackTraceElement, View view, String message, String preClassName) {
+    private static String getTagInfoByElement(StackTraceElement stackTraceElement, View view, String message, String preClassName, boolean isDataBinding) {
         if (stackTraceElement == null || view == null || stackTraceElement.getFileName() == null) {
             return "";
         }
@@ -131,15 +143,22 @@ public class ViewInfoAnalyzer {
         if ("setOnClickable".equals(message)) {
             lineNumber = MODE_MASK | lineNumber;
         }
-        if (viewBindingIndex > -1) {
+        if (viewBindingIndex > -1 || isDataBinding) {
             String resourceName = "";
             try {
                 resourceName = view.getResources().getResourceName(view.getId());
                 resourceName = resourceName.substring(resourceName.indexOf(":id"));
             } catch (Exception e) {
-                Log.e(CodeLocator.TAG, "getTagInfo Error " + view + ", " + stackTraceElement);
+                Log.d(CodeLocator.TAG, "getTagInfo Error " + view + ", " + stackTraceElement);
             }
-            return className + suffix + resourceName;
+            if (isDataBinding && resourceName != null && !resourceName.isEmpty()) {
+                resourceName = resourceName.replaceFirst(":id", ":bind_id");
+            }
+            if (isDataBinding) {
+                return className + suffix + resourceName + ":" + stackTraceElement.getLineNumber();
+            } else {
+                return className + suffix + resourceName;
+            }
         } else {
             return className + suffix + ":" + lineNumber;
         }

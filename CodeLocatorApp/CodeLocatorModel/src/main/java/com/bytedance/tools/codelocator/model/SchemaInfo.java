@@ -25,6 +25,17 @@ public class SchemaInfo implements Serializable {
     @SerializedName("db")
     private String mSchema;
 
+    public String getDisplaySchema() {
+        return mDisplaySchema;
+    }
+
+    public void setDisplaySchema(String mDisplaySchema) {
+        this.mDisplaySchema = mDisplaySchema;
+    }
+
+    @SerializedName("ds")
+    private String mDisplaySchema;
+
     /**
      * Schema描述
      */
@@ -37,6 +48,10 @@ public class SchemaInfo implements Serializable {
 
     public String getDesc() {
         return mDesc;
+    }
+
+    public void setDesc(String mDesc) {
+        this.mDesc = mDesc;
     }
 
     @Override

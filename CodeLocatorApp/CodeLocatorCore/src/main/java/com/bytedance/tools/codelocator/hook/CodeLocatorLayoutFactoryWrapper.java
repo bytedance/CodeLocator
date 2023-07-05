@@ -33,7 +33,7 @@ public class CodeLocatorLayoutFactoryWrapper implements LayoutInflater.Factory2 
                 final Field mFactory2 = ReflectUtils.getClassField(LayoutInflater.class, "mFactory2");
                 mFactory2.set(layoutInflater, codeLocatorLayoutFactoryWrapper);
             } catch (Throwable t) {
-                Log.e(CodeLocator.TAG, "hookInflaterFactory error, stackTrace: " + Log.getStackTraceString(t));
+                Log.d(CodeLocator.TAG, "hookInflaterFactory error, stackTrace: " + Log.getStackTraceString(t));
             }
         }
     }
@@ -82,7 +82,7 @@ public class CodeLocatorLayoutFactoryWrapper implements LayoutInflater.Factory2 
             trySetImageViewScrInfo(context, parent, name, attrs);
             trySetViewBackgroundInfo(context, parent, name, attrs);
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "hook onCreateView error, " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "hook onCreateView error, " + Log.getStackTraceString(t));
         }
         if (mOutFactory2 == null) {
             if (mOutFactory != null) {
@@ -119,7 +119,7 @@ public class CodeLocatorLayoutFactoryWrapper implements LayoutInflater.Factory2 
                 mViewBackground = (Integer) field.get(null);
             }
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "Hook view background error, " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "Hook view background error, " + Log.getStackTraceString(t));
         }
         try {
             if (mViewStyle != null && mViewBackground != null) {
@@ -133,7 +133,7 @@ public class CodeLocatorLayoutFactoryWrapper implements LayoutInflater.Factory2 
                 }
             }
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "get view background name error, " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "get view background name error, " + Log.getStackTraceString(t));
         }
         if (drawableName != null) {
             if (view == null) {
@@ -168,7 +168,7 @@ public class CodeLocatorLayoutFactoryWrapper implements LayoutInflater.Factory2 
                 mImageSrc = (Integer) field.get(null);
             }
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "Hook view background error, " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "Hook view background error, " + Log.getStackTraceString(t));
         }
         try {
             if (mImageStyle != null && mImageSrc != null) {
@@ -179,7 +179,7 @@ public class CodeLocatorLayoutFactoryWrapper implements LayoutInflater.Factory2 
                 }
             }
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "get view background name error, " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "get view background name error, " + Log.getStackTraceString(t));
         }
         if (drawableName != null) {
             if (view == null) {

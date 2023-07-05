@@ -14,7 +14,7 @@ public class DrawableInfoAnalyzer {
         try {
             traverseView(view);
         } catch (Throwable t) {
-            Log.e(CodeLocator.TAG, "analysisAndAppendInfoToView Error " + Log.getStackTraceString(t));
+            Log.d(CodeLocator.TAG, "analysisAndAppendInfoToView Error " + Log.getStackTraceString(t));
         }
     }
 
