@@ -29,7 +29,6 @@ import com.bytedance.tools.codelocator.hook.CodeLocatorLayoutInflator;
 import com.bytedance.tools.codelocator.model.ShowInfo;
 import com.bytedance.tools.codelocator.processer.ICodeLocatorProcessor;
 import com.bytedance.tools.codelocator.receiver.CodeLocatorReceiver;
-import com.bytedance.tools.codelocator.utils.ActivityUtils;
 import com.bytedance.tools.codelocator.utils.CodeLocatorConstants;
 import com.bytedance.tools.codelocator.utils.FileUtils;
 import com.bytedance.tools.codelocator.utils.ReflectUtils;
@@ -112,7 +111,7 @@ public class CodeLocator {
         if (sGlobalConfig != null) {
             init(application, sGlobalConfig);
         } else {
-            init(application, new CodeLocatorConfig.Builder().enableHookInflater(ActivityUtils.isApkInDebug(application)).build());
+            init(application, new CodeLocatorConfig.Builder().build());
         }
     }
 
@@ -123,7 +122,7 @@ public class CodeLocator {
         }
 
         if (config == null) {
-            config = new CodeLocatorConfig.Builder().enableHookInflater(ActivityUtils.isApkInDebug(application)).build();
+            config = new CodeLocatorConfig.Builder().build();
         }
 
         sGlobalConfig = config;

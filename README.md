@@ -54,14 +54,15 @@ CodeLocator是一个包含Android SDK 与 Android Studio插件的Android工具�
 allprojects {
     repositories {
         mavenCentral()
+        maven { url "https://jitpack.io" }
     }
 }
 
 // 集成基础能力, 只需要添加一行依赖即可
 dependencies {
     // 依赖androidx, 已升级AndroidX的项目集成下面的依赖
-    implementation "com.bytedance.tools.codelocator:codelocator-core:2.0.0"
-    // 未升级AndroidX的项目集成下面的依赖
+    implementation "com.bytedance.tools.codelocator:codelocator-core:2.0.3"
+    // 未升级AndroidX的项目集成下面的依赖 support版本不再维护 请升级androidx
     implementation "com.bytedance.tools.codelocator:codelocator-core-support:2.0.0"
 }
 ```
@@ -73,17 +74,17 @@ apply plugin: 'me.ele.lancet'
 dependencies {
     // 两种依赖方式
     // 依赖lancet-all, 则包含所有lancet能力
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-all:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-all:2.0.3"
 
     // 分别依赖对应的lancet模块, 包含相对应的跳转能力
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml:2.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-activity:2.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-view:2.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-toast:2.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog:2.0.0"
-    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-popup:2.0.0"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml:2.0.3"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-activity:2.0.3"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-view:2.0.3"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-toast:2.0.3"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-dialog:2.0.3"
+    debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-popup:2.0.3"
     
-    // 如果未升级AndroidX, 可使用下方的依赖
+    // 如果未升级AndroidX, 可使用下方的依赖 support版本不再维护 请升级androidx
     debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-all-support:2.0.0"
 
     debugImplementation "com.bytedance.tools.codelocator:codelocator-lancet-xml-support:2.0.0"
@@ -123,7 +124,7 @@ CodeLocator插件是一个侧边栏插件, 安装后展示在Android Studio的�
 
 ## License
 ~~~
-Copyright (c) 2021 ByteDance Inc
+Copyright (c) 2023 ByteDance Inc
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
