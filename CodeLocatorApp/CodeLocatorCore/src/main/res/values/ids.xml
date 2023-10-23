@@ -12,4 +12,9 @@
     <item name="codeLocator_viewholder_id" type="id" />
     <item name="codeLocator_viewholder_adapter_tag_id" type="id" />
     <item name="codeLocator_view_extra" type="id" />
+
+    <declare-styleable name="CodeLocator">
+        <attr name="android:background" />
+        <attr name="android:src" />
+    </declare-styleable>
 </resources>
