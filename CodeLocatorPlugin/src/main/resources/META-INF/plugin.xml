@@ -86,14 +86,6 @@
             <keyboard-shortcut keymap="$default" first-keystroke="shift alt i"/>
         </action>
 
-        <action class="com.bytedance.tools.codelocator.tinypng.actions.TinyImageMenuAction"
-                id="codelocator.tinypng"
-                description="TinyPng压缩图片"
-                icon="/images/codeLocator.svg"
-                text="TinyPng压缩图片">
-            <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="CutCopyPasteGroup"/>
-        </action>
-
         <action id="codelocator.JumpToFileGitUrlAction"
                 class="com.bytedance.tools.codelocator.action.SearchInWebAction"
                 text="Search Code"

@@ -58,13 +58,7 @@ public class CodeLocatorUserConfig {
 
     private boolean autoFormatCode = false;
 
-    private boolean autoTiny = true;
-
-    private int autoTinyCount = 3;
-
     private int maxAsyncTryCount = 3;
-
-    private long autoTinySize = 1_000_000;
 
     private boolean useDefaultAdb = true;
 
@@ -170,30 +164,6 @@ public class CodeLocatorUserConfig {
 
     public void setAsyncBroadcast(boolean asyncBroadcast) {
         this.asyncBroadcast = asyncBroadcast;
-    }
-
-    public int getAutoTinyCount() {
-        return autoTinyCount;
-    }
-
-    public void setAutoTinyCount(int autoTinyCount) {
-        this.autoTinyCount = autoTinyCount;
-    }
-
-    public long getAutoTinySize() {
-        return autoTinySize;
-    }
-
-    public void setAutoTinySize(long autoTinySize) {
-        this.autoTinySize = autoTinySize;
-    }
-
-    public boolean isAutoTiny() {
-        return autoTiny;
-    }
-
-    public void setAutoTiny(boolean autoTiny) {
-        this.autoTiny = autoTiny;
     }
 
     public void setProjectAppIdMap(Map<String, String> projectAppIdMap) {
@@ -355,16 +325,6 @@ public class CodeLocatorUserConfig {
     public void setViewExtra(String viewExtra) {
         this.viewExtra = viewExtra;
     }
-
-    public boolean isSupportTinyPng() {
-        return supportTinyPng;
-    }
-
-    public void setSupportTinyPng(boolean supportTinyPng) {
-        this.supportTinyPng = supportTinyPng;
-    }
-
-    private boolean supportTinyPng = true;
 
     public String getRes() {
         return res;

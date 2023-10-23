@@ -92,10 +92,8 @@ class EditSettingsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: 
         }
 
         addAsyncBroadcastBox()
-        addTinyPng()
         addSystemAdb()
         addSystemImageEditor()
-        addAutoTinyCheck()
         if (IdeaUtils.getVersionStr() != null && IdeaUtils.getVersionInt() >= 2021001001) {
             addUseSupportLibraryCheck()
         }
@@ -339,21 +337,6 @@ class EditSettingsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: 
         dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
     }
 
-    private fun addAutoTinyCheck() {
-        val jCheckBox = JCheckBox(ResUtils.getString("tiny_png_auto_background"))
-        jCheckBox.font = Font(jCheckBox.font.name, jCheckBox.font.style, 15)
-        jCheckBox.isSelected = config.isAutoTiny
-        jCheckBox.addItemListener {
-            config.isAutoTiny = (it.stateChange == ItemEvent.SELECTED)
-            Mob.mob(
-                Mob.Action.CLICK,
-                if (config.isAutoTiny) "OPEN_AUTO_TINY" else "CLOSE_AUTO_TINY"
-            )
-        }
-        dialogContentPanel.add(jCheckBox)
-        dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
-    }
-
     private fun addUseSupportLibraryCheck() {
         val supportLib = CodeLocatorUserConfig.loadConfig().getSupportLib(project)
         val jCheckBox = JCheckBox("useSupportLibrary")
@@ -364,21 +347,6 @@ class EditSettingsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: 
             Mob.mob(
                 Mob.Action.CLICK,
                 if ((it.stateChange == ItemEvent.SELECTED)) "OPEN_USESUPPORTLIBRARY" else "CLOSE_USESUPPORTLIBRARY"
-            )
-        }
-        dialogContentPanel.add(jCheckBox)
-        dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
-    }
-
-    private fun addTinyPng() {
-        val jCheckBox = JCheckBox(ResUtils.getString("tiny_png_enable"))
-        jCheckBox.font = Font(jCheckBox.font.name, jCheckBox.font.style, 15)
-        jCheckBox.isSelected = config.isSupportTinyPng
-        jCheckBox.addItemListener {
-            config.isSupportTinyPng = (it.stateChange == ItemEvent.SELECTED)
-            Mob.mob(
-                Mob.Action.CLICK,
-                if (config.isSupportTinyPng) "OPEN_TINYPNG" else "CLOSE_TINYPNG"
             )
         }
         dialogContentPanel.add(jCheckBox)

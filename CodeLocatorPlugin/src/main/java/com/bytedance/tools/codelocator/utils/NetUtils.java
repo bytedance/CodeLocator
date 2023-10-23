@@ -109,8 +109,6 @@ public class NetUtils {
                             CodeLocatorUserConfig.loadConfig().setProjectAppIdMap(projectIdMap);
                         }
                         CodeLocatorUserConfig.loadConfig().setMaxAsyncTryCount(projectConfig.getMaxAsyncTryCount());
-                        CodeLocatorUserConfig.loadConfig().setAutoTinyCount(projectConfig.getAutoTinyCount());
-                        CodeLocatorUserConfig.loadConfig().setAutoTinySize(projectConfig.getAutoTinySize());
                         CodeLocatorUserConfig.updateConfig(CodeLocatorUserConfig.loadConfig());
                     }
                     FileUtils.saveConfig(projectConfig);

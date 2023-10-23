@@ -10,21 +10,11 @@ public class ProjectConfig {
 
     private List<AppConfig> appConfigs;
 
-    private String tinyUrl;
-
     private String uploadHost;
-
-    private List<String> tinyHeadName;
-
-    private List<String> tinyHeadValue;
-
-    private int autoTinyCount = 3;
 
     private int maxHistoryCount = 30;
 
     private int maxAsyncTryCount = 4;
-
-    private long autoTinySize = 1_000_000;
 
     private int maxMsgLength = 3_000;
 
@@ -40,21 +30,6 @@ public class ProjectConfig {
 
     public String getUploadHost() {
         return uploadHost;
-    }
-
-    public List<String> getTinyHeadName() {
-        return tinyHeadName;
-    }
-
-    public List<String> getTinyHeadValue() {
-        return tinyHeadValue;
-    }
-
-    public String getTinyUrl() {
-        if (tinyUrl == null || tinyUrl.isEmpty()) {
-            tinyUrl = "https://tinypng.com/backend/opt/shrink";
-        }
-        return tinyUrl;
     }
 
     public String getAdText() {
@@ -126,28 +101,12 @@ public class ProjectConfig {
         this.disableRemoveImport = disableRemoveImport;
     }
 
-    public int getAutoTinyCount() {
-        return autoTinyCount;
-    }
-
-    public void setAutoTinyCount(int autoTinyCount) {
-        this.autoTinyCount = autoTinyCount;
-    }
-
     public int getMaxAsyncTryCount() {
         return maxAsyncTryCount;
     }
 
     public void setMaxAsyncTryCount(int maxAsyncTryCount) {
         this.maxAsyncTryCount = maxAsyncTryCount;
-    }
-
-    public long getAutoTinySize() {
-        return autoTinySize;
-    }
-
-    public void setAutoTinySize(long autoTinySize) {
-        this.autoTinySize = autoTinySize;
     }
 
     public double getSleepTime() {

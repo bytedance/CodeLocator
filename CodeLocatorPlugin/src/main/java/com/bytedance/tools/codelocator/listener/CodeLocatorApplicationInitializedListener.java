@@ -5,7 +5,6 @@ import com.bytedance.tools.codelocator.device.Device;
 import com.bytedance.tools.codelocator.device.DeviceManager;
 import com.bytedance.tools.codelocator.model.CodeLocatorUserConfig;
 import com.bytedance.tools.codelocator.model.ColorInfo;
-import com.bytedance.tools.codelocator.tinypng.actions.TinyImageMenuAction;
 import com.bytedance.tools.codelocator.utils.*;
 import com.google.gson.reflect.TypeToken;
 import com.intellij.codeInsight.hint.HintManager;
@@ -19,7 +18,6 @@ import com.intellij.openapi.editor.event.SelectionListener;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.impl.ProjectLifecycleListener;
 import com.intellij.openapi.util.TextRange;
-import com.intellij.openapi.vfs.*;
 import com.intellij.ui.LightweightHint;
 import com.intellij.ui.awt.RelativePoint;
 import org.jetbrains.annotations.NotNull;
@@ -27,8 +25,10 @@ import org.jetbrains.annotations.NotNull;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
-import java.util.*;
 
 public class CodeLocatorApplicationInitializedListener implements ApplicationInitializedListener {
 
@@ -64,7 +64,6 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
         FileUtils.init();
         initColorInfo();
         registerEditColorLisenter();
-        registerVirtualFileListener();
 
         ThreadUtils.submit(() -> {
             NetUtils.fetchConfig();
@@ -87,25 +86,6 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
                     DeviceManager.onProjectClose(project);
                 }
                 CodeLocatorUserConfig.updateConfig(CodeLocatorUserConfig.loadConfig());
-            }
-        });
-    }
-
-    public static LinkedList<VirtualFile> sAddImageFiles = new LinkedList<>();
-
-    private void registerVirtualFileListener() {
-        VirtualFileManager.getInstance().addVirtualFileListener(new VirtualFileAdapter() {
-            @Override
-            public void fileCreated(@NotNull VirtualFileEvent event) {
-                if (!CodeLocatorUserConfig.loadConfig().isSupportTinyPng() || !(event instanceof VirtualFileCopyEvent)) {
-                    return;
-                }
-                super.fileCreated(event);
-                final VirtualFile file = event.getFile();
-                if (!TinyImageMenuAction.sPredicate.test(file)) {
-                    return;
-                }
-                sAddImageFiles.add(file);
             }
         });
     }
