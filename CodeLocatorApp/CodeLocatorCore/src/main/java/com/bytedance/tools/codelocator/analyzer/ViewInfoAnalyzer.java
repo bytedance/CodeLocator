@@ -9,7 +9,7 @@ import com.bytedance.tools.codelocator.config.CodeLocatorConfig;
 public class ViewInfoAnalyzer {
 
     public static void analysisAndAppendInfoToMap(int onClickListenerMemAddr, StackTraceElement[] stackTraceElements, int tag, String type) {
-        if (stackTraceElements == null || onClickListenerMemAddr == 0 || CodeLocator.sGlobalConfig == null) {
+        if (stackTraceElements == null || onClickListenerMemAddr == 0) {
             return;
         }
         final CodeLocatorConfig config = CodeLocator.sGlobalConfig;
@@ -45,13 +45,13 @@ public class ViewInfoAnalyzer {
             }
             CodeLocator.getOnClickInfoMap().put(onClickListenerMemAddr, findElement.getFileName() + ":" + findElement.getLineNumber());
         } catch (Throwable t) {
-            Log.d(CodeLocator.TAG, "analysisAndAppendInfoToMap Error " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "analysisAndAppendInfoToMap Error " + Log.getStackTraceString(t));
         }
     }
 
     public static void analysisAndAppendInfoToView(View view, StackTraceElement[] stackTraceElements, int tag, String type) {
         boolean isDataBinding = false;
-        if (stackTraceElements == null || view == null || CodeLocator.sGlobalConfig == null) {
+        if (stackTraceElements == null || view == null) {
             return;
         }
         final CodeLocatorConfig config = CodeLocator.sGlobalConfig;

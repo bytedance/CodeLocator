@@ -59,6 +59,9 @@ class MainApplication : Application() {
                         return null
                     }
 
+                    override fun setViewData(viewParent: View?, view: View, dataJson: String?) {
+                    }
+
                     override fun convertCustomView(
                         view: View,
                         winFrameRect: Rect?

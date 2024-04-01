@@ -2,26 +2,59 @@ package com.bytedance.tools.codelocator.action
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import android.graphics.Bitmap.createBitmap
 import android.graphics.Canvas
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.util.TypedValue
+import android.view.PixelCopy
+import android.view.SurfaceView
+import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import com.bytedance.tools.codelocator.CodeLocator
-import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.*
-import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.DATA
-import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.FILE_PATH
-import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.PKG_NAME
-import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.TARGET_CLASS
 import com.bytedance.tools.codelocator.model.FieldInfo
 import com.bytedance.tools.codelocator.model.InvokeInfo
 import com.bytedance.tools.codelocator.model.MethodInfo
 import com.bytedance.tools.codelocator.model.ResultData
 import com.bytedance.tools.codelocator.model.ViewClassInfo
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.ALPHA
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.BACKGROUND
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.DRAW_LAYER_BITMAP
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.GET_VIEW_CLASS_INFO
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.GET_VIEW_DATA
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.INVOKE
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.LAYOUT_PARAMS
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.LINE_SPACE
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.MARGIN
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.MINIMUM_HEIGHT
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.MINIMUM_WIDTH
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.ONLY_BACKGROUND
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.ONLY_FOREGROUND
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.PADDING
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.PIVOT_XY
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.SCALE_XY
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.SCROLL_XY
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.SET_VIEW_DATA
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.SHADOW_COLOR
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.SHADOW_RADIUS
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.SHADOW_XY
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.TEXT
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.TEXT_COLOR
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.TEXT_SIZE
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.TRANSLATION_XY
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.VIEW_BITMAP
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.EditType.VIEW_FLAG
 import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.Error
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.DATA
 import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.ERROR
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.FILE_PATH
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.PKG_NAME
 import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.STACK_TRACE
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey.TARGET_CLASS
 import com.bytedance.tools.codelocator.utils.FileUtils
 import com.bytedance.tools.codelocator.utils.GsonUtils
 import com.bytedance.tools.codelocator.utils.ReflectUtils
@@ -349,9 +382,32 @@ class GetViewBitmap : ViewAction() {
     override fun getActionType(): String = VIEW_BITMAP
 
     override fun processViewAction(view: View, data: String, result: ResultData) {
-        view.destroyDrawingCache()
-        view.buildDrawingCache()
-        val drawingCache = view.drawingCache
+        val drawingCache = if (view is SurfaceView) {
+            val lock = Object()
+            val bitmap = createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                synchronized(lock) {
+                    PixelCopy.request(view, bitmap, { _ ->
+                        synchronized(lock) {
+                            lock.notifyAll()
+                        }
+                    }, Handler(Looper.getMainLooper()))
+                    lock.wait(2000)
+                }
+                bitmap
+            } else {
+                view.destroyDrawingCache()
+                view.buildDrawingCache()
+                view.drawingCache
+            }
+        } else if (view is TextureView) {
+            view.bitmap
+        } else {
+            view.destroyDrawingCache()
+            view.buildDrawingCache()
+            view.drawingCache
+        }
+
         if (drawingCache != null) {
             val saveBitmapPath = FileUtils.saveBitmap(CodeLocator.sApplication, drawingCache)
             if (saveBitmapPath != null) {
@@ -396,7 +452,11 @@ class GetViewDrawLayerBitmap : ViewAction() {
             try {
                 if (data != ONLY_BACKGROUND) {
                     val drawAutofilledHighlightMethod =
-                        ReflectUtils.getClassMethod(view.javaClass, "drawAutofilledHighlight", Canvas::class.java)
+                        ReflectUtils.getClassMethod(
+                            view.javaClass,
+                            "drawAutofilledHighlight",
+                            Canvas::class.java
+                        )
                     drawAutofilledHighlightMethod?.invoke(view, canvas)
                 }
             } catch (t: Throwable) {
@@ -418,10 +478,10 @@ class GetViewDrawLayerBitmap : ViewAction() {
                 return
             }
         } catch (e: Throwable) {
-            Log.d(CodeLocator.TAG, "drawing cache error " + Log.getStackTraceString(e))
+            Log.e(CodeLocator.TAG, "drawing cache error " + Log.getStackTraceString(e))
             return
         }
-        Log.d(CodeLocator.TAG, "drawing cache is null")
+        Log.e(CodeLocator.TAG, "drawing cache is null")
     }
 }
 
@@ -475,6 +535,28 @@ class GetViewData : ViewAction() {
                 result.addResultItem(TARGET_CLASS, sb.toString())
             }
         }
+    }
+}
+
+class SetViewData : ViewAction() {
+
+    override fun getActionType(): String = SET_VIEW_DATA
+
+    override fun processViewAction(view: View, data: String, result: ResultData) {
+        var viewParent: View? = view
+        var processView = view
+        while (!CodeLocator.sGlobalConfig.appInfoProvider.canProviderData(view)) {
+            val parent = view.parent
+            if (parent is View) {
+                processView = viewParent!!
+                viewParent = parent
+            } else {
+                viewParent = null
+                break
+            }
+        }
+
+        CodeLocator.sGlobalConfig.appInfoProvider.setViewData(viewParent, processView, data)
     }
 }
 

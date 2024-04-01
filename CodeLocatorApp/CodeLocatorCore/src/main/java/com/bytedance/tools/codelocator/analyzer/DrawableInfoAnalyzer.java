@@ -6,7 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.bytedance.tools.codelocator.CodeLocator;
-import com.bytedance.tools.codelocator.R;
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants;
 
 public class DrawableInfoAnalyzer {
 
@@ -19,8 +19,8 @@ public class DrawableInfoAnalyzer {
     }
 
     private static void traverseView(View view) {
-        final Object drawableInfo = view.getTag(R.id.codeLocator_drawable_tag_info);
-        final Object backgroundInfo = view.getTag(R.id.codeLocator_background_tag_info);
+        final Object drawableInfo = view.getTag(CodeLocatorConstants.R.id.codeLocator_drawable_tag_info);
+        final Object backgroundInfo = view.getTag(CodeLocatorConstants.R.id.codeLocator_background_tag_info);
         if (view instanceof ViewGroup) {
             ViewGroup parent = (ViewGroup) view;
             if (drawableInfo instanceof SparseArray) {
@@ -29,10 +29,10 @@ public class DrawableInfoAnalyzer {
                     final int index = drawableArray.keyAt(i);
                     if (index < parent.getChildCount()) {
                         final String drawableTag = (String) drawableArray.get(index);
-                        parent.getChildAt(index).setTag(R.id.codeLocator_drawable_tag_id, drawableTag);
+                        parent.getChildAt(index).setTag(CodeLocatorConstants.R.id.codeLocator_drawable_tag_id, drawableTag);
                     }
                 }
-                parent.setTag(R.id.codeLocator_drawable_tag_info, null);
+                parent.setTag(CodeLocatorConstants.R.id.codeLocator_drawable_tag_info, null);
             }
             if (backgroundInfo instanceof SparseArray) {
                 final SparseArray backgroundArray = (SparseArray) backgroundInfo;
@@ -40,10 +40,10 @@ public class DrawableInfoAnalyzer {
                     final int index = backgroundArray.keyAt(i);
                     if (index < parent.getChildCount()) {
                         final String backgroundTag = (String) backgroundArray.get(index);
-                        parent.getChildAt(index).setTag(R.id.codeLocator_background_tag_id, backgroundTag);
+                        parent.getChildAt(index).setTag(CodeLocatorConstants.R.id.codeLocator_background_tag_id, backgroundTag);
                     }
                 }
-                parent.setTag(R.id.codeLocator_background_tag_info, null);
+                parent.setTag(CodeLocatorConstants.R.id.codeLocator_background_tag_info, null);
             }
             for (int i = 0; i < parent.getChildCount(); i++) {
                 traverseView(parent.getChildAt(i));

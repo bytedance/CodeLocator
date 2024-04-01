@@ -15,13 +15,13 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.bytedance.tools.codelocator.CodeLocator;
-import com.bytedance.tools.codelocator.R;
 import com.bytedance.tools.codelocator.model.ColorInfo;
 import com.bytedance.tools.codelocator.model.ExtraAction;
 import com.bytedance.tools.codelocator.model.ExtraInfo;
 import com.bytedance.tools.codelocator.model.SchemaInfo;
 import com.bytedance.tools.codelocator.model.WView;
 import com.bytedance.tools.codelocator.utils.ActivityUtils;
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants;
 import com.bytedance.tools.codelocator.utils.GsonUtils;
 import com.bytedance.tools.codelocator.utils.ReflectUtils;
 
@@ -115,10 +115,21 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
                 Object data = mOutAppInfoProvider.getViewData(viewParent, view);
                 return data;
             } catch (Throwable t) {
-                Log.d(CodeLocator.TAG, "获取View Data失败, " + Log.getStackTraceString(t));
+                Log.e(CodeLocator.TAG, "获取View Data失败, " + Log.getStackTraceString(t));
             }
         }
         return null;
+    }
+
+    @Override
+    public void setViewData(@Nullable View viewParent, @NonNull View view, String dataJson) {
+        if (mOutAppInfoProvider != null) {
+            try {
+                mOutAppInfoProvider.setViewData(viewParent, view, dataJson);
+            } catch (Throwable t) {
+                Log.e(CodeLocator.TAG, "设置View Data失败, " + Log.getStackTraceString(t));
+            }
+        }
     }
 
     @Override
@@ -127,7 +138,7 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
             try {
                 return mOutAppInfoProvider.convertCustomView(view, windowRect);
             } catch (Throwable t) {
-                Log.d(CodeLocator.TAG, "转换自定义View失败, " + Log.getStackTraceString(t));
+                Log.e(CodeLocator.TAG, "转换自定义View失败, " + Log.getStackTraceString(t));
             }
         }
         return null;
@@ -146,7 +157,7 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
                 }
                 return collection;
             } catch (Throwable t) {
-                Log.d(CodeLocator.TAG, "processViewExtra, " + Log.getStackTraceString(t));
+                Log.e(CodeLocator.TAG, "processViewExtra, " + Log.getStackTraceString(t));
             }
         }
         return null;
@@ -192,8 +203,8 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
                     }
                 }
             }
-            if (view != null && view.getTag(R.id.codeLocator_view_extra) != null) {
-                final Object extraInfo = view.getTag(R.id.codeLocator_view_extra);
+            if (view != null && view.getTag(CodeLocatorConstants.R.id.codeLocator_view_extra) != null) {
+                final Object extraInfo = view.getTag(CodeLocatorConstants.R.id.codeLocator_view_extra);
                 ExtraAction extraAction = new ExtraAction(ExtraAction.ActionType.NONE, extraInfo instanceof String ? extraInfo.toString() : GsonUtils.sGson.toJson(extraInfo), "CodeLocatorExtra", null);
                 ExtraInfo codeLocatorExtraInfo = new ExtraInfo("CodeLocatorExtra", ExtraInfo.ShowType.EXTRA_TABLE, extraAction);
                 if (collection == null) {
@@ -202,7 +213,7 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
                 collection.add(codeLocatorExtraInfo);
             }
         } catch (Throwable t) {
-            Log.d(CodeLocator.TAG, "processViewExtra, " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "processViewExtra error, " + Log.getStackTraceString(t));
         }
         return collection;
     }
@@ -214,7 +225,7 @@ public class AppInfoProviderWrapper implements AppInfoProvider {
             try {
                 return mOutAppInfoProvider.providerAllSchema();
             } catch (Throwable t) {
-                Log.d(CodeLocator.TAG, "providerAllSchema error, " + Log.getStackTraceString(t));
+                Log.e(CodeLocator.TAG, "providerAllSchema error, " + Log.getStackTraceString(t));
             }
         }
         return null;

@@ -1,5 +1,6 @@
 package com.bytedance.tools.codelocator;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
@@ -68,7 +69,7 @@ public class CodeLocator {
 
     private static int mActiveActivityCount = 0;
 
-    public static CodeLocatorConfig sGlobalConfig;
+    public static CodeLocatorConfig sGlobalConfig = new CodeLocatorConfig.Builder().build();
 
     private static boolean sAppForeground = false;
 
@@ -134,11 +135,11 @@ public class CodeLocator {
                 Log.d(CodeLocator.TAG, "CodeLocator已经初始化, 无需再初始化");
             }
             if (!sGlobalConfig.isEnable()) {
-                Log.d(CodeLocator.TAG, "CodeLocator被禁用, 无法使用全部功能");
+                Log.e(CodeLocator.TAG, "CodeLocator被禁用, 无法使用全部功能");
                 unRegisterReceiver();
             } else {
                 if (disableLancet()) {
-                    Log.d(CodeLocator.TAG, "CodeLocator已启用, 但无法使用跳转功能");
+                    Log.e(CodeLocator.TAG, "CodeLocator已启用, 但无法使用跳转功能");
                 }
             }
             saveEnableForSp(application, sGlobalConfig);
@@ -426,12 +427,22 @@ public class CodeLocator {
                 }
             }
 
-            sApplication.registerReceiver(sCodeLocatorReceiver, intentFilter, null, sHandler);
-            if (sGlobalConfig.isDebug()) {
-                Log.d(CodeLocator.TAG, "CodeLocator已注册Receiver, 现在可以使用插件抓取");
-            }
+            new Thread() {
+                @SuppressLint("WrongConstant")
+                @Override
+                public void run() {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        sApplication.registerReceiver(sCodeLocatorReceiver, intentFilter, null, sHandler, 0x2);
+                    } else {
+                        sApplication.registerReceiver(sCodeLocatorReceiver, intentFilter, null, sHandler);
+                    }
+                    if (sGlobalConfig.isDebug()) {
+                        Log.d(CodeLocator.TAG, "CodeLocator已注册Receiver, 现在可以使用插件抓取");
+                    }
+                }
+            }.start();
         } catch (Throwable throwable) {
-            Log.d(CodeLocator.TAG, "CodeLocator注册Receiver失败\n" + throwable);
+            Log.e(CodeLocator.TAG, "CodeLocator注册Receiver失败\n" + throwable);
         }
     }
 
@@ -443,7 +454,7 @@ public class CodeLocator {
             }
             FileUtils.deleteAllChildFile(sCodeLocatorDir);
         } catch (Throwable throwable) {
-            Log.d(CodeLocator.TAG, "CodeLocator取消注册Receiver失败\n" + throwable);
+            Log.e(CodeLocator.TAG, "CodeLocator取消注册Receiver失败\n" + throwable);
         }
     }
 
@@ -502,7 +513,7 @@ public class CodeLocator {
 
     private static void checkAppForegroundChange() {
         if (!sGlobalConfig.isEnable()) {
-            Log.d(CodeLocator.TAG, "CodeLocator被禁用, 无法使用全部功能");
+            Log.e(CodeLocator.TAG, "CodeLocator被禁用, 无法使用全部功能");
             return;
         }
         try {
@@ -514,7 +525,7 @@ public class CodeLocator {
             }
             sAppForeground = currentForeground;
         } catch (Throwable ignore) {
-            Log.d(CodeLocator.TAG, "checkAppForegroundChange error: " + Log.getStackTraceString(ignore));
+            Log.e(CodeLocator.TAG, "checkAppForegroundChange error: " + Log.getStackTraceString(ignore));
         }
     }
 
@@ -547,11 +558,11 @@ public class CodeLocator {
         if (view == null || stackTraceElements == null) {
             return;
         }
-        ViewInfoAnalyzer.analysisAndAppendInfoToView(view, stackTraceElements, R.id.codeLocator_findviewbyId_tag_id, "FindViewById");
+        ViewInfoAnalyzer.analysisAndAppendInfoToView(view, stackTraceElements, CodeLocatorConstants.R.id.codeLocator_findviewbyId_tag_id, "FindViewById");
     }
 
     private static boolean disableLancet() {
-        return sGlobalConfig == null || !sGlobalConfig.isEnableLancetInfo();
+        return sGlobalConfig != null && !sGlobalConfig.isEnableLancetInfo();
     }
 
     public static void notifySetOnClickListener(View view, StackTraceElement[] stackTraceElements) {
@@ -561,7 +572,7 @@ public class CodeLocator {
         if (view == null || stackTraceElements == null) {
             return;
         }
-        ViewInfoAnalyzer.analysisAndAppendInfoToView(view, stackTraceElements, R.id.codeLocator_onclick_tag_id, "OnClickListener");
+        ViewInfoAnalyzer.analysisAndAppendInfoToView(view, stackTraceElements, CodeLocatorConstants.R.id.codeLocator_onclick_tag_id, "OnClickListener");
     }
 
     public static void notifySetOnClickListener(int onClickListenerMemAddr, StackTraceElement[] stackTraceElements) {
@@ -571,7 +582,7 @@ public class CodeLocator {
         if (onClickListenerMemAddr == 0 || stackTraceElements == null) {
             return;
         }
-        ViewInfoAnalyzer.analysisAndAppendInfoToMap(onClickListenerMemAddr, stackTraceElements, R.id.codeLocator_onclick_tag_id, "OnClickListener");
+        ViewInfoAnalyzer.analysisAndAppendInfoToMap(onClickListenerMemAddr, stackTraceElements, CodeLocatorConstants.R.id.codeLocator_onclick_tag_id, "OnClickListener");
     }
 
     public static void notifySetOnTouchListener(View view, StackTraceElement[] stackTraceElements) {
@@ -581,7 +592,7 @@ public class CodeLocator {
         if (view == null || stackTraceElements == null) {
             return;
         }
-        ViewInfoAnalyzer.analysisAndAppendInfoToView(view, stackTraceElements, R.id.codeLocator_ontouch_tag_id, "OnTouchListener");
+        ViewInfoAnalyzer.analysisAndAppendInfoToView(view, stackTraceElements, CodeLocatorConstants.R.id.codeLocator_ontouch_tag_id, "OnTouchListener");
     }
 
     public static void notifySetClickable(View view, StackTraceElement[] stackTraceElements) {
@@ -591,7 +602,7 @@ public class CodeLocator {
         if (view == null || stackTraceElements == null) {
             return;
         }
-        ViewInfoAnalyzer.analysisAndAppendInfoToView(view, stackTraceElements, R.id.codeLocator_onclick_tag_id, "Clickable");
+        ViewInfoAnalyzer.analysisAndAppendInfoToView(view, stackTraceElements, CodeLocatorConstants.R.id.codeLocator_onclick_tag_id, "Clickable");
     }
 
     public static void notifyAddView(View view, StackTraceElement[] stackTraceElements) {
@@ -601,7 +612,7 @@ public class CodeLocator {
         if (view == null || stackTraceElements == null) {
             return;
         }
-        ViewInfoAnalyzer.analysisAndAppendInfoToView(view, stackTraceElements, R.id.codeLocator_findviewbyId_tag_id, "AddView");
+        ViewInfoAnalyzer.analysisAndAppendInfoToView(view, stackTraceElements, CodeLocatorConstants.R.id.codeLocator_findviewbyId_tag_id, "AddView");
     }
 
     public static void notifyXmlInflate(View view, int xmlResId) {
@@ -611,7 +622,7 @@ public class CodeLocator {
         if (view == null || xmlResId == 0) {
             return;
         }
-        XmlInfoAnalyzer.analysisAndAppendInfoToView(view, xmlResId, R.id.codeLocator_xml_tag_id);
+        XmlInfoAnalyzer.analysisAndAppendInfoToView(view, xmlResId, CodeLocatorConstants.R.id.codeLocator_xml_tag_id);
         if (sGlobalConfig != null && sGlobalConfig.isEnableHookInflater()) {
             DrawableInfoAnalyzer.analysisAndAppendInfoToView(view);
         }
@@ -641,7 +652,7 @@ public class CodeLocator {
         }
         try {
             final String resourceName = view.getContext().getResources().getResourceName(resId).replace(view.getContext().getPackageName(), "");
-            view.setTag(R.id.codeLocator_background_tag_id, resourceName);
+            view.setTag(CodeLocatorConstants.R.id.codeLocator_background_tag_id, resourceName);
         } catch (Throwable t) {
             Log.d(CodeLocator.TAG, "notifySetBackgroundResource error, stackTrace: " + Log.getStackTraceString(t));
         }
@@ -656,7 +667,7 @@ public class CodeLocator {
         }
         try {
             final String resourceName = view.getContext().getResources().getResourceName(resId).replace(view.getContext().getPackageName(), "");
-            view.setTag(R.id.codeLocator_drawable_tag_id, resourceName);
+            view.setTag(CodeLocatorConstants.R.id.codeLocator_drawable_tag_id, resourceName);
         } catch (Throwable t) {
             Log.d(CodeLocator.TAG, "notifySetImageResource error, stackTrace: " + Log.getStackTraceString(t));
         }

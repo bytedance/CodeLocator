@@ -13,7 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.bytedance.tools.codelocator.CodeLocator;
-import com.bytedance.tools.codelocator.R;
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants;
 import com.bytedance.tools.codelocator.utils.ReflectUtils;
 
 import java.lang.reflect.Field;
@@ -82,7 +82,7 @@ public class CodeLocatorLayoutFactoryWrapper implements LayoutInflater.Factory2 
             trySetImageViewScrInfo(context, parent, name, attrs);
             trySetViewBackgroundInfo(context, parent, name, attrs);
         } catch (Throwable t) {
-            Log.d(CodeLocator.TAG, "hook onCreateView error, " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "hook onCreateView error, " + Log.getStackTraceString(t));
         }
         if (mOutFactory2 == null) {
             if (mOutFactory != null) {
@@ -139,17 +139,17 @@ public class CodeLocatorLayoutFactoryWrapper implements LayoutInflater.Factory2 
             if (view == null) {
                 rootBackgroundTag = drawableName;
             } else if (view instanceof ViewGroup) {
-                final Object tagInfo = view.getTag(R.id.codeLocator_background_tag_info);
+                final Object tagInfo = view.getTag(CodeLocatorConstants.R.id.codeLocator_background_tag_info);
                 if (tagInfo != null) {
                     SparseArray<String> childTagInfo = (SparseArray<String>) tagInfo;
                     childTagInfo.put(((ViewGroup) view).getChildCount(), drawableName);
                 } else {
                     SparseArray<String> childTagInfo = new SparseArray<>();
                     childTagInfo.put(((ViewGroup) view).getChildCount(), drawableName);
-                    view.setTag(R.id.codeLocator_background_tag_info, childTagInfo);
+                    view.setTag(CodeLocatorConstants.R.id.codeLocator_background_tag_info, childTagInfo);
                 }
             } else {
-                view.setTag(R.id.codeLocator_background_tag_id, drawableName);
+                view.setTag(CodeLocatorConstants.R.id.codeLocator_background_tag_id, drawableName);
             }
         }
     }
@@ -168,7 +168,7 @@ public class CodeLocatorLayoutFactoryWrapper implements LayoutInflater.Factory2 
                 mImageSrc = (Integer) field.get(null);
             }
         } catch (Throwable t) {
-            Log.d(CodeLocator.TAG, "Hook view background error, " + Log.getStackTraceString(t));
+            Log.e(CodeLocator.TAG, "Hook view background error, " + Log.getStackTraceString(t));
         }
         try {
             if (mImageStyle != null && mImageSrc != null) {
@@ -185,17 +185,17 @@ public class CodeLocatorLayoutFactoryWrapper implements LayoutInflater.Factory2 
             if (view == null) {
                 rootDrawableTag = drawableName;
             } else if (view instanceof ViewGroup) {
-                final Object tagInfo = view.getTag(R.id.codeLocator_drawable_tag_info);
+                final Object tagInfo = view.getTag(CodeLocatorConstants.R.id.codeLocator_drawable_tag_info);
                 if (tagInfo != null) {
                     SparseArray<String> childTagInfo = (SparseArray<String>) tagInfo;
                     childTagInfo.put(((ViewGroup) view).getChildCount(), drawableName);
                 } else {
                     SparseArray<String> childTagInfo = new SparseArray<>();
                     childTagInfo.put(((ViewGroup) view).getChildCount(), drawableName);
-                    view.setTag(R.id.codeLocator_drawable_tag_info, childTagInfo);
+                    view.setTag(CodeLocatorConstants.R.id.codeLocator_drawable_tag_info, childTagInfo);
                 }
             } else {
-                view.setTag(R.id.codeLocator_drawable_tag_id, drawableName);
+                view.setTag(CodeLocatorConstants.R.id.codeLocator_drawable_tag_id, drawableName);
             }
         }
     }

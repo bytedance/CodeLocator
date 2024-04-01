@@ -59,6 +59,8 @@ public interface AppInfoProvider {
     @Nullable
     Object getViewData(View viewParent, @NonNull View view);
 
+    void setViewData(View viewParent, @NonNull View view, String dataJson);
+
     /**
      * 转换Android的View为WView, 接入方可以对特殊view进行处理, 返回WView即可
      *

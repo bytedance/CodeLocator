@@ -66,7 +66,7 @@ public class CodeLocatorConfig {
     @SerializedName("dialogIgnoreByClazzs")
     private Set<String> mDialogIgnoreByClazzs = new HashSet<String>() {
         {
-            add("android.support.v4.app.DialogFragment");
+            add("androidx.fragment.app.DialogFragment");
             add("androidx.appcompat.app.AlertDialog$Builder");
         }
     };
@@ -74,7 +74,7 @@ public class CodeLocatorConfig {
     @SerializedName("dialogReturnByClazzs")
     private Set<String> mDialogReturnByClazzs = new HashSet<String>() {
         {
-            add("android.support.v4.app.Fragment");
+            add("androidx.fragment.app.Fragment");
         }
     };
 
@@ -116,8 +116,8 @@ public class CodeLocatorConfig {
             add("com.bytedance.router.RouteManager");
             add("com.bytedance.router.route.SysComponentRoute");
             add("com.bytedance.router.SmartRoute");
-            add("android.support.v4.app.BaseFragmentActivityApi16");
-            add("android.support.v4.app.FragmentActivity");
+            add("androidx.fragment.app.BaseFragmentActivityApi16");
+            add("androidx.fragment.app.FragmentActivity");
             add("androidx.core.content.ContextCompat");
         }
     };

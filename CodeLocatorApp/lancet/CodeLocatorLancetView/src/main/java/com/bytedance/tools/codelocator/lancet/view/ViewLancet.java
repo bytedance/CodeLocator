@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bytedance.tools.codelocator.CodeLocator;
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants;
 
 import me.ele.lancet.base.Origin;
 import me.ele.lancet.base.Scope;
@@ -159,11 +160,11 @@ public class ViewLancet {
         RecyclerView.ViewHolder viewHolder = (RecyclerView.ViewHolder) Origin.call();
         try {
             if (viewHolder != null && viewHolder.itemView != null) {
-                viewHolder.itemView.setTag(R.id.codeLocator_viewholder_tag_id, viewHolder.getClass().getName());
-                viewHolder.itemView.setTag(R.id.codeLocator_viewholder_id, viewHolder);
+                viewHolder.itemView.setTag(CodeLocatorConstants.R.id.codeLocator_viewholder_tag_id, viewHolder.getClass().getName());
+                viewHolder.itemView.setTag(CodeLocatorConstants.R.id.codeLocator_viewholder_id, viewHolder);
                 final Object adapter = This.get();
                 if (adapter != null) {
-                    viewHolder.itemView.setTag(R.id.codeLocator_viewholder_adapter_tag_id, adapter.getClass().getName());
+                    viewHolder.itemView.setTag(CodeLocatorConstants.R.id.codeLocator_viewholder_adapter_tag_id, adapter.getClass().getName());
                 }
             }
         } catch (Throwable t) {
@@ -172,17 +173,17 @@ public class ViewLancet {
         return viewHolder;
     }
 
-    @TargetClass(value = "android.support.v7.widget.RecyclerView$Adapter", scope = Scope.ALL)
+    @TargetClass(value = "androidx.recyclerview.widget.RecyclerView$Adapter", scope = Scope.ALL)
     @Insert("onCreateViewHolder")
     public RecyclerView.ViewHolder onCreateViewHolderAll(ViewGroup parent, int viewType) {
         RecyclerView.ViewHolder viewHolder = (RecyclerView.ViewHolder) Origin.call();
         try {
             if (viewHolder != null && viewHolder.itemView != null) {
-                viewHolder.itemView.setTag(R.id.codeLocator_viewholder_tag_id, viewHolder.getClass().getName());
-                viewHolder.itemView.setTag(R.id.codeLocator_viewholder_id, viewHolder);
+                viewHolder.itemView.setTag(CodeLocatorConstants.R.id.codeLocator_viewholder_tag_id, viewHolder.getClass().getName());
+                viewHolder.itemView.setTag(CodeLocatorConstants.R.id.codeLocator_viewholder_id, viewHolder);
                 final Object adapter = This.get();
                 if (adapter != null) {
-                    viewHolder.itemView.setTag(R.id.codeLocator_viewholder_adapter_tag_id, adapter.getClass().getName());
+                    viewHolder.itemView.setTag(CodeLocatorConstants.R.id.codeLocator_viewholder_adapter_tag_id, adapter.getClass().getName());
                 }
             }
         } catch (Throwable t) {

@@ -2,6 +2,25 @@ package com.bytedance.tools.codelocator.utils;
 
 public class CodeLocatorConstants {
 
+    public interface R {
+
+        interface id {
+            int codeLocator_background_tag_id = 0x7f079990;
+            int codeLocator_background_tag_info = 0x7f079991;
+            int codeLocator_drawable_tag_id = 0x7f079992;
+            int codeLocator_drawable_tag_info = 0x7f079993;
+            int codeLocator_findviewbyId_tag_id = 0x7f079994;
+            int codeLocator_onclick_tag_id = 0x7f079995;
+            int codeLocator_ontouch_tag_id = 0x7f079996;
+            int codeLocator_view_extra = 0x7f079997;
+            int codeLocator_viewholder_adapter_tag_id = 0x7f079998;
+            int codeLocator_viewholder_id = 0x7f079999;
+            int codeLocator_viewholder_tag_id = 0x7f07999A;
+            int codeLocator_xml_tag_id = 0x7f07999B;
+        }
+
+    }
+
     public static final int USE_TRANS_FILE_SDK_VERSION = 30;
 
     public static final String ACTION_OPERATE_CUSTOM_FILE = "com.bytedance.tools.codelocator.action_operate_custom_file";
@@ -79,6 +98,8 @@ public class CodeLocatorConstants {
     public static final String BASE_DIR_NAME = "codeLocator";
 
     public static final String BASE_DIR_PATH = "/sdcard/" + BASE_DIR_NAME;
+
+    public static final String BASE_TMP_DIR_PATH = "/data/local/tmp/" + BASE_DIR_NAME;
 
     public static final String TYPE_ACTIVITY_IGNORE = "activity_ignore";
 

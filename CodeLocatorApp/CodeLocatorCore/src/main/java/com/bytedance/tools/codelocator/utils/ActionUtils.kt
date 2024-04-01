@@ -32,6 +32,7 @@ import com.bytedance.tools.codelocator.action.SetTextShadowColorAction
 import com.bytedance.tools.codelocator.action.SetTextShadowRadiusAction
 import com.bytedance.tools.codelocator.action.SetTextSizeAction
 import com.bytedance.tools.codelocator.action.SetTranslationAction
+import com.bytedance.tools.codelocator.action.SetViewData
 import com.bytedance.tools.codelocator.action.SetViewFlagAction
 import com.bytedance.tools.codelocator.model.EditData
 import com.bytedance.tools.codelocator.model.ResultData
@@ -60,6 +61,7 @@ object ActionUtils {
         SetTranslationAction(),
         GetViewBitmap(),
         GetViewDrawLayerBitmap(),
+        SetViewData(),
         GetAllViewClassInfo(),
         InvokeViewAction(),
         GetViewData()

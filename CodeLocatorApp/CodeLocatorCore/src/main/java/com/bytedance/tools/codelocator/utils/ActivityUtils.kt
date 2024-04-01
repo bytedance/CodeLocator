@@ -24,9 +24,7 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
-import com.bytedance.tools.codelocator.BuildConfig
 import com.bytedance.tools.codelocator.CodeLocator
-import com.bytedance.tools.codelocator.R
 import com.bytedance.tools.codelocator.config.AppInfoProvider
 import com.bytedance.tools.codelocator.config.CodeLocatorConfigFetcher
 import com.bytedance.tools.codelocator.model.WActivity
@@ -35,6 +33,7 @@ import com.bytedance.tools.codelocator.model.WFile
 import com.bytedance.tools.codelocator.model.WFragment
 import com.bytedance.tools.codelocator.model.WView
 import com.bytedance.tools.codelocator.operate.ViewOperate
+import org.chickenhook.restrictionbypass.BuildConfig
 import java.io.File
 import java.lang.Math.abs
 import java.lang.reflect.Field
@@ -128,6 +127,7 @@ object ActivityUtils {
         wApplication.packageName = activity.packageName
         wApplication.statusBarHeight =
             UIUtils.getStatusBarHeight(activity)
+        wApplication.orientation = activity.requestedOrientation
         wApplication.navigationBarHeight =
             UIUtils.getNavigationBarHeight(activity)
         wApplication.sdkVersion = BuildConfig.VERSION_NAME
@@ -415,9 +415,8 @@ object ActivityUtils {
         (androidView.background as? ColorDrawable)?.run {
             wView.backgroundColor = CodeLocatorUtils.toHexStr(color)
         }
-        if (androidView.getTag(R.id.codeLocator_background_tag_id) != null) {
-            wView.backgroundColor =
-                androidView.getTag(R.id.codeLocator_background_tag_id) as? String?
+        if (androidView.getTag(CodeLocatorConstants.R.id.codeLocator_background_tag_id) != null) {
+            wView.backgroundColor = androidView.getTag(CodeLocatorConstants.R.id.codeLocator_background_tag_id) as? String?
         } else if (androidView.background != null && androidView.background !is ColorDrawable) {
             wView.backgroundColor = androidView.background.toString()
             val lastIndexOf = wView.backgroundColor.lastIndexOf('.')
@@ -482,7 +481,7 @@ object ActivityUtils {
             }
         }
 
-        wView.clickTag = androidView.getTag(R.id.codeLocator_onclick_tag_id) as? String
+        wView.clickTag = androidView.getTag(CodeLocatorConstants.R.id.codeLocator_onclick_tag_id) as? String
 
         val viewOnClickListener = ViewUtils.getViewOnClickListener(androidView)
         if (viewOnClickListener != null) {
@@ -497,20 +496,27 @@ object ActivityUtils {
             }
         }
 
-        wView.findViewByIdTag = androidView.getTag(R.id.codeLocator_findviewbyId_tag_id) as? String
-        wView.xmlTag = androidView.getTag(R.id.codeLocator_xml_tag_id) as? String
-        wView.drawableTag = androidView.getTag(R.id.codeLocator_drawable_tag_id) as? String
-        wView.touchTag = androidView.getTag(R.id.codeLocator_ontouch_tag_id) as? String
-        wView.viewHolderTag = androidView.getTag(R.id.codeLocator_viewholder_tag_id) as? String
-        wView.adapterTag = androidView.getTag(R.id.codeLocator_viewholder_adapter_tag_id) as? String
+        wView.findViewByIdTag = androidView.getTag(CodeLocatorConstants.R.id.codeLocator_findviewbyId_tag_id) as? String
+        wView.xmlTag = androidView.getTag(CodeLocatorConstants.R.id.codeLocator_xml_tag_id) as? String
+        wView.drawableTag = androidView.getTag(CodeLocatorConstants.R.id.codeLocator_drawable_tag_id) as? String
+        wView.touchTag = androidView.getTag(CodeLocatorConstants.R.id.codeLocator_ontouch_tag_id) as? String
+        wView.viewHolderTag = androidView.getTag(CodeLocatorConstants.R.id.codeLocator_viewholder_tag_id) as? String
+        wView.adapterTag = androidView.getTag(CodeLocatorConstants.R.id.codeLocator_viewholder_adapter_tag_id) as? String
         wView.isLayoutRequested = androidView.isLayoutRequested
 
         when (androidView) {
             is TextView -> {
-                buildTextViewInfo(wView, androidView)
+                try {
+                    buildTextViewInfo(wView, androidView)
+                } catch (ignore: Throwable) {
+
+                }
             }
             is ImageView -> {
-                buildImageViewInfo(wView, androidView)
+                try {
+                    buildImageViewInfo(wView, androidView)
+                } catch (ignore: Throwable) {
+                }
             }
             is LinearLayout -> {
                 wView.type = WView.Type.TYPE_LINEAR
@@ -596,11 +602,8 @@ object ActivityUtils {
                     mChildFragmentManagerField.get(fragment) as? FragmentManager?
                 childFragments = mChildFragmentManager?.fragments
             } catch (t: Throwable) {
-                Log.d(
-                    CodeLocator.TAG,
-                    "get childFragmentManager fragments error, stackTrace: " + Log.getStackTraceString(
-                        t
-                    )
+                Log.d(CodeLocator.TAG,
+                    "get childFragmentManager fragments error, stackTrace: " + Log.getStackTraceString(t)
                 )
             }
         }
@@ -694,7 +697,8 @@ object ActivityUtils {
                     val layoutParams: WindowManager.LayoutParams? =
                         mAttrFiled?.get(viewRoot) as? WindowManager.LayoutParams
                     if (layoutParams?.token != currentWindowToken && (layoutParams?.type != WindowManager.LayoutParams.FIRST_SUB_WINDOW
-                            && layoutParams?.type != WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)) {
+                            && layoutParams?.type != WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                            && layoutParams?.type != WindowManager.LayoutParams.TYPE_TOAST)) {
                         continue
                     }
                     val viewFiled: Field? = ReflectUtils.getClassField(viewRoot.javaClass, "mView")

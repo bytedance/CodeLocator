@@ -54,7 +54,7 @@ public class DialogLancet {
     }
 
     @Proxy("add")
-    @TargetClass(value = "android.support.v4.app.FragmentTransaction")
+    @TargetClass(value = "androidx.fragment.app.FragmentTransaction")
     public FragmentTransaction add(@NonNull Fragment fragment, @Nullable String tag) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             try {

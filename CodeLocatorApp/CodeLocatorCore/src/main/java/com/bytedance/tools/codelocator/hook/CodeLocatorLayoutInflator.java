@@ -15,7 +15,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
 import com.bytedance.tools.codelocator.CodeLocator;
-import com.bytedance.tools.codelocator.R;
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants;
 import com.bytedance.tools.codelocator.utils.ReflectUtils;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -113,8 +113,8 @@ public class CodeLocatorLayoutInflator extends LayoutInflater {
     public View inflate(int resource, @Nullable ViewGroup root, boolean attachToRoot) {
         final View view = mOutInflater.inflate(resource, root, attachToRoot);
         if (mOutInflater.getFactory2() instanceof CodeLocatorLayoutFactoryWrapper && view != null) {
-            view.setTag(R.id.codeLocator_drawable_tag_id, ((CodeLocatorLayoutFactoryWrapper) mOutInflater.getFactory2()).rootDrawableTag);
-            view.setTag(R.id.codeLocator_background_tag_id, ((CodeLocatorLayoutFactoryWrapper) mOutInflater.getFactory2()).rootBackgroundTag);
+            view.setTag(CodeLocatorConstants.R.id.codeLocator_drawable_tag_id, ((CodeLocatorLayoutFactoryWrapper) mOutInflater.getFactory2()).rootDrawableTag);
+            view.setTag(CodeLocatorConstants.R.id.codeLocator_background_tag_id, ((CodeLocatorLayoutFactoryWrapper) mOutInflater.getFactory2()).rootBackgroundTag);
         }
         if (sHasXmlLancet != null && !sHasXmlLancet) {
             CodeLocator.notifyXmlInflate(view, resource);

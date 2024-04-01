@@ -36,6 +36,11 @@ public class AppInfoProviderAdapter implements AppInfoProvider {
         return null;
     }
 
+    @Override
+    public void setViewData(View viewParent, @NonNull View view, String dataJson) {
+
+    }
+
     @Nullable
     @Override
     public WView convertCustomView(View view, @Nullable Rect winFrameRect) {
