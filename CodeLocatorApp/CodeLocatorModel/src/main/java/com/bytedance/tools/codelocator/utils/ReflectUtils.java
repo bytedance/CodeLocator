@@ -2,7 +2,9 @@ package com.bytedance.tools.codelocator.utils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class ReflectUtils {
 
@@ -85,4 +87,24 @@ public class ReflectUtils {
         sCacheMethod.put(cacheKey, null);
         return null;
     }
+
+    public static HashSet<String> SUPPORT_ARGS = new HashSet<String>() {
+        {
+            add("int");
+            add("boolean");
+            add("byte");
+            add("float");
+            add("long");
+            add("double");
+            add("short");
+            add("char");
+            add("java.lang.String");
+            add("java.lang.CharSequence");
+        }
+    };
+
+    public static boolean isLegalField(Field field) {
+        return Modifier.isStatic(field.getModifiers()) || !SUPPORT_ARGS.contains(field.getType().getName());
+    }
+
 }

@@ -175,7 +175,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
             if (activity != null) {
                 final int clickX = smartArgs.getInt(KEY_MOCK_CLICK_X, -1);
                 final int clickY = smartArgs.getInt(KEY_MOCK_CLICK_Y, -1);
-                sendResult(context, smartArgs, new TouchViewResponse(ActivityUtils.INSTANCE.getCurrentTouchViewInfo(activity, clickX, clickY)));
+                sendResult(context, smartArgs, new TouchViewResponse(ActivityUtils.getCurrentTouchViewInfo(activity, clickX, clickY)));
                 return;
             }
             sendResult(context, smartArgs, new ErrorResponse(NO_CURRENT_ACTIVITY));
@@ -268,7 +268,7 @@ public class CodeLocatorReceiver extends BroadcastReceiver {
         try {
             Activity activity = CodeLocator.getCurrentActivity();
             if (activity != null) {
-                sendResult(context, smartArgs, new TouchViewResponse(ActivityUtils.INSTANCE.getCurrentTouchViewInfo(activity)));
+                sendResult(context, smartArgs, new TouchViewResponse(ActivityUtils.getCurrentTouchViewInfo(activity, -1, -1)));
                 return;
             } else {
                 sendResult(context, smartArgs, new ErrorResponse(NO_CURRENT_ACTIVITY));

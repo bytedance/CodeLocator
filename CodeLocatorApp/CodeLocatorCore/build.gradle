@@ -1,5 +1,4 @@
 apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
 
 if (getProperties("customUploadGradlePluginUrl") != null) {
     apply from: getProperties("customUploadGradlePluginUrl")
@@ -42,8 +41,6 @@ dependencies {
     } else {
         api "com.bytedance.tools.codelocator:codelocator-model:${codelocator_version}"
     }
-
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 
     implementation('com.github.ChickenHook:RestrictionBypass:2.2') {
         exclude group: "androidx.appcompat", module: "appcompat"
