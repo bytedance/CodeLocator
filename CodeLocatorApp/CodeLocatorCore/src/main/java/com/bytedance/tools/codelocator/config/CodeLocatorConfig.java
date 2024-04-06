@@ -471,7 +471,7 @@ public class CodeLocatorConfig {
 
         private boolean mLazyInit;
 
-        private boolean mEnableHookInflater = true;
+        private boolean mEnableHookInflater;
 
         private int mViewMaxLoopCount;
 

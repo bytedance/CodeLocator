@@ -145,6 +145,7 @@ class MyTreeCellRenderer(val codeLocatorWindow: CodeLocatorWindow, val type: Int
                 text = "(${displayDependencies.childCount}) ${displayDependencies.displayLine}"
             }
         }
+        setBackgroundNonSelectionColor(tree?.background)
         return component
     }
 
