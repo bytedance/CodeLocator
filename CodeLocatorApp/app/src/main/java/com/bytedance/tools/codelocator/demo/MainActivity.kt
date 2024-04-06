@@ -23,7 +23,13 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.tvwStartActivity.setOnClickListener {
-            startActivity(Intent(this, TestActivity::class.java))
+            startActivity(Intent(this, TestActivity::class.java).apply {
+                putExtra("Hello", "World")
+                putExtra("Good", "Morning")
+                putExtra("Key1", 1)
+                putExtra("Key2", 2F)
+                putExtra("Key3", 0.5)
+            })
         }
         binding.tvwShowDialog.setOnTouchListener { v, event ->
             if (event.action == MotionEvent.ACTION_UP) {
