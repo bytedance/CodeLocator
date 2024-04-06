@@ -528,20 +528,16 @@ public class DeviceManager {
             if (ACTION.DEVICE_NOT_SUPPORT_ACTIONS.contains(adbAction.getType())) {
                 final String type = adbAction.getType();
                 if (type == ACTION.SCREENCAP) {
-                    if (adbAction.getArgs().equalsIgnoreCase("-p")) {
-                        getImageFromDevice(project, device, (AdbResultImageReceiver) receiver);
-                        Mob.mob(Mob.Action.EXEC, "" + adbAction);
-                    } else {
-                        final String cmd = adbAction.buildCmd();
-                        executeShellCommand(device, receiver, cmd, FileUtils.getConfig().getScreenCapTimeOut());
-                    }
+                    Mob.mob(Mob.Action.EXEC, "" + adbAction);
+                    final String cmd = adbAction.buildCmd();
+                    executeShellCommand(device, receiver, cmd, FileUtils.getConfig().getScreenCapTimeOut());
                 } else if (type == ACTION.PULL_FILE) {
                     pullFileToDevice(device, (PullFileAction) adbAction);
                 } else if (type == ACTION.PUSH_FILE) {
                     pushFileToDevice(device, (PushFileAction) adbAction);
                 } else if (type == ACTION.INSTALL) {
                     receiver = new InstallReceiver();
-                    installApkToDevice(device, adbAction, (InstallReceiver) receiver);
+                    installApkToDevice(device, adbAction, (InstallReceiver) receiver, null);
                 } else if (type == ACTION.UNINSTALL) {
                     uninstallApkFromDevice(device, adbAction);
                 }
@@ -551,7 +547,11 @@ public class DeviceManager {
             }
         }
         if (receiver instanceof AdbResultImageReceiver) {
-            final Image image = ((AdbResultImageReceiver) receiver).getResult();
+            Image image = ((AdbResultImageReceiver) receiver).getResult();
+            if (image == null) {
+                getImageFromDevice(project, device, (AdbResultImageReceiver) receiver);
+                image = ((AdbResultImageReceiver) receiver).getResult();
+            }
             final T t = resultClz.newInstance();
             t.setData(image);
             return t;
@@ -597,8 +597,8 @@ public class DeviceManager {
         }
     }
 
-    private static void installApkToDevice(IDevice device, AdbAction adbAction, InstallReceiver receiver) throws InstallException {
-        if (!CodeLocatorUserConfig.loadConfig().isUseDefaultAdb() && sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
+    private static void installApkToDevice(IDevice device, AdbAction adbAction, InstallReceiver receiver, InstallException exception) throws InstallException {
+        if (((!CodeLocatorUserConfig.loadConfig().isUseDefaultAdb() || exception != null) && sProjectAdbPath != null && !sProjectAdbPath.isEmpty())) {
             ExecResult execResult = null;
             if (device.getVersion().getApiLevel() >= 30) {
                 execResult = OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " install --incremental -r -t -d '" + adbAction.getArgs() + "'");
@@ -611,8 +611,16 @@ public class DeviceManager {
                 receiver.processNewLines(new String[]{execResult.getErrorMsg()});
             }
         } else {
-            device.installPackage(adbAction.getArgs(), true, receiver, "-t", "-d");
-            Mob.mob(Mob.Action.EXEC, "" + adbAction);
+            if (exception == null) {
+                try {
+                    device.installPackage(adbAction.getArgs(), true, receiver, "-t", "-d");
+                    Mob.mob(Mob.Action.EXEC, "" + adbAction);
+                } catch (InstallException e) {
+                    installApkToDevice(device, adbAction, receiver, e);
+                }
+            } else {
+                throw exception;
+            }
         }
     }
 
@@ -620,7 +628,18 @@ public class DeviceManager {
         if (!CodeLocatorUserConfig.loadConfig().isUseDefaultAdb() && sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
             final ExecResult execResult = OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " shell screencap -p");
             if (execResult.getResultCode() == 0) {
-                final BufferedImage read = ImageIO.read(new ByteArrayInputStream(execResult.getResultMsg().getBytes(StandardCharsets.UTF_8)));
+                BufferedImage read = ImageIO.read(new ByteArrayInputStream(execResult.getByteArray()));
+                if (read == null) {
+                    OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " shell screencap -p " + CodeLocatorConstants.TMP_TRANS_IMAGE_FILE_PATH);
+                    final File file = new File(FileUtils.sCodeLocatorMainDirPath, CodeLocatorConstants.TMP_IMAGE_FILE_NAME);
+                    if (file.exists()) {
+                        file.delete();
+                    }
+                    pullFileToDevice(device, new PullFileAction(CodeLocatorConstants.TMP_TRANS_IMAGE_FILE_PATH, file.getAbsolutePath()));
+                    if (file.exists()) {
+                        read = ImageIO.read(file);
+                    }
+                }
                 receiver.setResult(read);
             }
         } else {
@@ -628,39 +647,57 @@ public class DeviceManager {
                 final RawImage screenshot = device.getScreenshot(FileUtils.getConfig().getScreenCapTimeOut(), TimeUnit.SECONDS);
                 receiver.setData(screenshot);
             } catch (Throwable t) {
-                if ("eof".equalsIgnoreCase(t.getMessage())) {
-                    final String editCommand = new EditActivityBuilder(null).edit(new GetActivityImageModel()).builderEditCommand();
-                    final AdbCommand adbCommand = new AdbCommand(new BroadcastAction(CodeLocatorConstants.ACTION_CHANGE_VIEW_INFO).args(CodeLocatorConstants.KEY_CHANGE_VIEW, editCommand));
-                    final OperateResponse operateResponse = executeCmd(project, adbCommand, OperateResponse.class);
-                    ResultData data = operateResponse.getData();
-                    String errorMsg = data.getResult(CodeLocatorConstants.ResultKey.ERROR);
-                    if (errorMsg != null) {
-                        throw new ExecuteException(errorMsg, data.getResult(ResultKey.STACK_TRACE));
+                Log.e("获取图片失败，", t);
+                if (sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
+                    final ExecResult execResult = OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " shell screencap -p");
+                    if (execResult.getResultCode() == 0) {
+                        BufferedImage read = ImageIO.read(new ByteArrayInputStream(execResult.getByteArray()));
+                        if (read == null) {
+                            OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " shell screencap -p " + CodeLocatorConstants.TMP_TRANS_IMAGE_FILE_PATH);
+                            final File file = new File(FileUtils.sCodeLocatorMainDirPath, CodeLocatorConstants.TMP_IMAGE_FILE_NAME);
+                            if (file.exists()) {
+                                file.delete();
+                            }
+                            pullFileToDevice(device, new PullFileAction(CodeLocatorConstants.TMP_TRANS_IMAGE_FILE_PATH, file.getAbsolutePath()));
+                            if (file.exists()) {
+                                read = ImageIO.read(file);
+                            }
+                        }
+                        if (read != null) {
+                            receiver.setResult(read);
+                            return;
+                        }
                     }
-                    String pkgName = data.getResult(CodeLocatorConstants.ResultKey.PKG_NAME);
-                    String imgPath = data.getResult(CodeLocatorConstants.ResultKey.FILE_PATH);
-                    if (pkgName == null || imgPath == null) {
+                }
+                final String editCommand = new EditActivityBuilder(null).edit(new GetActivityImageModel()).builderEditCommand();
+                final AdbCommand adbCommand = new AdbCommand(new BroadcastAction(CodeLocatorConstants.ACTION_CHANGE_VIEW_INFO).args(CodeLocatorConstants.KEY_CHANGE_VIEW, editCommand));
+                final OperateResponse operateResponse = executeCmd(project, adbCommand, OperateResponse.class);
+                ResultData data = operateResponse.getData();
+                String errorMsg = data.getResult(CodeLocatorConstants.ResultKey.ERROR);
+                if (errorMsg != null) {
+                    throw new ExecuteException(errorMsg, data.getResult(ResultKey.STACK_TRACE));
+                }
+                String pkgName = data.getResult(CodeLocatorConstants.ResultKey.PKG_NAME);
+                String imgPath = data.getResult(CodeLocatorConstants.ResultKey.FILE_PATH);
+                if (pkgName == null || imgPath == null) {
+                    throw new ExecuteException(ResUtils.getString("get_image_failed_msg"));
+                }
+                File viewImageFile = new File(FileUtils.sCodeLocatorMainDirPath, CodeLocatorConstants.TMP_IMAGE_FILE_NAME);
+                if (viewImageFile.exists()) {
+                    viewImageFile.delete();
+                }
+                final BytesResponse bytesResponse = executeCmd(project, new AdbCommand(new CatFileAction(imgPath)), BytesResponse.class);
+                Image viewImage = ImageIO.read(new ByteArrayInputStream(bytesResponse.getData()));
+                if (viewImage == null) {
+                    executeCmd(project, new AdbCommand(new PullFileAction(imgPath, viewImageFile.getAbsolutePath())), BaseResponse.class);
+                    if (viewImageFile.exists()) {
+                        viewImage = ImageIO.read(viewImageFile);
+                    }
+                    if (viewImage == null) {
                         throw new ExecuteException(ResUtils.getString("get_image_failed_msg"));
                     }
-                    File viewImageFile = new File(FileUtils.sCodeLocatorMainDirPath, CodeLocatorConstants.TMP_IMAGE_FILE_NAME);
-                    if (viewImageFile.exists()) {
-                        viewImageFile.delete();
-                    }
-                    final BytesResponse bytesResponse = executeCmd(project, new AdbCommand(new CatFileAction(imgPath)), BytesResponse.class);
-                    Image viewImage = ImageIO.read(new ByteArrayInputStream(bytesResponse.getData()));
-                    if (viewImage == null) {
-                        executeCmd(project, new AdbCommand(new PullFileAction(imgPath, viewImageFile.getAbsolutePath())), BaseResponse.class);
-                        if (viewImageFile.exists()) {
-                            viewImage = ImageIO.read(viewImageFile);
-                        }
-                        if (viewImage == null) {
-                            throw new ExecuteException(ResUtils.getString("get_image_failed_msg"));
-                        }
-                    }
-                    receiver.setResult((BufferedImage) viewImage);
-                } else {
-                    throw t;
                 }
+                receiver.setResult((BufferedImage) viewImage);
             }
         }
     }
@@ -678,13 +715,21 @@ public class DeviceManager {
         if (!CodeLocatorUserConfig.loadConfig().isUseDefaultAdb() && sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
             OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " pull " + adbAction.getSourcePath() + " " + adbAction.getTargetPath());
         } else {
-            device.pullFile(adbAction.getSourcePath(), adbAction.getTargetPath());
+            try {
+                device.pullFile(adbAction.getSourcePath(), adbAction.getTargetPath());
+            } catch (SyncException syncException) {
+                if (adbAction.getSourcePath().startsWith("/storage/emulated/0/Android/data/")) {
+                    adbAction.setSourcePath(adbAction.getSourcePath().replace("/storage/emulated/0/", "/storage/emulated/legacy/"));
+                    pullFileToDevice(device, adbAction);
+                }
+            }
             Mob.mob(Mob.Action.EXEC, "" + adbAction);
         }
     }
 
     private static void executeShellCommand(IDevice device, IShellOutputReceiver receiver, String cmd, int adbCommandTimeOut) throws TimeoutException, AdbCommandRejectedException, ShellCommandUnresponsiveException, IOException {
-        if (!CodeLocatorUserConfig.loadConfig().isUseDefaultAdb() && sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
+        final byte[] cmdBytes = cmd.getBytes(StandardCharsets.UTF_8);
+        if ((cmdBytes.length > 9900 || !CodeLocatorUserConfig.loadConfig().isUseDefaultAdb()) && sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
             final String serialNumber = device.getSerialNumber();
             final ExecResult execResult = OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + serialNumber + " shell " + cmd);
             if (receiver instanceof AdbResultStringReceiver) {

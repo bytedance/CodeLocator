@@ -217,14 +217,22 @@ class FileTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
         }
         buildSelectFile(mFile!!, keyWord)
         currentFileList.sortWith(Comparator<WFile> { o1, o2 ->
-            val file1Contains = o1.absoluteFilePath.contains(keyWord)
-            val file2Contains = o2.absoluteFilePath.contains(keyWord)
+            val file1Contains = o1.name.contains(keyWord)
+            val file2Contains = o2.name.contains(keyWord)
             if (!file1Contains && file2Contains) {
                 return@Comparator 1
             } else if (file1Contains && !file2Contains) {
                 return@Comparator -1
             } else {
-                return@Comparator o1.absoluteFilePath.compareTo(o2.absoluteFilePath)
+                if (o1.name.equals(keyWord, true) && !o2.name.equals(keyWord, true)) {
+                    return@Comparator -1
+                } else if (!o1.name.equals(keyWord, true) && o2.name.equals(keyWord, true)) {
+                    return@Comparator 1
+                }
+                if (o1.name.length == o2.name.length) {
+                    return@Comparator o1.name.compareTo(o2.name)
+                }
+                return@Comparator o1.name.length - o2.name.length
             }
         })
         selectFileAtIndex()
@@ -232,7 +240,7 @@ class FileTreePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel(), OnEven
     }
 
     fun buildSelectFile(file: WFile, keyWord: String) {
-        if (StringUtils.fuzzyMatching(file.absoluteFilePath, keyWord)) {
+        if (StringUtils.fuzzyMatching(file.name, keyWord)) {
             currentFileList.add(file)
         }
         for (i in 0 until file.childCount) {

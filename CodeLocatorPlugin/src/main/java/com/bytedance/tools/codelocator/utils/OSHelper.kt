@@ -65,6 +65,12 @@ abstract class OSHelper {
 
     open fun getAndroidSdkFile(): File? {
         try {
+            val androidSdkData = AndroidSdks.getInstance().androidSdkPathsFromExistingPlatforms
+            return androidSdkData.elementAtOrNull(0)
+        } catch (t: Throwable) {
+            Log.d("androidSdkPathsFromExistingPlatforms failed", t)
+        }
+        try {
             val androidSdkData = AndroidSdks.getInstance().tryToChooseAndroidSdk() ?: return null
             val getLocationMethod = ReflectUtils.getClassMethod(androidSdkData.javaClass, "getLocation")
             val location = getLocationMethod.invoke(androidSdkData)
@@ -126,6 +132,8 @@ abstract class OSHelper {
 }
 
 class ExecResult(val resultCode: Int, val resultMsg: String?, val errorMsg: String?) {
+
+    var byteArray: ByteArray? = null
 
     override fun toString(): String {
         return "ExecResult{" +

@@ -24,13 +24,12 @@ class ShowGrabHistoryAction(
 ) {
 
     override fun actionPerformed(e: AnActionEvent) {
-        val listFiles = File(FileUtils.sCodelocatorHistoryFileDirPath).listFiles(FileFilter {
-            it.name.startsWith(FileUtils.CODE_LOCATOR_FILE_PREFIX) && it.name.endsWith(FileUtils.CODE_LOCATOR_FILE_SUFFIX)
-        })
+        val listFiles =
+            File(FileUtils.sCodelocatorHistoryFileDirPath).listFiles(FileFilter { it.name.endsWith(FileUtils.CODE_LOCATOR_FILE_SUFFIX) })
         if (listFiles?.isEmpty() != false) {
             return
         }
-        listFiles.sortByDescending { it.name }
+        listFiles.sortByDescending { it.lastModified() }
         ShowHistoryDialog(codeLocatorWindow, project, listFiles).show()
 
         Mob.mob(Mob.Action.CLICK, Mob.Button.HISTORY)
@@ -41,7 +40,7 @@ class ShowGrabHistoryAction(
             return true
         }
         val listFiles = File(FileUtils.sCodelocatorHistoryFileDirPath).listFiles()
-        return listFiles?.any { it.name.startsWith(FileUtils.CODE_LOCATOR_FILE_PREFIX) && it.name.endsWith(FileUtils.CODE_LOCATOR_FILE_SUFFIX) } ?: false
+        return listFiles?.any { it.name.endsWith(FileUtils.CODE_LOCATOR_FILE_SUFFIX) } ?: false
     }
 
     companion object {
@@ -56,7 +55,7 @@ class ShowGrabHistoryAction(
                 return
             }
             val listFiles = File(FileUtils.sCodelocatorHistoryFileDirPath).listFiles() ?: return
-            listFiles.sortByDescending { it.name }
+            listFiles.sortByDescending { it.lastModified() }
             val maxHistoryCount = FileUtils.getConfig().maxHistoryCount
             if (listFiles.size > FileUtils.getConfig().maxHistoryCount) {
                 val startSize = listFiles.size - 1
@@ -67,7 +66,7 @@ class ShowGrabHistoryAction(
             val file =
                 File(
                     FileUtils.sCodelocatorHistoryFileDirPath,
-                    FileUtils.CODE_LOCATOR_FILE_PREFIX + sSimpleDateFormat.format(Date(codeLocatorInfo.wApplication.grabTime)) + FileUtils.CODE_LOCATOR_FILE_SUFFIX
+                    codeLocatorInfo.wApplication.packageName + sSimpleDateFormat.format(Date(codeLocatorInfo.wApplication.grabTime)) + FileUtils.CODE_LOCATOR_FILE_SUFFIX
                 )
             FileUtils.saveContentToFile(file, codelocatorBytes)
         }

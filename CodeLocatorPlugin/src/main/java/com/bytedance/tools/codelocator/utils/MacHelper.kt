@@ -283,7 +283,9 @@ class MacHelper : OSHelper() {
                     resuleCode,
                     if (resuleCode == 0) String(byteArrayOutputStream.toByteArray(), Charset.forName("UTF-8")) else null,
                     if (resuleCode != 0) String(byteArrayOutputStream.toByteArray(), Charset.forName("UTF-8")) else null
-                )
+                ).apply {
+                    byteArray = byteArrayOutputStream.toByteArray()
+                }
             }
         }
         return ExecResult(0, null, null)

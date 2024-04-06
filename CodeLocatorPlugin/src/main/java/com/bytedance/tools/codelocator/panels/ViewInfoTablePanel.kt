@@ -65,7 +65,8 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
         "scaleY",
         "pivotX",
         "pivotY",
-        "isFocused"
+        "isFocused",
+        "layoutRequested"
     )
 
     var list: ArrayList<String> = arrayListOf()
@@ -356,7 +357,8 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
             map["textColor"] = view?.textColor ?: ""
             map["textLineHeight"] = view?.lineHeight?.toString() ?: ""
             map["textSpacingExtra"] = view?.spacingAdd?.toString() ?: ""
-            map["id"] = view?.idStr ?: ""
+            map["id"] =
+                if (!view?.idStr.isNullOrEmpty()) (view?.idStr ?: "") else if (view?.id == -1) "NO_ID" else view?.id?.toString() ?: ""
             map["class"] = view?.className ?: ""
             map["alpha"] = view?.alpha?.toString() ?: ""
             map["realAlpha"] = DataUtils.getViewRealAlpha(view)
@@ -384,6 +386,7 @@ class ViewInfoTablePanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
             map["pivotX"] = UIUtils.getSizeStr(view?.pivotX, application)
             map["pivotY"] = UIUtils.getSizeStr(view?.pivotY, application)
             map["layout"] = UIUtils.getLayoutStr(view?.layout, application)
+            map["layoutRequested"] = view?.isLayoutRequested?.toString() ?: "false"
             map["visible"] = when (view?.visibility) {
                 'V' -> "visible"
                 'G' -> "gone"

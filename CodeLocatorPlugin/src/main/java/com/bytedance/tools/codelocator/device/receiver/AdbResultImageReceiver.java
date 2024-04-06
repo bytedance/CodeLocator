@@ -2,13 +2,17 @@ package com.bytedance.tools.codelocator.device.receiver;
 
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.RawImage;
+import com.bytedance.tools.codelocator.utils.Log;
 import org.jetbrains.annotations.Nullable;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.color.ColorSpace;
 import java.awt.color.ICC_ColorSpace;
 import java.awt.color.ICC_Profile;
 import java.awt.image.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class AdbResultImageReceiver implements IShellOutputReceiver {
@@ -23,6 +27,13 @@ public class AdbResultImageReceiver implements IShellOutputReceiver {
     }
 
     public Image getResult() {
+        if (outputStream != null && outputStream.size() > 0) {
+            try {
+                return ImageIO.read(new ByteArrayInputStream(outputStream.toByteArray()));
+            } catch (IOException e) {
+                Log.e("getResult from output error", e);
+            }
+        }
         return mImage;
     }
 
@@ -72,9 +83,11 @@ public class AdbResultImageReceiver implements IShellOutputReceiver {
         return new BufferedImage(colorModel, raster, colorModel.isAlphaPremultiplied(), null);
     }
 
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
     @Override
     public void addOutput(byte[] bytes, int i, int i1) {
-
+        outputStream.write(bytes, i, i1);
     }
 
     @Override

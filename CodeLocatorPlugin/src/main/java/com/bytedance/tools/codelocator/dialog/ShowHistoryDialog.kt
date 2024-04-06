@@ -5,6 +5,7 @@ import com.bytedance.tools.codelocator.listener.OnClickListener
 import com.bytedance.tools.codelocator.model.CodeLocatorInfo
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.utils.*
+import com.bytedance.tools.codelocator.views.MyImageIcon
 import com.intellij.codeInsight.hint.HintManager
 import com.intellij.codeInsight.hint.HintManagerImpl
 import com.intellij.openapi.project.Project
@@ -108,11 +109,9 @@ class ShowHistoryDialog(
         jButton.font = Font(jButton.font.name, Font.PLAIN, 12)
         val fontMetrics = FontDesignMetrics.getMetrics(jButton.font)
 
-        val fileName = file.name
-        var grabTime = fileName.substring("codelocator_".length, fileName.length - ".codelocator".length)
+        var grabTime = ""
         try {
-            val parseDate = ShowGrabHistoryAction.sSimpleDateFormat.parse(grabTime)
-            grabTime = Log.sSimpleDateFormat.format(parseDate)
+            grabTime = Log.sSimpleDateFormat.format(file.lastModified())
         } catch (ignore: Exception) {
 
         }
@@ -148,13 +147,10 @@ class ShowHistoryDialog(
                             HintManagerImpl.getInstanceImpl()
                                 .showHint(
                                     JLabel(
-                                        ImageIcon(
-                                            codelocatorInfo.image
-                                                .getScaledInstance(
-                                                    imageWidth,
-                                                    codelocatorInfo.image.getHeight(null) / 5,
-                                                    Image.SCALE_SMOOTH
-                                                )
+                                        MyImageIcon(
+                                            codelocatorInfo.image,
+                                            imageWidth,
+                                            codelocatorInfo.image.getHeight(null) / 5
                                         )
                                     ),
                                     if (this@ShowHistoryDialog.x > imageWidth) {

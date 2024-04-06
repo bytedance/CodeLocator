@@ -243,7 +243,7 @@ class SendSchemaDialog(
                 val schema = textField.text + editableTableModel.buildArgsStr()
                 val originSchema = textField.text + editableTableModel.buildOriginArgsStr()
                 Log.d("send schema " + schema)
-                if (e.isMetaDown) {
+                if (JComponentUtils.isRightClick(e)) {
                     ClipboardUtils.copyContentToClipboard(project, schema)
                     return
                 }
@@ -443,7 +443,7 @@ class SendSchemaDialog(
         schemaArgTable.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
                 super.mouseClicked(e)
-                if (!e.isMetaDown) {
+                if (!JComponentUtils.isRightClick(e)) {
                     return
                 }
                 val clickedRow = schemaArgTable.rowAtPoint(e.point)
@@ -527,7 +527,7 @@ class SendSchemaDialog(
                 super.mouseClicked(e)
 
                 val locationToIndex = schemaListJComponent.locationToIndex(Point(e.x, e.y))
-                if (e.isMetaDown) {
+                if (JComponentUtils.isRightClick(e)) {
                     showPop(schemaListJComponent, showSchemaList[locationToIndex], e.x, e.y)
                 } else if (lastClickIndex == locationToIndex) {
                     if (System.currentTimeMillis() - lastClickTime < 1000) {

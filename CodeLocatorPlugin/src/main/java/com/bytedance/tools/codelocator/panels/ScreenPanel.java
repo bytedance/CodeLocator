@@ -7,13 +7,11 @@ import com.bytedance.tools.codelocator.action.SimpleAction;
 import com.bytedance.tools.codelocator.device.Device;
 import com.bytedance.tools.codelocator.device.DeviceManager;
 import com.bytedance.tools.codelocator.device.action.*;
+import com.bytedance.tools.codelocator.device.response.BytesResponse;
 import com.bytedance.tools.codelocator.device.response.ImageResponse;
 import com.bytedance.tools.codelocator.listener.*;
 import com.bytedance.tools.codelocator.model.*;
-import com.bytedance.tools.codelocator.response.ApplicationResponse;
-import com.bytedance.tools.codelocator.response.BaseResponse;
-import com.bytedance.tools.codelocator.response.FileResponse;
-import com.bytedance.tools.codelocator.response.StringResponse;
+import com.bytedance.tools.codelocator.response.*;
 import com.bytedance.tools.codelocator.utils.*;
 import com.intellij.ide.DataManager;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -24,6 +22,7 @@ import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.ui.popup.ListPopup;
 import com.intellij.ui.awt.RelativePoint;
 import com.intellij.util.ui.UIUtil;
+import kotlin.Pair;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
@@ -34,6 +33,7 @@ import java.awt.event.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.lang.reflect.Method;
@@ -295,7 +295,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                 boolean isControlClick = e.isControlDown();
                 boolean isShiftDown = !isControlClick && e.isShiftDown();
                 boolean isAltDown = !isControlClick && !isShiftDown && e.isAltDown();
-                if (!e.isMetaDown()) {
+                if (!JComponentUtils.isRightClick(e)) {
                     if (System.currentTimeMillis() - sLastClickTime < 2500
                         && (mPreviousView != null && mPreviousView.equals(mClickedView))) {
                         sLastClickCount++;
@@ -393,14 +393,14 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                     mCurrentDrawRect.clear();
                     WView clickedView = ViewUtils.findClickedView(mActivity, convertX, convertY, false, getForbidView());
                     addOrRemoveView(clickedView);
-                } else {
+                } else if (!JComponentUtils.isRightClick(e)) {
                     mCurrentMode = SearchableJTree.MODE_NORMAL;
                     onClickViewChange(ViewUtils.findClickedView(mActivity, convertX, convertY, isAltDown, getForbidView()));
                 }
                 if (mOnGetViewListListener != null) {
                     mOnGetViewListListener.onGetViewList(mCurrentMode, mCurrentViewList);
                 }
-                if (e.isMetaDown() && mOnViewRightClickListener != null) {
+                if (JComponentUtils.isRightClick(e) && mOnViewRightClickListener != null) {
                     mOnViewRightClickListener.onViewRightClick(ScreenPanel.this, e.getX(), e.getY(), false);
                 }
             }
@@ -878,6 +878,33 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         sShowTipMaps.put(pkgName + tips, System.currentTimeMillis());
     }
 
+    private Pair<Integer, Integer> getActivitySize(WActivity activity) {
+        if (activity == null || activity.getDecorViews() == null || activity.getDecorViews().isEmpty()) {
+            return new Pair<>(0, 0);
+        }
+        for (WView decorView : activity.getDecorViews()) {
+            final int width = decorView.getWidth();
+            final int height = decorView.getHeight();
+            if (width != 0 && height != 0) {
+                return new Pair<>(width, height);
+            }
+        }
+        return new Pair<>(0, 0);
+    }
+
+    private void tryFixOrientation() {
+        if (mScreenCapImage != null
+            && mApplication.getActivity().getDecorViews() != null
+            && !mApplication.getActivity().getDecorViews().isEmpty()) {
+            final int activityWidth = mApplication.getActivity().getDecorViews().get(0).getWidth();
+            if (mScreenCapImage.getWidth(null) != activityWidth
+                && mScreenCapImage.getHeight(null) == activityWidth) {
+                mScreenCapImage = rotateLandscapeImage((BufferedImage) mScreenCapImage, 90);
+                calculateScaleScreenInfo();
+            }
+        }
+    }
+
     @NotNull
     private WActivity caclulateActivityInfo() {
         mApplication.setPanelWidth(mDrawWidth);
@@ -895,8 +922,9 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         if (activity.getDecorViews() == null || activity.getDecorViews().isEmpty()) {
             return activity;
         }
-        final int width = activity.getDecorViews().get(0).getWidth();
-        final int height = activity.getDecorViews().get(0).getHeight();
+        Pair<Integer, Integer> size = getActivitySize(activity);
+        final int width = size.getFirst();
+        final int height = size.getSecond();
         if (mIsLandScape) {
             if (width != mApplication.getOverrideScreenWidth() && height != mApplication.getOverrideScreenHeight()
                 && width != mApplication.getOverrideScreenHeight() && height != mApplication.getOverrideScreenWidth()) {
@@ -1536,6 +1564,40 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         return !((r1.x + r1.width < r2.x) || (r1.y + r1.height < r2.y) || (r2.x + r2.width < r1.x) || (r2.y + r2.height < r1.y));
     }
 
+    private boolean allSameColor(Image image) {
+        BufferedImage bufferedImage = null;
+        if (image instanceof BufferedImage) {
+            bufferedImage = (BufferedImage) image;
+        } else {
+            try {
+                final Method getBufferedImage = ReflectUtils.getClassMethod(mScreenCapImage.getClass(), "getBufferedImage");
+                if (getBufferedImage == null) {
+                    return false;
+                }
+                bufferedImage = (BufferedImage) getBufferedImage.invoke(mScreenCapImage);
+            } catch (Throwable t) {
+                Log.e("反射获取getBufferedImage失败", t);
+            }
+        }
+        if (bufferedImage == null) {
+            return false;
+        }
+        final int width = bufferedImage.getWidth();
+        final int height = bufferedImage.getHeight();
+        if (width <= 0 || height <= 0) {
+            return false;
+        }
+        final int rgb = bufferedImage.getRGB(0, 0);
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                if (bufferedImage.getRGB(x, y) != rgb) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     private Color getDrawRectColor(int left, int top, int width, int height, Color[] colors) {
         Image image = null;
         if (mScreenCapImage == null) {
@@ -1726,6 +1788,7 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         mScreenCapImage = image;
         calculateScaleScreenInfo();
         mApplication = application;
+        tryFixOrientation();
         caclulateActivityInfo();
         onGetApplicationInfoSuccess(null);
         ThreadUtils.submit(() -> FileUtils.saveScreenCap(mScreenCapImage));
@@ -1983,18 +2046,77 @@ public class ScreenPanel extends JPanel implements ImageObserver {
         }
     }
 
+    private Image getImageFromView(WView view) {
+        String builderEditCommand = new EditViewBuilder(view).edit(new GetViewBitmapModel(null)).builderEditCommand();
+        try {
+            if (view.getActivity().getApplication().getAndroidVersion() >= CodeLocatorConstants.USE_TRANS_FILE_SDK_VERSION) {
+                DeviceManager.executeCmd(
+                    project,
+                    new AdbCommand(new DeleteFileAction(CodeLocatorConstants.TMP_TRANS_IMAGE_FILE_PATH)),
+                    StringResponse.class
+                );
+            }
+            OperateResponse operateResponse = DeviceManager.executeCmd(
+                project,
+                new AdbCommand(new BroadcastAction(CodeLocatorConstants.ACTION_CHANGE_VIEW_INFO).args(CodeLocatorConstants.KEY_CHANGE_VIEW, builderEditCommand)),
+                OperateResponse.class
+            );
+            ResultData data = operateResponse.getData();
+            String errorMsg = data.getResult(CodeLocatorConstants.ResultKey.ERROR);
+            if (errorMsg != null) {
+                return null;
+            }
+            String pkgName = data.getResult(CodeLocatorConstants.ResultKey.PKG_NAME);
+            String imgPath = data.getResult(CodeLocatorConstants.ResultKey.FILE_PATH);
+            if (pkgName == null || imgPath == null) {
+                return null;
+            }
+            File viewImageFile = new File(FileUtils.sCodeLocatorMainDirPath, CodeLocatorConstants.TMP_IMAGE_FILE_NAME);
+            if (viewImageFile.exists()) {
+                viewImageFile.delete();
+            }
+            BytesResponse bytesResponse = DeviceManager.executeCmd(project, new AdbCommand(new CatFileAction(imgPath)), BytesResponse.class);
+            Image viewImage = ImageIO.read(new ByteArrayInputStream(bytesResponse.getData()));
+            if (viewImage == null) {
+                DeviceManager.executeCmd(project, new AdbCommand(new PullFileAction(imgPath, viewImageFile.getAbsolutePath())), BaseResponse.class);
+                if (viewImageFile.exists()) {
+                    viewImage = ImageIO.read(viewImageFile);
+                }
+                if (viewImage == null) {
+                    Log.e("创建图片失败 bytesize: " + (bytesResponse.getData()));
+                    return null;
+                }
+            }
+            return viewImage;
+        } catch (Throwable t) {
+            Log.e("获取View图片失败", t);
+        }
+        return null;
+    }
+
     private void onStopGrabEnd() {
         Log.d("call onStopGrabEnd");
         mGrapStepCount.getAndSet(0);
         mIsGrabbing = false;
-        if (mScreenCapImage == null) {
-            ThreadUtils.runOnUIThread(() -> Messages.showMessageDialog(project, ResUtils.getString("grab_image_failed"), "CodeLocator", Messages.getInformationIcon()));
-            return;
+        if (mScreenCapImage == null || allSameColor(mScreenCapImage)) {
+            if (mApplication != null && mApplication.getActivity() != null && mApplication.getActivity().getDecorViews() != null && mApplication.getActivity().getDecorViews().size() > 0) {
+                final List<WView> decorViews = mApplication.getActivity().getDecorViews();
+                final WView wView = decorViews.get(0);
+                mScreenCapImage = getImageFromView(wView);
+                calculateScaleScreenInfo();
+                repaint();
+            }
+            if (mScreenCapImage == null) {
+                ThreadUtils.runOnUIThread(() -> Messages.showMessageDialog(project, ResUtils.getString("grab_image_failed"), "CodeLocator", Messages.getInformationIcon()));
+                return;
+            }
         }
         if (mApplication == null || mApplication.getActivity() == null) {
             onGetApplicationInfoFailed();
             return;
         }
+        tryFixOrientation();
+        tryFixLandscapeError();
         caclulateActivityInfo();
         ThreadUtils.runOnUIThread(() -> {
             onGetApplicationInfoSuccess(null);
@@ -2052,6 +2174,25 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             });
     }
 
+    public static BufferedImage rotateLandscapeImage(BufferedImage bufferedImage, int angel) {
+        if (bufferedImage == null) {
+            return null;
+        }
+        int imageWidth = bufferedImage.getWidth(null);
+        int imageHeight = bufferedImage.getHeight(null);
+        // 获取原始图片的透明度
+        int type = bufferedImage.getColorModel().getTransparency();
+        BufferedImage newImage = new BufferedImage(imageHeight, imageWidth, type);
+        Graphics2D graphics = newImage.createGraphics();
+        // 平移位置
+        graphics.translate((imageHeight - imageWidth) / 2, (imageWidth - imageHeight) / 2);
+        // 旋转角度
+        graphics.rotate(Math.toRadians(angel), imageWidth / 2, imageHeight / 2);
+        // 绘图
+        graphics.drawImage(bufferedImage, null, null);
+        return newImage;
+    }
+
     private void onGetScreenCapImage(Device device, WView lastSelectView) {
         try {
             // call Debug check
@@ -2069,6 +2210,21 @@ public class ScreenPanel extends JPanel implements ImageObserver {
             if (mApplication == null || mApplication.getActivity() == null) {
                 onGetApplicationInfoFailed();
                 return;
+            }
+            if (allSameColor(mScreenCapImage)) {
+                if (mApplication != null
+                    && mApplication.getActivity() != null
+                    && mApplication.getActivity().getDecorViews() != null
+                    && mApplication.getActivity().getDecorViews().size() > 0) {
+                    final List<WView> decorViews = mApplication.getActivity().getDecorViews();
+                    final WView wView = decorViews.get(0);
+                    final Image imageFromView = getImageFromView(wView);
+                    if (imageFromView != null) {
+                        mScreenCapImage = imageFromView;
+                    }
+                    calculateScaleScreenInfo();
+                    repaint();
+                }
             }
             mApplication.setOverrideScreenWidth(device.getDeviceOverrideWidth());
             mApplication.setOverrideScreenHeight(device.getDeviceOverrideHeight());
@@ -2090,6 +2246,16 @@ public class ScreenPanel extends JPanel implements ImageObserver {
                     onClickViewChange(null);
                 });
             }
+        }
+    }
+
+    private void tryFixLandscapeError() {
+        if (mApplication.isLandScape() && !mIsLandScape) {
+            mScreenCapImage = rotateLandscapeImage((BufferedImage) mScreenCapImage, 270);
+            calculateScaleScreenInfo();
+        } else if (!mApplication.isLandScape() && mIsLandScape) {
+            mScreenCapImage = rotateLandscapeImage((BufferedImage) mScreenCapImage, 90);
+            calculateScaleScreenInfo();
         }
     }
 

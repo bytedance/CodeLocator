@@ -6,9 +6,13 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 
 public class JComponentUtils {
 
+    public static boolean isRightClick(MouseEvent e) {
+        return e.getButton() == MouseEvent.BUTTON3;
+    }
     public static void setSize(JComponent jComponent, int width, int height) {
         jComponent.setMinimumSize(new Dimension(width, height));
         jComponent.setMaximumSize(new Dimension(width, height));

@@ -26,7 +26,14 @@ import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.wm.ex.WindowManagerEx
 import com.intellij.ui.awt.RelativePoint
-import java.awt.*
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.disposables.Disposable
+import java.awt.Color
+import java.awt.Component
+import java.awt.Dimension
+import java.awt.Graphics
+import java.awt.Point
+import java.awt.Toolkit
 import java.awt.dnd.DropTarget
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
@@ -36,6 +43,7 @@ import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
 import java.io.File
 import java.util.*
+import java.util.concurrent.TimeUnit
 import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JDialog
@@ -211,6 +219,8 @@ class CodeLocatorWindow(
 
     private var updateFile: File? = null
 
+    var disposable: Disposable? = null
+
     init {
         val createTopBar = createTopBar(project)
         toolbar = createTopBar
@@ -236,7 +246,7 @@ class CodeLocatorWindow(
         })
         val height = Toolkit.getDefaultToolkit().screenSize.height
         if (height < 940) {
-            screenPanelHeight = Math.max(500, height - 240)
+            screenPanelHeight = Math.max(CoordinateUtils.MIN_SCREEN_HEIGHT, height - 240)
             landScreenPanelHeight = Math.max(200, height - 240 - CoordinateUtils.SCALE_TO_LAND_HEIGHT)
             treePanelHeight = screenPanelHeight / 2
         }
@@ -255,7 +265,7 @@ class CodeLocatorWindow(
                 }
                 lastHeight = newHeight
                 if (newHeight < 780) {
-                    screenPanelHeight = Math.max(500, newHeight - 80)
+                    screenPanelHeight = Math.max(CoordinateUtils.MIN_SCREEN_HEIGHT, newHeight - 80)
                     landScreenPanelHeight = Math.max(200, newHeight - 80 - CoordinateUtils.SCALE_TO_LAND_HEIGHT)
                     treePanelHeight = screenPanelHeight / 2
                     getScreenPanel()?.adjustLayout()
@@ -271,6 +281,25 @@ class CodeLocatorWindow(
                 }
             }
         })
+        createTopBar.addComponentListener(object : ComponentAdapter() {
+            override fun componentResized(e: ComponentEvent?) {
+                super.componentResized(e)
+                if (e?.component?.height == 0) {
+                    rootPanel.powerStr = ResUtils.getString("toolbar_hide_tip")
+                    rootPanel.repaint()
+                } else {
+                    rootPanel.powerStr = FileUtils.getConfig().drawPowerStr
+                    rootPanel.repaint()
+                }
+            }
+        })
+
+        if (!isWindowMode) {
+            disposable = Observable.interval(6, TimeUnit.HOURS)
+                .subscribe {
+                    AutoUpdateUtils.checkNeedUpdate(this)
+                }
+        }
     }
 
     fun getScreenPanel(): ScreenPanel? {

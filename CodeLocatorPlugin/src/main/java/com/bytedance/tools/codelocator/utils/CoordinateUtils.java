@@ -6,6 +6,8 @@ import java.awt.*;
 
 public class CoordinateUtils {
 
+    public static final int MIN_SCREEN_HEIGHT = 300;
+
     public static final int SCALE_TO_LAND_HEIGHT = 300;
 
     public static final int PANEL_WIDTH = 420;

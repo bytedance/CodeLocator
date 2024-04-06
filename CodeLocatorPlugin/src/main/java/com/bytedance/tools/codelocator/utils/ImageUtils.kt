@@ -5,6 +5,7 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.WriterException
 import com.google.zxing.qrcode.QRCodeWriter
 import com.intellij.openapi.util.IconLoader
+import com.intellij.openapi.util.ScalableIcon
 import com.luciad.imageio.webp.WebPReadParam
 import java.awt.Color
 import java.awt.Image
@@ -38,6 +39,8 @@ object ImageUtils {
         }
         var findIcon = IconLoader.findIcon(path + loadImageFileName)
         if (imageSize != null && findIcon is IconLoader.CachedImageIcon && findIcon.iconWidth != imageSize) {
+            findIcon = findIcon.scale(imageSize * 1.0f / findIcon.iconWidth)
+        } else if (imageSize != null && findIcon != null && findIcon is ScalableIcon && findIcon.iconWidth != imageSize) {
             findIcon = findIcon.scale(imageSize * 1.0f / findIcon.iconWidth)
         }
         if (imageSize != null && findIcon?.javaClass?.name == "com.intellij.openapi.util.CachedImageIcon" && findIcon.iconWidth != imageSize) {

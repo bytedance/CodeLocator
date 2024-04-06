@@ -25,7 +25,7 @@ class RootPanel(val codeLocatorWindow: CodeLocatorWindow) : JPanel() {
 
     private val imageSize = 120
 
-    private var powerStr = ""
+    var powerStr = ""
 
     var adLabel = JLabel()
 

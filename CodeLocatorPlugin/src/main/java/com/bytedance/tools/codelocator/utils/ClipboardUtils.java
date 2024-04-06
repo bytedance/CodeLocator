@@ -1,6 +1,7 @@
 package com.bytedance.tools.codelocator.utils;
 
 import com.bytedance.tools.codelocator.action.ImageTransferable;
+import com.intellij.openapi.ide.CopyPasteManager;
 import com.intellij.openapi.project.Project;
 
 import java.awt.*;
@@ -8,6 +9,7 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
+import java.awt.image.BufferedImage;
 
 public class ClipboardUtils {
 
@@ -28,9 +30,10 @@ public class ClipboardUtils {
         if (OSHelper.getInstance().copyImageToClipboard(image)) {
             return;
         }
-        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-        Transferable transferable = new ImageTransferable(image);
-        clipboard.setContents(transferable, null);
+        CopyPasteManager.getInstance().setContents(new ImageTransferable((BufferedImage) image));
+        //Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        //Transferable transferable = new ImageTransferable((BufferedImage) image);
+        //clipboard.setContents(transferable, null);
     }
 
     public static String readClipboardContent() {
