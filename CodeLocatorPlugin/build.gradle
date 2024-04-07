@@ -12,7 +12,7 @@ runIde {
     jvmArgs '-Xmx10G'
 }
 
-boolean useSourceCode = true
+boolean useSourceCode = false
 
 repositories {
     mavenCentral()
@@ -41,7 +41,7 @@ dependencies {
     if (useSourceCode) {
         implementation project(':CodeLocatorModel')
     } else {
-        implementation "com.bytedance.tools.codelocator:codelocator-model:2.0.0"
+        implementation "com.bytedance.tools.codelocator:codelocator-model:2.0.4"
     }
     implementation "io.reactivex.rxjava3:rxjava:3.1.4"
     implementation "com.google.zxing:core:3.5.0"
