@@ -83,7 +83,7 @@ class FindViewAction(
             if (jumpInfo.isIsViewBinding) {
                 IdeaUtils.navigateByJumpInfo(
                     codeLocatorWindow, project, jumpInfo,
-                    false, "", jumpInfo.camelId,
+                    false, "", "." + jumpInfo.camelId,
                     true)
             } else {
                 IdeaUtils.navigateByJumpInfo(

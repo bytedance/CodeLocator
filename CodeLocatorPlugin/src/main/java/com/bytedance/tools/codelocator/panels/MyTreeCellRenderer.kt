@@ -6,6 +6,7 @@ import com.bytedance.tools.codelocator.model.WActivity
 import com.bytedance.tools.codelocator.model.WFile
 import com.bytedance.tools.codelocator.model.WFragment
 import com.bytedance.tools.codelocator.model.WView
+import com.bytedance.tools.codelocator.utils.FileUtils
 import com.bytedance.tools.codelocator.utils.StringUtils
 import com.bytedance.tools.codelocator.utils.UIUtils
 import com.bytedance.tools.codelocator.utils.ViewUtils
@@ -127,11 +128,12 @@ class MyTreeCellRenderer(val codeLocatorWindow: CodeLocatorWindow, val type: Int
                 }
                 text = className
             }
+
             value.userObject is WFile -> {
                 val file = value.userObject as WFile
                 if (file.isDirectory) {
                     text =
-                        "(${file.childCount}) ${file.name} [totalSize: ${StringUtils.getFileSize(file.length, false)}]"
+                        "(${file.childCount}) [${FileUtils.getDirectoryFileCount(file)}] ${file.name} [totalSize: ${StringUtils.getFileSize(FileUtils.getDirectoryFileSize(file), false)}]"
                 } else {
                     text = "${file.name} [totalSize: ${StringUtils.getFileSize(file.length, false)}]"
                 }

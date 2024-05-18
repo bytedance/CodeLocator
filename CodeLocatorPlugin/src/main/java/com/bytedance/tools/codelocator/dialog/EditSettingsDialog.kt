@@ -1,11 +1,14 @@
 package com.bytedance.tools.codelocator.dialog
 
+import com.android.ddmlib.AndroidDebugBridge
+import com.bytedance.tools.codelocator.action.SimpleAction
 import com.bytedance.tools.codelocator.device.Device
 import com.bytedance.tools.codelocator.device.DeviceManager
 import com.bytedance.tools.codelocator.device.DeviceManager.OnExecutedListener
 import com.bytedance.tools.codelocator.device.action.AdbCommand
 import com.bytedance.tools.codelocator.device.action.BroadcastAction
 import com.bytedance.tools.codelocator.exception.ExecuteException
+import com.bytedance.tools.codelocator.listener.OnActionListener
 import com.bytedance.tools.codelocator.listener.OnClickListener
 import com.bytedance.tools.codelocator.model.CodeLocatorUserConfig
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
@@ -23,8 +26,12 @@ import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ACTION_PROCESS
 import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_ACTION_CLEAR
 import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.KEY_CODELOCATOR_ACTION
 import com.bytedance.tools.codelocator.utils.NetUtils
+import com.intellij.ide.DataManager
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.wm.ex.WindowManagerEx
 import java.awt.Dimension
 import java.awt.Font
@@ -71,7 +78,43 @@ class EditSettingsDialog(val codeLocatorWindow: CodeLocatorWindow, val project: 
         contentPane = dialogContentPanel
     }
 
+    private fun addChooseDeviceBox() {
+        val currentDevice = DeviceManager.getCurrentDevice(project)
+        var currentDevStr = ""
+        if (currentDevice != null) {
+            currentDevStr = ResUtils.getString("current_device_format", currentDevice.deviceName)
+        }
+        val chooseDevicesBtn = JButton(currentDevStr)
+        chooseDevicesBtn.font = Font(chooseDevicesBtn.font.name, chooseDevicesBtn.font.style, 15)
+        chooseDevicesBtn.addActionListener {
+            Mob.mob(Mob.Action.CLICK, "switch_device")
+            val devices = AndroidDebugBridge.getBridge().devices
+            val actionGroup = DefaultActionGroup("listGroup", true)
+            for (device in devices) {
+                if (device.isOnline) {
+                    actionGroup.add(SimpleAction(device.name, object : OnActionListener {
+                        override fun actionPerformed(e: AnActionEvent) {
+                            DeviceManager.setCurrentSelectedDevice(project, device)
+                            chooseDevicesBtn.text = ResUtils.getString("current_device_format", device.name)
+                        }
+                    }))
+                }
+            }
+            val popDialog = JBPopupFactory.getInstance().createActionGroupPopup(
+                ResUtils.getString("switch_device"),
+                actionGroup,
+                DataManager.getInstance().dataContext,
+                JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
+                true
+            )
+            popDialog.showCenteredInCurrentWindow(project)
+        }
+        dialogContentPanel.add(chooseDevicesBtn)
+        dialogContentPanel.add(Box.createVerticalStrut(CoordinateUtils.DEFAULT_BORDER))
+    }
+
     private fun addEditPortView() {
+        addChooseDeviceBox()
         addEnglishChangeSetBox()
         addViewChangeSetBox()
         if (NetUtils.SEARCH_CODE_URL.isNotEmpty()) {

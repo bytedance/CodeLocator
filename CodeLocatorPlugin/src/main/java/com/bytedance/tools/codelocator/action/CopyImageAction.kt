@@ -83,6 +83,9 @@ class CopyImageAction(
         }
         (image as? BufferedImage)?.run {
             ImageIO.write(this, "png", file)
+            if (commandType == null) {
+                ClipboardUtils.copyImageToClipboard(image)
+            }
         }
         ThreadUtils.runOnUIThread {
             if (file.exists() && CodeLocatorUserConfig.loadConfig().isUseImageEditor) {
@@ -201,22 +204,19 @@ class CopyImageAction(
 
 }
 
-internal class ImageTransferable(private val image: Image) : Transferable {
-
-    @Throws(UnsupportedFlavorException::class)
-    override fun getTransferData(flavor: DataFlavor): Any {
-        return if (isDataFlavorSupported(flavor)) {
-            image
-        } else {
-            throw UnsupportedFlavorException(flavor)
-        }
-    }
-
-    override fun isDataFlavorSupported(flavor: DataFlavor): Boolean {
-        return flavor === DataFlavor.imageFlavor
-    }
-
+class ImageTransferable(val myImage: BufferedImage) : Transferable {
     override fun getTransferDataFlavors(): Array<DataFlavor> {
         return arrayOf(DataFlavor.imageFlavor)
+    }
+
+    override fun isDataFlavorSupported(dataFlavor: DataFlavor): Boolean {
+        return DataFlavor.imageFlavor.equals(dataFlavor)
+    }
+
+    override fun getTransferData(dataFlavor: DataFlavor): Any {
+        if (!DataFlavor.imageFlavor.equals(dataFlavor)) {
+            throw UnsupportedFlavorException(dataFlavor)
+        }
+        return myImage
     }
 }

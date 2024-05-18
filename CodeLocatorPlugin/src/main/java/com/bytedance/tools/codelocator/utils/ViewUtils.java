@@ -258,6 +258,10 @@ public class ViewUtils {
             filterChildViewByVisible(view, filterViews, 'G');
         } else if (filterMode == ScreenPanel.FILTER_INVISIBLE) {
             filterChildViewByVisible(view, filterViews, 'I');
+        } else if (filterMode == ScreenPanel.FILTER_FOCUSED) {
+            filterChildViewByFocused(view, filterViews);
+        } else if (filterMode == ScreenPanel.FILTER_LAYOUT_REQUESTED) {
+            filterChildViewByLayout(view, filterViews);
         } else {
             filterChildViewByOverDraw(view, view, filterViews);
         }
@@ -273,6 +277,30 @@ public class ViewUtils {
         }
         for (int i = 0; i < view.getChildCount(); i++) {
             filterChildViewByVisible(view.getChildAt(i), filterViews, visibility);
+        }
+    }
+
+    private static void filterChildViewByFocused(WView view, List<WView> filterViews) {
+        if (view == null) {
+            return;
+        }
+        if (view.isFocused()) {
+            filterViews.add(view);
+        }
+        for (int i = 0; i < view.getChildCount(); i++) {
+            filterChildViewByFocused(view.getChildAt(i), filterViews);
+        }
+    }
+
+    private static void filterChildViewByLayout(WView view, List<WView> filterViews) {
+        if (view == null) {
+            return;
+        }
+        if (view.isLayoutRequested()) {
+            filterViews.add(view);
+        }
+        for (int i = 0; i < view.getChildCount(); i++) {
+            filterChildViewByLayout(view.getChildAt(i), filterViews);
         }
     }
 

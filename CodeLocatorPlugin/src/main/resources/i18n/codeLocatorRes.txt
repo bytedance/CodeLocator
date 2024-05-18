@@ -361,3 +361,6 @@ color_search=色值反查
 input_dark=深色模式色值
 input_light=浅色模式色值
 mark_view_chain=标记View链
+toolbar_hide_tip=检测到你的Toolbar被隐藏\n可在插件右上角设置按钮 (齿轮图标) 勾选Show Toolbar
+current_device_format=当前设备 %s
+switch_device=选择设备

@@ -225,6 +225,30 @@ public class FileUtils {
         FileUtils.saveContentToFile(file, GsonUtils.sGson.toJson(projectConfig));
     }
 
+    public static long getDirectoryFileSize(WFile file) {
+        if (file.isDirectory()) {
+            long size = 0;
+            for (int i = 0; i < file.getChildCount(); i++) {
+                size += getDirectoryFileSize(file.getChildAt(i));
+            }
+            return size;
+        } else {
+            return file.getLength();
+        }
+    }
+
+    public static long getDirectoryFileCount(WFile file) {
+        if (file.isDirectory()) {
+            long size = 0;
+            for (int i = 0; i < file.getChildCount(); i++) {
+                size += getDirectoryFileCount(file.getChildAt(i));
+            }
+            return size;
+        } else {
+            return 1;
+        }
+    }
+
     public static List<VirtualFile> getMatchFileList(VirtualFile[] files, Predicate<VirtualFile> predicate, boolean breakWhenFoundOne) {
         List<VirtualFile> result = new LinkedList<>();
         if (files == null) {

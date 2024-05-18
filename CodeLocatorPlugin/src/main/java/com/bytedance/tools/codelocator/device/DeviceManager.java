@@ -1,34 +1,69 @@
 package com.bytedance.tools.codelocator.device;
 
-import com.android.ddmlib.*;
-import com.android.tools.idea.ddms.DeviceContext;
-import com.android.tools.idea.ddms.DevicePanel;
-import com.android.tools.idea.logcat.AndroidLogcatToolWindowFactory;
-import com.android.tools.idea.logcat.LogcatPanel;
-import com.bytedance.tools.codelocator.device.action.*;
+import com.android.ddmlib.AdbCommandRejectedException;
+import com.android.ddmlib.AndroidDebugBridge;
+import com.android.ddmlib.Client;
+import com.android.ddmlib.IDevice;
+import com.android.ddmlib.IShellOutputReceiver;
+import com.android.ddmlib.InstallException;
+import com.android.ddmlib.InstallReceiver;
+import com.android.ddmlib.RawImage;
+import com.android.ddmlib.ShellCommandUnresponsiveException;
+import com.android.ddmlib.SyncException;
+import com.android.ddmlib.TimeoutException;
+import com.bytedance.tools.codelocator.device.action.AdbAction;
+import com.bytedance.tools.codelocator.device.action.AdbCommand;
 import com.bytedance.tools.codelocator.device.action.AdbCommand.ACTION;
+import com.bytedance.tools.codelocator.device.action.BroadcastAction;
+import com.bytedance.tools.codelocator.device.action.CatFileAction;
+import com.bytedance.tools.codelocator.device.action.GetCurrentPkgNameAction;
+import com.bytedance.tools.codelocator.device.action.PullFileAction;
+import com.bytedance.tools.codelocator.device.action.PushFileAction;
+import com.bytedance.tools.codelocator.device.action.QueryContentAction;
 import com.bytedance.tools.codelocator.device.receiver.AdbResultBytesReceiver;
 import com.bytedance.tools.codelocator.device.receiver.AdbResultImageReceiver;
 import com.bytedance.tools.codelocator.device.receiver.AdbResultStringReceiver;
 import com.bytedance.tools.codelocator.device.response.BytesResponse;
 import com.bytedance.tools.codelocator.device.response.ImageResponse;
-import com.bytedance.tools.codelocator.exception.*;
-import com.bytedance.tools.codelocator.model.*;
-import com.bytedance.tools.codelocator.response.*;
-import com.bytedance.tools.codelocator.utils.*;
-import com.bytedance.tools.codelocator.utils.Log;
+import com.bytedance.tools.codelocator.exception.DeviceUnLockException;
+import com.bytedance.tools.codelocator.exception.ExecuteException;
+import com.bytedance.tools.codelocator.exception.NoDeviceException;
+import com.bytedance.tools.codelocator.exception.NoResultException;
+import com.bytedance.tools.codelocator.exception.NoSDKException;
+import com.bytedance.tools.codelocator.exception.SDKNotInitException;
+import com.bytedance.tools.codelocator.model.CodeLocatorUserConfig;
+import com.bytedance.tools.codelocator.model.EditActivityBuilder;
+import com.bytedance.tools.codelocator.model.GetActivityImageModel;
+import com.bytedance.tools.codelocator.model.ResultData;
+import com.bytedance.tools.codelocator.model.WApplication;
+import com.bytedance.tools.codelocator.response.ApplicationResponse;
+import com.bytedance.tools.codelocator.response.BaseResponse;
+import com.bytedance.tools.codelocator.response.FilePathResponse;
+import com.bytedance.tools.codelocator.response.NotEncodeStringResponse;
+import com.bytedance.tools.codelocator.response.OperateResponse;
+import com.bytedance.tools.codelocator.response.StringResponse;
+import com.bytedance.tools.codelocator.utils.Base64;
+import com.bytedance.tools.codelocator.utils.CodeLocatorConstants;
 import com.bytedance.tools.codelocator.utils.CodeLocatorConstants.ResultKey;
+import com.bytedance.tools.codelocator.utils.CodeLocatorUtils;
+import com.bytedance.tools.codelocator.utils.DataUtils;
+import com.bytedance.tools.codelocator.utils.ExecResult;
+import com.bytedance.tools.codelocator.utils.FileUtils;
+import com.bytedance.tools.codelocator.utils.GsonUtils;
+import com.bytedance.tools.codelocator.utils.Log;
+import com.bytedance.tools.codelocator.utils.Mob;
+import com.bytedance.tools.codelocator.utils.OSHelper;
+import com.bytedance.tools.codelocator.utils.ResUtils;
+import com.bytedance.tools.codelocator.utils.StringUtils;
+import com.bytedance.tools.codelocator.utils.ThreadUtils;
 import com.intellij.debugger.DebuggerManagerEx;
 import com.intellij.debugger.impl.DebuggerSession;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ex.ToolWindowManagerEx;
-import com.intellij.ui.content.Content;
-import com.intellij.ui.content.ContentManager;
 import com.pty4j.util.Pair;
 import org.jetbrains.android.sdk.AndroidSdkUtils;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -37,8 +72,6 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
@@ -131,71 +164,84 @@ public class DeviceManager {
         return false;
     }
 
+    private static void printPanel(JComponent component, int index) {
+        Log.d("index: " + index + " " + component);
+        for (int i = 0; i < component.getComponentCount(); i++) {
+            if (component.getComponent(i) instanceof JComponent) {
+                printPanel((JComponent) component.getComponent(i), index + 1);
+            }
+        }
+    }
+
+    public static void setCurrentSelectedDevice(Project project, IDevice device) {
+        sProjectSelectDevice.put(project.getName(), device);
+    }
+
     private static IDevice getCurrentSelectedDevice(Project project) {
         if (sProjectSelectDevice.containsKey(project.getName())) {
             return sProjectSelectDevice.get(project.getName());
         }
-        final ToolWindow toolWindow = ToolWindowManagerEx.getInstanceEx(project).getToolWindow(AndroidLogcatToolWindowFactory.getToolWindowId());
+        final ToolWindow toolWindow = ToolWindowManagerEx.getInstanceEx(project).getToolWindow("Logcat");
         if (toolWindow != null) {
-            try {
-                Field myContentFactory = ReflectUtils.getClassField(toolWindow.getClass(), "myContentFactory");
-                if (myContentFactory == null) {
-                    myContentFactory = ReflectUtils.getClassField(toolWindow.getClass(), "contentFactory");
-                }
-                if (myContentFactory == null || myContentFactory.get(toolWindow) == null) {
-                    final ContentManager contentManager = toolWindow.getContentManager();
-                    final Content content = contentManager.getContent(0);
-                    if (content != null && content.getComponent() instanceof LogcatPanel) {
-                        final LogcatPanel logcatPanel = (LogcatPanel) content.getComponent();
-                        final DevicePanel devicePanel = logcatPanel.getDevicePanel();
-                        final Field myDeviceContextField = ReflectUtils.getClassField(devicePanel.getClass(), "myDeviceContext");
-                        final DeviceContext deviceContext = (DeviceContext) myDeviceContextField.get(devicePanel);
-                        sProjectSelectDevice.put(project.getName(), deviceContext.getSelectedDevice());
-                        deviceContext.addListener(new DeviceContext.DeviceSelectionListener() {
-                            @Override
-                            public void deviceSelected(@Nullable IDevice device) {
-                                sProjectSelectDevice.put(project.getName(), device);
-                            }
-
-                            @Override
-                            public void deviceChanged(@NotNull IDevice device, int changeMask) {
-
-                            }
-
-                            @Override
-                            public void clientSelected(@Nullable Client c) {
-
-                            }
-                        }, () -> {
-                            sProjectSelectDevice.remove(project.getName());
-                        });
-                        return deviceContext.getSelectedDevice();
-                    } else if (content != null && content.getComponent().getClass().getName().contains("SplittingPanel")) {
-                        if (content.getComponent().getComponentCount() > 0
-                            && content.getComponent().getComponent(0) instanceof JComponent
-                            && content.getComponent().getComponent(0).getClass().getName().contains("LogcatMain")) {
-                            final JComponent logcatMainComponent = (JComponent) content.getComponent().getComponent(0);
-                            if (logcatMainComponent.getComponentCount() > 0 && logcatMainComponent.getComponent(0).getClass().getName().contains("LogcatHeaderPanel")) {
-                                final Component logcatHeadComponent = logcatMainComponent.getComponent(0);
-                                final Method getSelectedDevice = ReflectUtils.getClassMethod(logcatHeadComponent.getClass(), "getSelectedDevice");
-                                final Object device = getSelectedDevice.invoke(logcatHeadComponent);
-                                final Field serialNumberField = ReflectUtils.getClassField(device.getClass(), "serialNumber");
-                                final String serialNumber = (String) serialNumberField.get(device);
-                                final IDevice[] devices = AndroidDebugBridge.getBridge().getDevices();
-                                if (devices != null) {
-                                    for (IDevice d : devices) {
-                                        if (serialNumber.equals(d.getSerialNumber())) {
-                                            return d;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (Throwable t) {
-                Log.d("获取Logcat设备错误", t);
-            }
+            //try {
+            //    Field myContentFactory = ReflectUtils.getClassField(toolWindow.getClass(), "myContentFactory");
+            //    if (myContentFactory == null) {
+            //        myContentFactory = ReflectUtils.getClassField(toolWindow.getClass(), "contentFactory");
+            //    }
+            //    if (myContentFactory == null || myContentFactory.get(toolWindow) == null) {
+            //        final ContentManager contentManager = toolWindow.getContentManager();
+            //        final Content content = contentManager.getContent(0);
+            //        if (content != null && content.getComponent() instanceof LogcatPanel) {
+            //            //final LogcatPanel logcatPanel = (LogcatPanel) content.getComponent();
+            //            //final DevicePanel devicePanel = logcatPanel.getDevicePanel();
+            //            //final Field myDeviceContextField = ReflectUtils.getClassField(devicePanel.getClass(), "myDeviceContext");
+            //            //final DeviceContext deviceContext = (DeviceContext) myDeviceContextField.get(devicePanel);
+            //            //sProjectSelectDevice.put(project.getName(), deviceContext.getSelectedDevice());
+            //            //deviceContext.addListener(new DeviceContext.DeviceSelectionListener() {
+            //            //    @Override
+            //            //    public void deviceSelected(@Nullable IDevice device) {
+            //            //        sProjectSelectDevice.put(project.getName(), device);
+            //            //    }
+            //            //
+            //            //    @Override
+            //            //    public void deviceChanged(@NotNull IDevice device, int changeMask) {
+            //            //
+            //            //    }
+            //            //
+            //            //    @Override
+            //            //    public void clientSelected(@Nullable Client c) {
+            //            //
+            //            //    }
+            //            //}, () -> {
+            //            //    sProjectSelectDevice.remove(project.getName());
+            //            //});
+            //            //return deviceContext.getSelectedDevice();
+            //        } else if (content != null && content.getComponent().getClass().getName().contains("SplittingPanel")) {
+            //            if (content.getComponent().getComponentCount() > 0
+            //                && content.getComponent().getComponent(0) instanceof JComponent
+            //                && content.getComponent().getComponent(0).getClass().getName().contains("LogcatMain")) {
+            //                final JComponent logcatMainComponent = (JComponent) content.getComponent().getComponent(0);
+            //                if (logcatMainComponent.getComponentCount() > 0 && logcatMainComponent.getComponent(0).getClass().getName().contains("LogcatHeaderPanel")) {
+            //                    final Component logcatHeadComponent = logcatMainComponent.getComponent(0);
+            //                    final Method getSelectedDevice = ReflectUtils.getClassMethod(logcatHeadComponent.getClass(), "getSelectedDevice");
+            //                    final Object device = getSelectedDevice.invoke(logcatHeadComponent);
+            //                    final Field serialNumberField = ReflectUtils.getClassField(device.getClass(), "serialNumber");
+            //                    final String serialNumber = (String) serialNumberField.get(device);
+            //                    final IDevice[] devices = AndroidDebugBridge.getBridge().getDevices();
+            //                    if (devices != null) {
+            //                        for (IDevice d : devices) {
+            //                            if (serialNumber.equals(d.getSerialNumber())) {
+            //                                return d;
+            //                            }
+            //                        }
+            //                    }
+            //                }
+            //            }
+            //        }
+            //    }
+            //} catch (Throwable t) {
+            //    Log.d("获取Logcat设备错误", t);
+            //}
         } else {
             Log.d("获取Logcat设备window为null");
         }
@@ -292,13 +338,13 @@ public class DeviceManager {
         WApplication wApplication = null;
         if (client == null) {
             wApplication = DataUtils.buildApplicationForNoSDKRelease(project, pkgName, activityName);
-            WView tmpView = DataUtils.buildViewInfoFromUix(project);
-            if (wApplication != null
-                && wApplication.getActivity() != null
-                && wApplication.getActivity().getDecorViews() != null
-                && wApplication.getActivity().getDecorViews().size() > 0) {
-                ViewUtils.fillViewInfo(wApplication.getActivity().getDecorViews().get(0), tmpView);
-            }
+            //WView tmpView = DataUtils.buildViewInfoFromUix(project);
+            //if (wApplication != null
+            //    && wApplication.getActivity() != null
+            //    && wApplication.getActivity().getDecorViews() != null
+            //    && wApplication.getActivity().getDecorViews().size() > 0) {
+            //    ViewUtils.fillViewInfo(wApplication.getActivity().getDecorViews().get(0), tmpView);
+            //}
         } else {
             wApplication = DataUtils.buildApplicationForNoSDKDebug(project, pkgName, activityName, client);
         }

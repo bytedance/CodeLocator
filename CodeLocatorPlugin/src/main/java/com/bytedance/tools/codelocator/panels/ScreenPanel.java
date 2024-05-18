@@ -67,6 +67,10 @@ public class ScreenPanel extends JPanel implements ImageObserver {
 
     public static final int FILTER_OVER_DRAW = 3;
 
+    public static final int FILTER_FOCUSED = 4;
+
+    public static final int FILTER_LAYOUT_REQUESTED = 5;
+
     public static final long GRAB_WAIT_TIME = 2000;
 
     private static Color[] sColors = new Color[]{

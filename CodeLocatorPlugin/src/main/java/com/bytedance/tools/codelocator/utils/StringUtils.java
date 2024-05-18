@@ -254,22 +254,22 @@ public class StringUtils {
     public static String getFileSize(long fileSize, boolean withOriginSize) {
         String unit = "B";
         float size = 0;
-        if (fileSize < 1000) {
+        if (fileSize < 1024) {
             size = fileSize;
-        } else if (fileSize < 1000L * 1000L) {
+        } else if (fileSize < 1024L * 1024L) {
             unit = "KB";
-            size = (1.0f * fileSize / (1000L));
-        } else if (fileSize < 1000L * 1000L * 1000L) {
+            size = (1.0f * fileSize / (1024L));
+        } else if (fileSize < 1024L * 1024L * 1024L) {
             unit = "M";
-            size = (1.0f * fileSize / (1000L * 1000L));
-        } else if (fileSize < 1000L * 1000L * 1000L * 1000L) {
+            size = (1.0f * fileSize / (1024L * 1024L));
+        } else if (fileSize < 1024L * 1024L * 1024L * 1024L) {
             unit = "G";
-            size = (1.0f * fileSize / (1000L * 1000L * 1000L));
+            size = (1.0f * fileSize / (1024L * 1024L * 1024L));
         } else {
             unit = "T";
-            size = (1.0f * fileSize / (1000L * 1000L * 1000L * 1000L));
+            size = (1.0f * fileSize / (1024L * 1024L * 1024L * 1024L));
         }
-        return String.format("%.1f", size) + unit + (withOriginSize ? (" (" + fileSize + "B)") : "");
+        return String.format("%.2f", size) + unit + (withOriginSize ? (" (" + fileSize + "B)") : "");
     }
 
     public static String getErrorTip(Throwable t) {

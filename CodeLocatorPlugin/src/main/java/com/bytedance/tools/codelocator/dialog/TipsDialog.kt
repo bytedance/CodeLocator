@@ -2,6 +2,7 @@ package com.bytedance.tools.codelocator.dialog
 
 import com.bytedance.tools.codelocator.panels.CodeLocatorWindow
 import com.bytedance.tools.codelocator.utils.CoordinateUtils
+import com.bytedance.tools.codelocator.utils.FileUtils
 import com.bytedance.tools.codelocator.utils.JComponentUtils
 import com.bytedance.tools.codelocator.utils.Log
 import com.bytedance.tools.codelocator.utils.ResUtils
@@ -28,9 +29,9 @@ class TipsDialog(
 
     companion object {
 
-        const val WECHAT_URL = "http://10.227.17.242/wechat.png"
+        val WECHAT_URL = FileUtils.getConfig().uploadHost + "/wechat.png"
 
-        const val ZHIFUBAO_URL = "http://10.227.17.242/zhifubao.png"
+        val ZHIFUBAO_URL = FileUtils.getConfig().uploadHost + "/zhifubao.png"
 
         const val DIALOG_HEIGHT = 407 + 20
 
