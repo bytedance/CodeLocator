@@ -8,19 +8,15 @@ import com.bytedance.tools.codelocator.utils.CoordinateUtils
 import com.bytedance.tools.codelocator.utils.JComponentUtils
 import com.bytedance.tools.codelocator.utils.Log
 import com.bytedance.tools.codelocator.utils.ResUtils
+import com.bytedance.tools.codelocator.utils.onTextChange
 import com.bytedance.tools.codelocator.views.JTextHintField
 import com.intellij.codeInsight.hint.HintManager
 import com.intellij.codeInsight.hint.HintManagerImpl
-import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.wm.ex.WindowManagerEx
-import com.intellij.ui.LightweightHint
 import com.intellij.ui.awt.RelativePoint
-import org.jetbrains.kotlin.idea.util.onTextChange
-import sun.font.FontDesignMetrics
 import java.awt.Dimension
-import java.awt.FontMetrics
 import java.awt.event.ActionListener
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
@@ -172,7 +168,7 @@ class SearchColorDialog(
         lineWidthRemain[line] = resultPanelBox.width
         result.forEachIndexed { index, result ->
             val makeJLabel = makeJLabel(result)
-            val stringWidth = FontDesignMetrics.getMetrics(makeJLabel.font).stringWidth(result)
+            val stringWidth = makeJLabel.getFontMetrics(makeJLabel.font).stringWidth(result)
             if (stringWidth >= resultPanelBox.width) {
                 val createHorizontalBox = Box.createHorizontalBox()
                 createHorizontalBox.add(makeJLabel)

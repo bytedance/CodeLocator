@@ -3,7 +3,6 @@ package com.bytedance.tools.codelocator.dialog
 import com.bytedance.tools.codelocator.utils.*
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ex.WindowManagerEx
-import sun.font.FontDesignMetrics
 import java.awt.Dimension
 import java.awt.Font
 import java.io.File
@@ -109,7 +108,7 @@ class ShowNewsDialog(val project: Project, val msg: String, val version: String)
             hide()
         }
         try {
-            val stringWidth = FontDesignMetrics.getMetrics(confirmBtn.font).stringWidth(confrimText)
+            val stringWidth = confirmBtn.getFontMetrics(confirmBtn.font).stringWidth(confrimText)
             confirmBtn.maximumSize = Dimension(stringWidth, 38)
         } catch (t: Throwable) {
             Log.e("getFont width error", t)

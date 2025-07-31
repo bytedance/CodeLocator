@@ -14,7 +14,6 @@ import com.intellij.openapi.wm.ex.WindowManagerEx
 import com.intellij.ui.awt.RelativePoint
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
-import sun.font.FontDesignMetrics
 import java.awt.Dimension
 import java.awt.Font
 import java.awt.Image
@@ -107,7 +106,7 @@ class ShowHistoryDialog(
         val buttonWidth = DIALOG_WIDTH - CoordinateUtils.DEFAULT_BORDER * 4
         val jButton = JButton()
         jButton.font = Font(jButton.font.name, Font.PLAIN, 12)
-        val fontMetrics = FontDesignMetrics.getMetrics(jButton.font)
+        val fontMetrics = jButton.getFontMetrics(jButton.font)
 
         var grabTime = ""
         try {

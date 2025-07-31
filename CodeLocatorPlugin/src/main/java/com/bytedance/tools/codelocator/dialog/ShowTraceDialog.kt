@@ -7,7 +7,6 @@ import com.bytedance.tools.codelocator.utils.*
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.wm.ex.WindowManagerEx
-import sun.font.FontDesignMetrics
 import java.awt.Dimension
 import java.awt.Font
 import java.awt.event.MouseAdapter
@@ -100,7 +99,7 @@ class ShowTraceDialog(
         val buttonWidth = DIALOG_WIDTH - CoordinateUtils.DEFAULT_BORDER * 4
         val jButton = JButton()
         jButton.font = Font(jButton.font.name, Font.PLAIN, 12)
-        val fontMetrics = FontDesignMetrics.getMetrics(jButton.font)
+        val fontMetrics = jButton.getFontMetrics(jButton.font)
         var keyWorkInfo = ""
         if (showInfo.keyword != "null") {
             keyWorkInfo = "<br>&nbsp;" + UIUtils.getMatchWidthStr(

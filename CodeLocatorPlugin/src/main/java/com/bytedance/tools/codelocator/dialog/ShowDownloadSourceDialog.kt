@@ -8,7 +8,6 @@ import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.util.SystemInfo
-import sun.font.FontDesignMetrics
 import java.awt.Dimension
 import javax.swing.Action
 import javax.swing.BorderFactory
@@ -104,7 +103,7 @@ class ShowDownloadSourceDialog(val codeLocatorWindow: CodeLocatorWindow, val pro
             close(0)
         }
         try {
-            val stringWidth = FontDesignMetrics.getMetrics(confirmButton.font).stringWidth(btnText)
+            val stringWidth = confirmButton.getFontMetrics(confirmButton.font).stringWidth(btnText)
             confirmButton.maximumSize = Dimension(stringWidth, 38)
         } catch (t: Throwable) {
             Log.e("getfont width error", t)
@@ -117,7 +116,7 @@ class ShowDownloadSourceDialog(val codeLocatorWindow: CodeLocatorWindow, val pro
             close(0)
         }
         try {
-            val stringWidth = FontDesignMetrics.getMetrics(dontShowButton.font).stringWidth(dontShowText)
+            val stringWidth = dontShowButton.getFontMetrics(dontShowButton.font).stringWidth(dontShowText)
             dontShowButton.maximumSize = Dimension(stringWidth, 38)
         } catch (t: Throwable) {
             Log.e("getFont width error", t)

@@ -3,7 +3,6 @@ package com.bytedance.tools.codelocator.dialog
 import com.bytedance.tools.codelocator.utils.*
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ex.WindowManagerEx
-import sun.font.FontDesignMetrics
 import java.awt.Dimension
 import java.awt.Font
 import java.awt.event.MouseAdapter
@@ -142,7 +141,7 @@ class ShowConfigDialog(
                 hide()
             }
             try {
-                val stringWidth = FontDesignMetrics.getMetrics(confirmButton!!.font).stringWidth(btnText)
+                val stringWidth = confirmButton!!.getFontMetrics(confirmButton!!.font).stringWidth(btnText)
                 confirmButton!!.maximumSize = Dimension(stringWidth, 38)
             } catch (t: Throwable) {
                 Log.e("getfont width error", t)
@@ -159,7 +158,7 @@ class ShowConfigDialog(
             hide()
         }
         try {
-            val stringWidth = FontDesignMetrics.getMetrics(dontShowButton.font).stringWidth(dontShowText)
+            val stringWidth = dontShowButton.getFontMetrics(dontShowButton.font).stringWidth(dontShowText)
             dontShowButton.maximumSize = Dimension(stringWidth, 38)
         } catch (t: Throwable) {
             Log.e("getFont width error", t)

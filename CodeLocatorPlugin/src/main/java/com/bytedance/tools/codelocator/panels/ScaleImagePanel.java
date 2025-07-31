@@ -98,7 +98,7 @@ public class ScaleImagePanel extends JPanel {
         int patternSize = 2 * cellSize;
 
         if (pattern == null) {
-            pattern = UIUtil.createImage(g, patternSize, patternSize, BufferedImage.TYPE_INT_ARGB);
+            pattern = UIUtil.createImage(this, patternSize, patternSize, BufferedImage.TYPE_INT_ARGB);
             Graphics imageGraphics = pattern.getGraphics();
             imageGraphics.setColor(whiteColor);
             imageGraphics.fillRect(0, 0, patternSize, patternSize);

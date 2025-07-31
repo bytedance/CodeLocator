@@ -52,6 +52,10 @@
 
     <depends>org.jetbrains.android</depends>
 
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <supportsKotlinPluginMode supportsK1="true" supportsK2="true" />
+    </extensions>
+
     <extensions defaultExtensionNs="com.intellij">
 
         <checkinHandlerFactory implementation="com.bytedance.tools.codelocator.importopt.DeleteImportinHandlerFactory"/>

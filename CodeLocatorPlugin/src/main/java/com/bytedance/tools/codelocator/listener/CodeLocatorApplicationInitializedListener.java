@@ -10,13 +10,18 @@ import com.google.gson.reflect.TypeToken;
 import com.intellij.codeInsight.hint.HintManager;
 import com.intellij.codeInsight.hint.HintManagerImpl;
 import com.intellij.ide.ApplicationInitializedListener;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.SelectionEvent;
 import com.intellij.openapi.editor.event.SelectionListener;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.project.ProjectManager;
+import com.intellij.openapi.project.ProjectManagerListener;
 import com.intellij.openapi.project.impl.ProjectLifecycleListener;
+import com.intellij.openapi.ui.DialogWrapper;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.ui.LightweightHint;
 import com.intellij.ui.awt.RelativePoint;
@@ -41,6 +46,8 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
     private static HashSet<ColorInfo> mFindColorSets = new HashSet<>();
 
     private static int maxWidth;
+
+    private static Disposable disposable = Disposer.newDisposable();
 
     public static void setColorInfo(List<ColorInfo> colorInfo) {
         if (colorInfo == null || colorInfo.isEmpty()) {
@@ -68,10 +75,10 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
         ThreadUtils.submit(() -> {
             NetUtils.fetchConfig();
         });
-
-        ApplicationManager.getApplication().getMessageBus().connect().subscribe(ProjectLifecycleListener.TOPIC, new ProjectLifecycleListener() {
+        Disposer.register(ApplicationManager.getApplication(),disposable);
+        ApplicationManager.getApplication().getMessageBus().connect().subscribe(ProjectManager.TOPIC, new ProjectManagerListener() {
             @Override
-            public void afterProjectClosed(@NotNull Project project) {
+            public void projectClosed(@NotNull Project project) {
                 final Device currentDevice = DeviceManager.getCurrentDevice(project, true);
                 if (currentDevice != null && currentDevice.getDevice() != null) {
                     final String serialNumber = currentDevice.getDevice().getSerialNumber();
@@ -141,12 +148,12 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
                     point.y -= ((colorInfos.size() - 1) * CoordinateUtils.TABLE_RIGHT_MARGIN + colorInfos.size() * HINT_ITEM_HEIGHT + CoordinateUtils.TABLE_RIGHT_MARGIN);
                     lastSelectText = null;
                     HintManagerImpl.getInstanceImpl()
-                        .showHint(colorInfosPanel,
-                            new RelativePoint(e.getEditor().getComponent().getRootPane(), point),
-                            HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_BY_OTHER_HINT | HintManager.HIDE_BY_SCROLLING, 0);
+                            .showHint(colorInfosPanel,
+                                    new RelativePoint(e.getEditor().getComponent().getRootPane(), point),
+                                    HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_BY_OTHER_HINT | HintManager.HIDE_BY_SCROLLING, 0);
                     Mob.mob(Mob.Action.CLICK, Mob.Button.COLOR_MODE);
                 }
-            });
+            }, disposable);
         }
     }
 

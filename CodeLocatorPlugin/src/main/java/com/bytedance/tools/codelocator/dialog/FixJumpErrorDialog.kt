@@ -13,7 +13,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.SystemInfo
-import sun.font.FontDesignMetrics
 import java.awt.Dimension
 import javax.swing.*
 
@@ -141,7 +140,7 @@ class FixJumpErrorDialog(
             close(0)
         }
         try {
-            val stringWidth = FontDesignMetrics.getMetrics(confirmBtn.font).stringWidth(confrimText) + 10
+            val stringWidth = confirmBtn.getFontMetrics(confirmBtn.font).stringWidth(confrimText) + 10
             confirmBtn.maximumSize = Dimension(stringWidth, 40)
             cancelBtn.maximumSize = Dimension(stringWidth, 40)
         } catch (t: Throwable) {

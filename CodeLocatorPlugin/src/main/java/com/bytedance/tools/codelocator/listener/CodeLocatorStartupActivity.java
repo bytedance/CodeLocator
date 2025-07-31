@@ -114,7 +114,7 @@ public class CodeLocatorStartupActivity implements StartupActivity {
     }
 
     private void subscribeNotification(@NotNull Project project, Disposable tempDisposable) {
-        project.getMessageBus().connect(tempDisposable).subscribe(Notifications.TOPIC, new NotificationsAdapter() {
+        project.getMessageBus().connect(tempDisposable).subscribe(Notifications.TOPIC, new Notifications() {
                 boolean hasSync = false;
 
                 @Override

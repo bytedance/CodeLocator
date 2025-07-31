@@ -44,7 +44,6 @@ import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.table.JBTable
-import com.sun.jndi.toolkit.url.Uri
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.Disposable
 import java.awt.Component
@@ -262,7 +261,6 @@ class SendSchemaDialog(
     private fun convertToEncodeSchema(originSchema: String?): String {
         originSchema ?: return ""
         try {
-            val uri = Uri(originSchema)
             var hasQuery = true
             val indexOfSplit = originSchema.indexOf("?")
             if (indexOfSplit > -1) {
@@ -326,7 +324,6 @@ class SendSchemaDialog(
                 return
             }
             val uriStr = textField.text
-            val uri = Uri(uriStr)
             var hasQuery = false
             val indexOfSplit = uriStr.indexOf("?")
             if (indexOfSplit > -1) {
