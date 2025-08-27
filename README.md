@@ -96,6 +96,10 @@ dependencies {
     
 }
 ```
+如果启用了shrinkResources或者minifyEnabled，需要配置如下混淆配置
+```
+-keep class org.chickenhook.restrictionbypass.** { *; }
+```
 
 ## 使用说明
 CodeLocator插件是一个侧边栏插件, 安装后展示在Android Studio的右侧, 点击可展开
