@@ -24,12 +24,14 @@ class InstallApkMenuAction : AnAction() {
     }
 
     override fun update(e: AnActionEvent) {
-        var virtualFile = e.getData(PlatformDataKeys.VIRTUAL_FILE)
-        val presentation: Presentation = e.presentation
-        presentation.isVisible =
-            (virtualFile != null && !(virtualFile!!.isDirectory || !virtualFile!!.name.endsWith("apk")))
-        presentation.text = ResUtils.getString("install_apk_file")
-        presentation.description = ResUtils.getString("install_apk_file")
+        ApplicationManager.getApplication().executeOnPooledThread {
+            var virtualFile = e.getData(PlatformDataKeys.VIRTUAL_FILE)
+            val presentation: Presentation = e.presentation
+            presentation.isVisible =
+                (virtualFile != null && !(virtualFile!!.isDirectory || !virtualFile!!.name.endsWith("apk")))
+            presentation.text = ResUtils.getString("install_apk_file")
+            presentation.description = ResUtils.getString("install_apk_file")
+        }
     }
 
 }
