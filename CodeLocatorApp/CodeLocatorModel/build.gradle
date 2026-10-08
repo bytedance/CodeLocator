@@ -1,7 +1,7 @@
 apply plugin: 'java-library'
 
-if (getProperties("customUploadGradlePluginUrl") != null) {
-    apply from: getProperties("customUploadGradlePluginUrl")
+if (findProperty("customUploadGradlePluginUrl") != null) {
+    apply from: findProperty("customUploadGradlePluginUrl")
 }
 
 dependencies {

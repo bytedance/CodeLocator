@@ -16,6 +16,9 @@ import com.google.gson.reflect.TypeToken;
 import com.intellij.codeInsight.hint.HintManager;
 import com.intellij.codeInsight.hint.HintManagerImpl;
 import com.intellij.ide.ApplicationInitializedListener;
+import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.components.Service;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.SelectionEvent;
@@ -23,6 +26,8 @@ import com.intellij.openapi.editor.event.SelectionListener;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.ui.LightweightHint;
 import com.intellij.ui.awt.RelativePoint;
+import kotlin.Unit;
+import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -71,6 +76,12 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
         ThreadUtils.submit(() -> {
             NetUtils.fetchConfig();
         });
+    }
+
+    // 旧版编译 SDK 尚无 execute，保留 componentsInitialized 以兼容旧版 IDE。
+    public Object execute(@NotNull Continuation<? super Unit> continuation) {
+        componentsInitialized();
+        return Unit.INSTANCE;
     }
 
     private void registerEditColorLisenter() {
@@ -129,7 +140,15 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
                             HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_BY_OTHER_HINT | HintManager.HIDE_BY_SCROLLING, 0);
                     Mob.mob(Mob.Action.CLICK, Mob.Button.COLOR_MODE);
                 }
-            });
+            }, ApplicationManager.getApplication().getService(ColorPreviewDisposable.class));
+        }
+    }
+
+    @Service(Service.Level.APP)
+    public static final class ColorPreviewDisposable implements Disposable {
+        @Override
+        public void dispose() {
+            // 监听器由平台在服务释放时自动移除。
         }
     }
 

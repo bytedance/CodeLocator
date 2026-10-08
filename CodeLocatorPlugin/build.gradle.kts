@@ -12,9 +12,11 @@ plugins {
 group = "com.bytedance.tools"
 version = "2.0.5"
 
-repositories {
-    mavenCentral()
-    google()
+allprojects {
+    repositories {
+        mavenCentral()
+        google()
+    }
 }
 
 dependencies {
