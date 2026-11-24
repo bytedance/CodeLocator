@@ -15,11 +15,14 @@ import com.bytedance.tools.codelocator.utils.ThreadUtils;
 import com.google.gson.reflect.TypeToken;
 import com.intellij.codeInsight.hint.HintManager;
 import com.intellij.codeInsight.hint.HintManagerImpl;
-import com.intellij.ide.ApplicationInitializedListener;
+import com.intellij.ide.AppLifecycleListener;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.SelectionEvent;
 import com.intellij.openapi.editor.event.SelectionListener;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.ui.LightweightHint;
 import com.intellij.ui.awt.RelativePoint;
@@ -33,7 +36,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 
-public class CodeLocatorApplicationInitializedListener implements ApplicationInitializedListener {
+public class CodeLocatorApplicationInitializedListener implements AppLifecycleListener {
 
     public static final int HINT_ITEM_HEIGHT = 24;
 
@@ -63,7 +66,7 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
     }
 
     @Override
-    public void componentsInitialized() {
+    public void appFrameCreated(@NotNull List<String> commandLineArgs) {
         FileUtils.init();
         initColorInfo();
         registerEditColorLisenter();
@@ -75,6 +78,10 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
 
     private void registerEditColorLisenter() {
         if (EditorFactory.getInstance().getEventMulticaster() != null) {
+            final Disposable listenerDisposable = Disposer.newDisposable(
+                ApplicationManager.getApplication(),
+                "CodeLocator selection listener"
+            );
             EditorFactory.getInstance().getEventMulticaster().addSelectionListener(new SelectionListener() {
                 @Override
                 public void selectionChanged(@NotNull SelectionEvent e) {
@@ -129,7 +136,7 @@ public class CodeLocatorApplicationInitializedListener implements ApplicationIni
                             HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_BY_OTHER_HINT | HintManager.HIDE_BY_SCROLLING, 0);
                     Mob.mob(Mob.Action.CLICK, Mob.Button.COLOR_MODE);
                 }
-            });
+            }, listenerDisposable);
         }
     }
 
