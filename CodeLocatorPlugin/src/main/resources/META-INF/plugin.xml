@@ -10,6 +10,8 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <h3>2.0.6: Fix foldable screenshots and IDE startup compatibility</h3>
+
         <h3>2.0.3: Optimize Screen Height </h3>
 
         <h3>2.0.2: Remove TinyPng</h3>
@@ -56,6 +58,11 @@
         <listener class="com.bytedance.tools.codelocator.listener.CodeLocatorProjectManagerListener" topic="com.intellij.openapi.project.ProjectManagerListener"/>
     </projectListeners>
 
+    <applicationListeners>
+        <listener class="com.bytedance.tools.codelocator.listener.CodeLocatorApplicationInitializedListener"
+                  topic="com.intellij.ide.AppLifecycleListener"/>
+    </applicationListeners>
+
     <extensions defaultExtensionNs="org.jetbrains.kotlin">
         <supportsKotlinPluginMode supportsK2="true" />
     </extensions>
@@ -63,9 +70,6 @@
     <extensions defaultExtensionNs="com.intellij">
 
         <defaultProjectTypeProvider type="Android"/>
-
-        <applicationInitializedListener
-            implementation="com.bytedance.tools.codelocator.listener.CodeLocatorApplicationInitializedListener"/>
 
         <postStartupActivity implementation="com.bytedance.tools.codelocator.listener.CodeLocatorStartupActivity"/>
 

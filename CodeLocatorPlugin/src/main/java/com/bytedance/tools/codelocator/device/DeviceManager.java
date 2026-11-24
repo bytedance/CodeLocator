@@ -75,6 +75,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -112,6 +113,12 @@ public class DeviceManager {
     private static final String OVERRIDE_SIZE = "Override size:";
 
     private static final String PHYSICAL_DENSITY = "Physical density:";
+
+    private static final Pattern DISPLAY_VIEWPORT_PATTERN = Pattern.compile("DisplayViewport\\{([^}]*)}");
+
+    private static final Pattern LOCAL_DISPLAY_ID_PATTERN = Pattern.compile("uniqueId='local:(\\d+)'");
+
+    private static final Pattern SCREENCAP_DISPLAY_OPTION_PATTERN = Pattern.compile("(^|\\s)-(a|d)(\\s|$)");
 
     public static boolean hasAndroidDevice() {
         if (AndroidDebugBridge.getBridge() == null) {
@@ -575,7 +582,7 @@ public class DeviceManager {
                 final String type = adbAction.getType();
                 if (type == ACTION.SCREENCAP) {
                     Mob.mob(Mob.Action.EXEC, "" + adbAction);
-                    final String cmd = adbAction.buildCmd();
+                    final String cmd = buildScreencapCommand(device, adbAction.getArgs());
                     executeShellCommand(device, receiver, cmd, FileUtils.getConfig().getScreenCapTimeOut());
                 } else if (type == ACTION.PULL_FILE) {
                     pullFileToDevice(device, (PullFileAction) adbAction);
@@ -672,11 +679,12 @@ public class DeviceManager {
 
     private static void getImageFromDevice(Project project, IDevice device, AdbResultImageReceiver receiver) throws TimeoutException, AdbCommandRejectedException, IOException, InstantiationException, NoDeviceException, NoSDKException, IllegalAccessException, DeviceUnLockException, SyncException, ExecuteException, SDKNotInitException, InstallException, ShellCommandUnresponsiveException {
         if (!CodeLocatorUserConfig.loadConfig().isUseDefaultAdb() && sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
-            final ExecResult execResult = OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " shell screencap -p");
+            final String screencapCommand = buildScreencapCommand(device, "-p");
+            final ExecResult execResult = OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " shell " + screencapCommand);
             if (execResult.getResultCode() == 0) {
                 BufferedImage read = ImageIO.read(new ByteArrayInputStream(execResult.getByteArray()));
                 if (read == null) {
-                    OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " shell screencap -p " + CodeLocatorConstants.TMP_TRANS_IMAGE_FILE_PATH);
+                    OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " shell " + buildScreencapCommand(device, "-p " + CodeLocatorConstants.TMP_TRANS_IMAGE_FILE_PATH));
                     final File file = new File(FileUtils.sCodeLocatorMainDirPath, CodeLocatorConstants.TMP_IMAGE_FILE_NAME);
                     if (file.exists()) {
                         file.delete();
@@ -695,11 +703,12 @@ public class DeviceManager {
             } catch (Throwable t) {
                 Log.e("获取图片失败，", t);
                 if (sProjectAdbPath != null && !sProjectAdbPath.isEmpty()) {
-                    final ExecResult execResult = OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " shell screencap -p");
+                    final String screencapCommand = buildScreencapCommand(device, "-p");
+                    final ExecResult execResult = OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " shell " + screencapCommand);
                     if (execResult.getResultCode() == 0) {
                         BufferedImage read = ImageIO.read(new ByteArrayInputStream(execResult.getByteArray()));
                         if (read == null) {
-                            OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " shell screencap -p " + CodeLocatorConstants.TMP_TRANS_IMAGE_FILE_PATH);
+                            OSHelper.getInstance().execCommand(sProjectAdbPath + " -s " + device.getSerialNumber() + " shell " + buildScreencapCommand(device, "-p " + CodeLocatorConstants.TMP_TRANS_IMAGE_FILE_PATH));
                             final File file = new File(FileUtils.sCodeLocatorMainDirPath, CodeLocatorConstants.TMP_IMAGE_FILE_NAME);
                             if (file.exists()) {
                                 file.delete();
@@ -746,6 +755,42 @@ public class DeviceManager {
                 receiver.setResult((BufferedImage) viewImage);
             }
         }
+    }
+
+    private static String buildScreencapCommand(IDevice device, String args) {
+        final String command = ACTION.SCREENCAP + (args == null || args.isEmpty() ? "" : " " + args);
+        if (args != null && SCREENCAP_DISPLAY_OPTION_PATTERN.matcher(args).find()) {
+            return command;
+        }
+        final AdbResultStringReceiver receiver = new AdbResultStringReceiver();
+        try {
+            executeShellCommand(device, receiver, "dumpsys display", FileUtils.getConfig().getAdbCommandTimeOut());
+        } catch (TimeoutException | AdbCommandRejectedException | ShellCommandUnresponsiveException | IOException e) {
+            return command;
+        }
+        final Matcher viewportMatcher = DISPLAY_VIEWPORT_PATTERN.matcher(receiver.getResult());
+        final HashSet<String> localDisplayIds = new HashSet<>();
+        String activeDisplayId = null;
+        while (viewportMatcher.find()) {
+            final String viewport = viewportMatcher.group(1);
+            final Matcher displayIdMatcher = LOCAL_DISPLAY_ID_PATTERN.matcher(viewport);
+            if (!displayIdMatcher.find()) {
+                continue;
+            }
+            final String displayId = displayIdMatcher.group(1);
+            localDisplayIds.add(displayId);
+            if (!viewport.contains("valid=true") || !viewport.contains("isActive=true")) {
+                continue;
+            }
+            if (activeDisplayId != null && !activeDisplayId.equals(displayId)) {
+                return command;
+            }
+            activeDisplayId = displayId;
+        }
+        if (localDisplayIds.size() < 2 || activeDisplayId == null) {
+            return command;
+        }
+        return ACTION.SCREENCAP + " -d " + activeDisplayId + (args == null || args.isEmpty() ? "" : " " + args);
     }
 
     private static void pushFileToDevice(IDevice device, PushFileAction adbAction) throws IOException, AdbCommandRejectedException, TimeoutException, SyncException {
